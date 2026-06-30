@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>押すだけ進捗ボタン</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f0f1a;
+    --surface: #1a1a2e;
+    --accent: #e040fb;
+    --accent2: #00e5ff;
+    --text: #f0f0ff;
+    --muted: #888aaa;
+    --btn-size: min(72vw, 320px);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 16px 20px;
+    overflow-x: hidden;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    width: 100%;
+  }
+
+  h1 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    text-shadow: 0 0 12px var(--accent);
+  }
+
+  /* Counters */
+  .counters {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-top: 10px;
+  }
+
+  .counter-box {
+    background: var(--surface);
+    border: 1px solid #2a2a4a;
+    border-radius: 14px;
+    padding: 10px 20px;
+    text-align: center;
+    min-width: 110px;
+  }
+
+  .counter-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  .counter-value {
+    font-size: 2rem;
+    font-weight: 900;
+    line-height: 1.1;
+    margin-top: 2px;
+  }
+
+  .counter-today .counter-value { color: var(--accent); text-shadow: 0 0 8px var(--accent); }
+  .counter-total .counter-value { color: var(--accent2); text-shadow: 0 0 8px var(--accent2); }
+
+  /* Center area */
+  .center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    flex: 1;
+    justify-content: center;
+    width: 100%;
+  }
+
+  /* Message */
+  .message-wrap {
+    min-height: 2.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .message {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    opacity: 0;
+    transform: translateY(6px) scale(0.95);
+    transition: opacity 0.15s, transform 0.15s;
+    text-align: center;
+    color: var(--text);
+  }
+
+  .message.show {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  .message.milestone {
+    color: #ffd740;
+    text-shadow: 0 0 14px #ffd740;
+    font-size: 1.45rem;
+  }
+
+  /* Main button */
+  .push-btn {
+    width: var(--btn-size);
+    height: var(--btn-size);
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    background: radial-gradient(circle at 35% 35%, #d050f0, #8b00d0);
+    box-shadow:
+      0 0 0 6px #2a0040,
+      0 0 32px 8px rgba(200, 50, 240, 0.4),
+      0 8px 32px rgba(0,0,0,0.6);
+    transition: transform 0.08s cubic-bezier(.3,.7,.4,1), box-shadow 0.08s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    outline: none;
+  }
+
+  .push-btn:active,
+  .push-btn.pressed {
+    transform: scale(0.91);
+    box-shadow:
+      0 0 0 6px #2a0040,
+      0 0 18px 4px rgba(200, 50, 240, 0.3),
+      0 2px 12px rgba(0,0,0,0.7);
+  }
+
+  .push-btn-inner {
+    font-size: clamp(1.4rem, 8vw, 2rem);
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: 0.04em;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    pointer-events: none;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  /* Ripple */
+  .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    animation: ripple-anim 0.5s ease-out forwards;
+    pointer-events: none;
+  }
+
+  @keyframes ripple-anim {
+    from { opacity: 1; transform: scale(0); }
+    to   { opacity: 0; transform: scale(2.4); }
+  }
+
+  /* Particle burst */
+  .particle {
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: particle-fly 0.7s ease-out forwards;
+    z-index: 100;
+  }
+
+  @keyframes particle-fly {
+    from { opacity: 1; transform: translate(0,0) scale(1); }
+    to   { opacity: 0; transform: var(--tx) scale(0.2); }
+  }
+
+  /* Footer */
+  footer {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .reset-btns {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .reset-btn {
+    background: transparent;
+    border: 1px solid #333355;
+    border-radius: 100px;
+    color: var(--muted);
+    font-size: 0.78rem;
+    padding: 8px 18px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    font-family: inherit;
+  }
+
+  .reset-btn:hover, .reset-btn:focus { border-color: #8855aa; color: #cc88ff; outline: none; }
+  .reset-btn.danger:hover, .reset-btn.danger:focus { border-color: #ff5555; color: #ff8888; }
+
+  /* Dialog */
+  .dialog-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .dialog-overlay.open { display: flex; }
+
+  .dialog {
+    background: var(--surface);
+    border: 1px solid #333355;
+    border-radius: 20px;
+    padding: 28px 24px 20px;
+    max-width: 320px;
+    width: 100%;
+    text-align: center;
+    animation: dlg-in 0.2s ease;
+  }
+
+  @keyframes dlg-in {
+    from { transform: scale(0.88); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+
+  .dialog h2 { font-size: 1.1rem; margin-bottom: 10px; }
+  .dialog p  { font-size: 0.9rem; color: var(--muted); line-height: 1.6; margin-bottom: 22px; }
+
+  .dialog-btns { display: flex; gap: 10px; justify-content: center; }
+
+  .dialog-btn {
+    border: none;
+    border-radius: 100px;
+    padding: 10px 28px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity 0.12s;
+  }
+
+  .dialog-btn:hover { opacity: 0.8; }
+  .dialog-btn.cancel { background: #333355; color: var(--muted); }
+  .dialog-btn.confirm { background: #cc3333; color: #fff; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>押すだけ進捗ボタン</h1>
+  <div class="counters">
+    <div class="counter-box counter-today">
+      <div class="counter-label">今日</div>
+      <div class="counter-value" id="todayCount">0</div>
+    </div>
+    <div class="counter-box counter-total">
+      <div class="counter-label">累計</div>
+      <div class="counter-value" id="totalCount">0</div>
+    </div>
+  </div>
+</header>
+
+<div class="center">
+  <div class="message-wrap">
+    <div class="message" id="message"></div>
+  </div>
+  <button class="push-btn" id="pushBtn" aria-label="進捗を押す">
+    <span class="push-btn-inner">おす</span>
+  </button>
+</div>
+
+<footer>
+  <div class="reset-btns">
+    <button class="reset-btn" id="resetToday">今日の記録をリセット</button>
+    <button class="reset-btn danger" id="resetAll">全記録をリセット</button>
+  </div>
+</footer>
+
+<!-- Confirm dialog -->
+<div class="dialog-overlay" id="dialogOverlay" role="dialog" aria-modal="true">
+  <div class="dialog">
+    <h2 id="dialogTitle"></h2>
+    <p id="dialogBody"></p>
+    <div class="dialog-btns">
+      <button class="dialog-btn cancel" id="dialogCancel">キャンセル</button>
+      <button class="dialog-btn confirm" id="dialogConfirm">リセット</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'pushProgressBtn_v1';
+
+  var MESSAGES = [
+    'えらい', '進んだ', '今日は勝ち', '1mm前進', 'ヨシ！',
+    'よくできました', 'いい感じ', 'その調子', 'やるじゃん', 'グッド',
+    '前に進んでる', '積み重ね大事', 'ちゃんとやってる', 'ナイス', 'やった',
+    '着実に', '一歩一歩', 'ファインプレー', '今日も頑張った', 'OK！'
+  ];
+
+  var MILESTONES = {
+    10:   'おお、10回！いいね！',
+    20:   '20回到達！本気じゃん',
+    50:   '50回！すごい！！',
+    100:  '100回！！！やば！！',
+    200:  '200回！もはやプロ',
+    365:  '365回…1年分の進捗',
+    500:  '500回！！伝説的',
+    1000: '1000回！！！天才！！！'
+  };
+
+  var PARTICLE_COLORS = ['#e040fb', '#00e5ff', '#ffd740', '#ff6e6e', '#69ff69'];
+
+  function loadData() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function saveData(data) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) { /* ignore */ }
+  }
+
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+
+  function isPlainRecord(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  function initData() {
+    var saved = loadData();
+    var today = todayStr();
+    if (!isPlainRecord(saved)) {
+      return { today: 0, total: 0, date: today };
+    }
+    if (!Number.isFinite(saved.today) || saved.today < 0) saved.today = 0;
+    if (!Number.isFinite(saved.total) || saved.total < 0) saved.total = 0;
+    if (typeof saved.date !== 'string') saved.date = '';
+    if (saved.date !== today) {
+      saved.today = 0;
+      saved.date = today;
+    }
+    return saved;
+  }
+
+  function ensureTodayData() {
+    var today = todayStr();
+    if (data.date !== today) {
+      data.today = 0;
+      data.date = today;
+    }
+  }
+
+  var data = initData();
+
+  var pushBtn      = document.getElementById('pushBtn');
+  var todayEl      = document.getElementById('todayCount');
+  var totalEl      = document.getElementById('totalCount');
+  var messageEl    = document.getElementById('message');
+  var resetTodayBtn= document.getElementById('resetToday');
+  var resetAllBtn  = document.getElementById('resetAll');
+  var overlay      = document.getElementById('dialogOverlay');
+  var dialogTitle  = document.getElementById('dialogTitle');
+  var dialogBody   = document.getElementById('dialogBody');
+  var dialogCancel = document.getElementById('dialogCancel');
+  var dialogConfirm= document.getElementById('dialogConfirm');
+
+  var msgTimer = null;
+  var pendingReset = null;
+
+  function render() {
+    todayEl.textContent = data.today;
+    totalEl.textContent = data.total;
+  }
+
+  function pickMessage(total) {
+    if (MILESTONES[total]) return { text: MILESTONES[total], milestone: true };
+    return { text: MESSAGES[Math.floor(Math.random() * MESSAGES.length)], milestone: false };
+  }
+
+  function showMessage(msg) {
+    messageEl.className = 'message';
+    messageEl.textContent = '';
+    if (msgTimer) clearTimeout(msgTimer);
+    void messageEl.offsetWidth; // force reflow
+    messageEl.textContent = msg.text;
+    messageEl.className = 'message show' + (msg.milestone ? ' milestone' : '');
+    msgTimer = setTimeout(function () {
+      messageEl.className = 'message';
+    }, 2200);
+  }
+
+  function spawnRipple(btn, e) {
+    var rect = btn.getBoundingClientRect();
+    var x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    var y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    var size = Math.max(rect.width, rect.height);
+    var r = document.createElement('span');
+    r.className = 'ripple';
+    r.style.width = r.style.height = size + 'px';
+    r.style.left = (x - size / 2) + 'px';
+    r.style.top  = (y - size / 2) + 'px';
+    btn.appendChild(r);
+    r.addEventListener('animationend', function () { r.remove(); });
+  }
+
+  function spawnParticles(btn) {
+    var rect = btn.getBoundingClientRect();
+    var cx = rect.left + rect.width  / 2;
+    var cy = rect.top  + rect.height / 2;
+    var count = 10;
+    for (var i = 0; i < count; i++) {
+      var p = document.createElement('div');
+      p.className = 'particle';
+      var size = 6 + Math.random() * 8;
+      var angle = (Math.PI * 2 / count) * i + (Math.random() - 0.5) * 0.8;
+      var dist  = 70 + Math.random() * 80;
+      var tx = Math.cos(angle) * dist;
+      var ty = Math.sin(angle) * dist;
+      p.style.cssText = [
+        'width:' + size + 'px',
+        'height:' + size + 'px',
+        'left:' + (cx - size / 2) + 'px',
+        'top:' + (cy - size / 2) + 'px',
+        'background:' + PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
+        '--tx:translate(' + tx + 'px,' + ty + 'px)'
+      ].join(';');
+      document.body.appendChild(p);
+      p.addEventListener('animationend', function () { this.remove(); });
+    }
+  }
+
+  function onPointerDown(e) {
+    spawnRipple(pushBtn, e);
+    pushBtn.classList.add('pressed');
+    setTimeout(function () { pushBtn.classList.remove('pressed'); }, 120);
+  }
+
+  function onPress() {
+    ensureTodayData();
+    data.today += 1;
+    data.total += 1;
+    saveData(data);
+    render();
+
+    var msg = pickMessage(data.total);
+    showMessage(msg);
+    spawnParticles(pushBtn);
+  }
+
+  pushBtn.addEventListener('pointerdown', onPointerDown);
+  pushBtn.addEventListener('click', onPress);
+
+  function openDialog(title, body, onConfirm) {
+    pendingReset = onConfirm;
+    dialogTitle.textContent = title;
+    dialogBody.textContent  = body;
+    overlay.classList.add('open');
+    dialogConfirm.focus();
+  }
+
+  function closeDialog() {
+    overlay.classList.remove('open');
+    pendingReset = null;
+  }
+
+  dialogCancel.addEventListener('click', closeDialog);
+  dialogConfirm.addEventListener('click', function () {
+    if (pendingReset) pendingReset();
+    closeDialog();
+  });
+
+  overlay.addEventListener('click', function (e) {
+    if (e.target === overlay) closeDialog();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && overlay.classList.contains('open')) closeDialog();
+  });
+
+  resetTodayBtn.addEventListener('click', function () {
+    openDialog(
+      '今日の記録をリセット',
+      '今日の押した回数（' + data.today + '回）を0に戻します。累計は変わりません。',
+      function () {
+        data.today = 0;
+        data.date  = todayStr();
+        saveData(data);
+        render();
+        showMessage({ text: '今日の記録をリセットしました', milestone: false });
+      }
+    );
+  });
+
+  resetAllBtn.addEventListener('click', function () {
+    openDialog(
+      '全記録をリセット',
+      '今日の記録と累計（' + data.total + '回）を全て0に戻します。この操作は取り消せません。',
+      function () {
+        data.today = 0;
+        data.total = 0;
+        data.date  = todayStr();
+        saveData(data);
+        render();
+        showMessage({ text: '全記録をリセットしました', milestone: false });
+      }
+    );
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
