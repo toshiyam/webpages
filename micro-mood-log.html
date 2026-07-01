@@ -1,0 +1,555 @@
+<!doctype html>
+<!--
+name: ひとこと気分ログ
+version: 1.0
+type: single-html-app
+status: stable
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ひとこと気分ログ</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f4f6fb;
+    --card: #ffffff;
+    --text: #20242c;
+    --muted: #687080;
+    --line: #dfe4ee;
+    --accent: #4f67f6;
+    --accent-soft: #eef2ff;
+    --danger: #d63d35;
+    --danger-soft: #fff0ee;
+    --warn: #8a5d00;
+    --warn-soft: #fff7df;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    line-height: 1.6;
+  }
+  button, input, textarea { font: inherit; }
+  button { cursor: pointer; }
+  .app {
+    width: min(100%, 520px);
+    margin: 0 auto;
+    padding: 18px 14px 42px;
+  }
+  header {
+    margin-bottom: 14px;
+    text-align: center;
+  }
+  h1 {
+    margin: 0;
+    font-size: 1.35rem;
+  }
+  .lead {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-size: .86rem;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(30, 40, 70, .05);
+  }
+  h2 {
+    margin: 0 0 12px;
+    font-size: 1rem;
+  }
+  .banner {
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    font-size: .86rem;
+    background: var(--accent-soft);
+    color: #263ea8;
+  }
+  .banner.warn { background: var(--warn-soft); color: var(--warn); border-color: #efd99a; }
+  .banner.error { background: var(--danger-soft); color: var(--danger); border-color: #f0b9b4; }
+  .moods {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 7px;
+  }
+  .mood-btn {
+    min-height: 66px;
+    border: 2px solid var(--line);
+    border-radius: 13px;
+    background: #fbfcff;
+    color: var(--text);
+    padding: 8px 2px;
+  }
+  .mood-btn strong {
+    display: block;
+    font-size: 1.42rem;
+    line-height: 1;
+  }
+  .mood-btn span {
+    display: block;
+    margin-top: 5px;
+    font-size: .62rem;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .mood-btn.active {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .mood-btn.active span { color: var(--accent); font-weight: 700; }
+  .field { margin-top: 14px; }
+  label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--muted);
+    font-size: .83rem;
+  }
+  textarea, input[type="text"] {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #fbfcff;
+    color: var(--text);
+    padding: 11px 12px;
+  }
+  textarea {
+    min-height: 76px;
+    resize: vertical;
+  }
+  .counter {
+    text-align: right;
+    color: var(--muted);
+    font-size: .76rem;
+    margin-top: 4px;
+  }
+  .form-error {
+    margin-top: 10px;
+    border: 1px solid #f0b9b4;
+    background: var(--danger-soft);
+    color: var(--danger);
+    border-radius: 11px;
+    padding: 8px 10px;
+    font-size: .84rem;
+  }
+  .primary {
+    width: 100%;
+    min-height: 50px;
+    margin-top: 14px;
+    border: 0;
+    border-radius: 13px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+  }
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .summary-box {
+    min-width: 0;
+    background: #f7f8fc;
+    border-radius: 12px;
+    padding: 10px 6px;
+    text-align: center;
+  }
+  .summary-box small {
+    display: block;
+    color: var(--muted);
+    font-size: .68rem;
+  }
+  .summary-box b {
+    display: block;
+    margin-top: 3px;
+    font-size: .96rem;
+    word-break: break-word;
+  }
+  .list-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .list-head h2 { margin: 0; }
+  .danger-btn {
+    min-height: 40px;
+    border: 1px solid #f0b9b4;
+    border-radius: 11px;
+    background: var(--danger-soft);
+    color: var(--danger);
+    padding: 7px 12px;
+    font-size: .82rem;
+  }
+  .empty {
+    padding: 24px 8px;
+    color: var(--muted);
+    text-align: center;
+    font-size: .9rem;
+  }
+  .logs {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 10px;
+  }
+  .log {
+    border: 1px solid var(--line);
+    background: #fdfefe;
+    border-radius: 14px;
+    padding: 12px;
+  }
+  .log.today {
+    border-color: var(--accent);
+    background: #f7f8ff;
+  }
+  .log-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 7px;
+    font-size: .85rem;
+  }
+  .mood-label { font-weight: 700; }
+  .time { color: var(--muted); font-size: .78rem; }
+  .badge {
+    background: var(--accent);
+    color: white;
+    border-radius: 999px;
+    padding: 2px 7px;
+    font-size: .66rem;
+  }
+  .memo {
+    margin: 8px 0 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 9px;
+  }
+  .tag {
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 3px 8px;
+    font-size: .75rem;
+  }
+  .delete {
+    min-height: 38px;
+    margin-top: 10px;
+    border: 1px solid #f0b9b4;
+    border-radius: 10px;
+    background: #fff;
+    color: var(--danger);
+    padding: 6px 12px;
+    font-size: .8rem;
+  }
+  @media (max-width: 360px) {
+    .app { padding-left: 10px; padding-right: 10px; }
+    .moods { gap: 5px; }
+    .mood-btn { min-height: 62px; }
+    .mood-btn span { font-size: .56rem; }
+    .summary { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>ひとこと気分ログ</h1>
+    <p class="lead">気分だけでも、メモ付きでも。軽く残して傾向を見ます。</p>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <section class="card" aria-labelledby="formTitle">
+    <h2 id="formTitle">今日の気分を記録</h2>
+    <div class="moods" id="moodButtons" role="radiogroup" aria-label="気分">
+      <button type="button" class="mood-btn" data-mood="1" role="radio" aria-checked="false"><strong>😞</strong><span>とても悪い</span></button>
+      <button type="button" class="mood-btn" data-mood="2" role="radio" aria-checked="false"><strong>🙁</strong><span>悪い</span></button>
+      <button type="button" class="mood-btn" data-mood="3" role="radio" aria-checked="false"><strong>😐</strong><span>普通</span></button>
+      <button type="button" class="mood-btn" data-mood="4" role="radio" aria-checked="false"><strong>🙂</strong><span>良い</span></button>
+      <button type="button" class="mood-btn" data-mood="5" role="radio" aria-checked="false"><strong>😄</strong><span>とても良い</span></button>
+    </div>
+
+    <div class="field">
+      <label for="memo">メモ（任意・120文字まで）</label>
+      <textarea id="memo" maxlength="120" placeholder="例: 朝は重かったが、午後は少し戻った"></textarea>
+      <div class="counter"><span id="memoCount">0</span>/120</div>
+    </div>
+
+    <div class="field">
+      <label for="tags">タグ（任意・カンマまたはスペース区切り、最大10個）</label>
+      <input id="tags" type="text" placeholder="例: 仕事, 睡眠, 食事">
+    </div>
+
+    <div id="formError" class="form-error" hidden></div>
+    <button type="button" class="primary" id="addBtn">記録する</button>
+  </section>
+
+  <section class="card" aria-labelledby="summaryTitle">
+    <h2 id="summaryTitle">直近7日間のサマリー</h2>
+    <div id="summary"></div>
+  </section>
+
+  <section class="card" aria-labelledby="listTitle">
+    <div class="list-head">
+      <h2 id="listTitle">記録一覧</h2>
+      <button type="button" class="danger-btn" id="clearBtn" hidden>全削除</button>
+    </div>
+    <div id="empty" class="empty" hidden>まだ記録がありません。気分を選んで記録してみましょう。</div>
+    <ul id="logs" class="logs"></ul>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'microMoodLog:v1';
+  var MAX_MEMO = 120;
+  var MAX_TAGS = 10;
+  var MAX_TAG_LEN = 20;
+  var DAY = 24 * 60 * 60 * 1000;
+  var moods = {
+    1: { emoji: '😞', label: 'とても悪い' },
+    2: { emoji: '🙁', label: '悪い' },
+    3: { emoji: '😐', label: '普通' },
+    4: { emoji: '🙂', label: '良い' },
+    5: { emoji: '😄', label: 'とても良い' }
+  };
+  var state = { mood: null, logs: [] };
+  var el = {};
+
+  function $(id) { return document.getElementById(id); }
+  function isObj(v) { return v && typeof v === 'object' && !Array.isArray(v); }
+  function pad(n) { return n < 10 ? '0' + n : String(n); }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function showBanner(text, type) {
+    el.banner.textContent = text;
+    el.banner.className = 'banner' + (type ? ' ' + type : '');
+    el.banner.hidden = false;
+  }
+  function hideBanner() { el.banner.hidden = true; }
+  function showError(text) {
+    el.formError.textContent = text;
+    el.formError.hidden = false;
+  }
+  function clearError() { el.formError.hidden = true; }
+
+  function makeId() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+    return 'log-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+  }
+
+  function sanitizeTags(value) {
+    var raw = String(value || '').split(/[,、\s]+/).map(function (t) { return t.trim(); }).filter(Boolean);
+    var tags = [];
+    raw.forEach(function (tag) {
+      if (tags.length >= MAX_TAGS) return;
+      tags.push(tag.slice(0, MAX_TAG_LEN));
+    });
+    return { raw: raw, tags: tags, adjusted: raw.length > tags.length || raw.some(function (t) { return t.length > MAX_TAG_LEN; }) };
+  }
+
+  function normalizeLog(raw) {
+    if (!isObj(raw)) return null;
+    var mood = Number(raw.mood);
+    var date = typeof raw.createdAt === 'string' ? new Date(raw.createdAt) : null;
+    if (!raw.id || typeof raw.id !== 'string') return null;
+    if (!Number.isInteger(mood) || mood < 1 || mood > 5) return null;
+    if (!date || isNaN(date.getTime())) return null;
+    return {
+      id: raw.id,
+      createdAt: raw.createdAt,
+      mood: mood,
+      memo: typeof raw.memo === 'string' ? raw.memo.slice(0, MAX_MEMO) : '',
+      tags: Array.isArray(raw.tags) ? raw.tags.filter(function (t) { return typeof t === 'string' && t.trim(); }).slice(0, MAX_TAGS).map(function (t) { return t.trim().slice(0, MAX_TAG_LEN); }) : []
+    };
+  }
+
+  function loadLogs() {
+    try {
+      var stored = window.localStorage.getItem(STORAGE_KEY);
+      if (!stored) return [];
+      var parsed = JSON.parse(stored);
+      if (!Array.isArray(parsed)) throw new Error('invalid root');
+      var dropped = false;
+      var valid = parsed.map(function (item) {
+        var log = normalizeLog(item);
+        if (!log) dropped = true;
+        return log;
+      }).filter(Boolean);
+      if (dropped) showBanner('一部の保存データが壊れていたため、読み込める記録だけ復元しました。', 'warn');
+      return valid;
+    } catch (e) {
+      showBanner('保存データを読み込めなかったため、空の状態から始めます。', 'warn');
+      return [];
+    }
+  }
+
+  function saveLogs(logs) {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(logs));
+      return true;
+    } catch (e) {
+      showBanner('保存できませんでした。この画面を閉じると記録は失われます。', 'error');
+      return false;
+    }
+  }
+
+  function selectMood(mood) {
+    state.mood = mood;
+    el.moodBtns.forEach(function (btn) {
+      var active = Number(btn.dataset.mood) === mood;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-checked', active ? 'true' : 'false');
+    });
+    if (mood) clearError();
+  }
+
+  function formatDate(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.getFullYear() + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+  }
+
+  function isToday(iso) {
+    var d = new Date(iso);
+    var n = new Date();
+    return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+  }
+
+  function renderSummary() {
+    var cutoff = Date.now() - 7 * DAY;
+    var recent = state.logs.filter(function (log) { return new Date(log.createdAt).getTime() >= cutoff; });
+    if (!recent.length) {
+      el.summary.className = '';
+      el.summary.innerHTML = '<p class="empty">直近7日間の記録がありません。</p>';
+      return;
+    }
+    var sum = 0;
+    var tagCounts = {};
+    recent.forEach(function (log) {
+      sum += log.mood;
+      log.tags.forEach(function (tag) { tagCounts[tag] = (tagCounts[tag] || 0) + 1; });
+    });
+    var topTag = 'なし';
+    Object.keys(tagCounts).forEach(function (tag) {
+      if (topTag === 'なし' || tagCounts[tag] > tagCounts[topTag]) topTag = tag;
+    });
+    el.summary.className = 'summary';
+    el.summary.innerHTML =
+      '<div class="summary-box"><small>記録件数</small><b>' + recent.length + '件</b></div>' +
+      '<div class="summary-box"><small>平均気分</small><b>' + (sum / recent.length).toFixed(1) + '</b></div>' +
+      '<div class="summary-box"><small>一番多いタグ</small><b>' + escapeHtml(topTag) + '</b></div>';
+  }
+
+  function renderLogs() {
+    var logs = state.logs.slice().sort(function (a, b) { return new Date(b.createdAt) - new Date(a.createdAt); });
+    el.logs.innerHTML = '';
+    el.empty.hidden = logs.length !== 0;
+    el.clearBtn.hidden = logs.length === 0;
+    logs.forEach(function (log) {
+      var mood = moods[log.mood] || { emoji: '？', label: '不明' };
+      var li = document.createElement('li');
+      li.className = 'log' + (isToday(log.createdAt) ? ' today' : '');
+      var html = '<div class="log-meta"><span class="mood-label">' + mood.emoji + ' ' + escapeHtml(mood.label) + '</span><span class="time">' + escapeHtml(formatDate(log.createdAt)) + '</span>';
+      if (isToday(log.createdAt)) html += '<span class="badge">今日</span>';
+      html += '</div>';
+      if (log.memo) html += '<p class="memo">' + escapeHtml(log.memo) + '</p>';
+      if (log.tags.length) html += '<div class="tags">' + log.tags.map(function (tag) { return '<span class="tag">#' + escapeHtml(tag) + '</span>'; }).join('') + '</div>';
+      html += '<button type="button" class="delete" data-id="' + escapeHtml(log.id) + '">削除</button>';
+      li.innerHTML = html;
+      el.logs.appendChild(li);
+    });
+  }
+
+  function render() {
+    renderSummary();
+    renderLogs();
+  }
+
+  function addLog() {
+    hideBanner();
+    if (!state.mood) {
+      showError('気分を選択してください。');
+      return;
+    }
+    clearError();
+    var tagResult = sanitizeTags(el.tags.value);
+    var next = state.logs.concat([{ id: makeId(), createdAt: new Date().toISOString(), mood: state.mood, memo: el.memo.value.slice(0, MAX_MEMO), tags: tagResult.tags }]);
+    var saved = saveLogs(next);
+    state.logs = next;
+    el.memo.value = '';
+    el.tags.value = '';
+    el.memoCount.textContent = '0';
+    selectMood(null);
+    render();
+    if (saved && tagResult.adjusted) showBanner('タグは最大10個・1個20文字までに調整して保存しました。');
+  }
+
+  function deleteLog(id) {
+    var next = state.logs.filter(function (log) { return log.id !== id; });
+    if (next.length === state.logs.length) return;
+    if (!window.confirm('この記録を削除しますか？')) return;
+    saveLogs(next);
+    state.logs = next;
+    render();
+  }
+
+  function clearAll() {
+    if (!state.logs.length) return;
+    if (!window.confirm('すべての記録を削除します。この操作は取り消せません。よろしいですか？')) return;
+    saveLogs([]);
+    state.logs = [];
+    render();
+  }
+
+  function init() {
+    el.banner = $('banner');
+    el.moodBtns = Array.prototype.slice.call(document.querySelectorAll('.mood-btn'));
+    el.memo = $('memo');
+    el.memoCount = $('memoCount');
+    el.tags = $('tags');
+    el.formError = $('formError');
+    el.addBtn = $('addBtn');
+    el.summary = $('summary');
+    el.clearBtn = $('clearBtn');
+    el.empty = $('empty');
+    el.logs = $('logs');
+    el.moodBtns.forEach(function (btn) { btn.addEventListener('click', function () { selectMood(Number(btn.dataset.mood)); }); });
+    el.memo.addEventListener('input', function () { el.memoCount.textContent = String(el.memo.value.length); });
+    el.addBtn.addEventListener('click', addLog);
+    el.clearBtn.addEventListener('click', clearAll);
+    el.logs.addEventListener('click', function (ev) {
+      var btn = ev.target.closest('.delete');
+      if (btn) deleteLog(btn.dataset.id);
+    });
+    state.logs = loadLogs();
+    render();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+}());
+</script>
+</body>
+</html>
