@@ -7,6 +7,8 @@
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+  html, body, button { touch-action: manipulation; }
+
   :root {
     --bg: #0f0f1a;
     --surface: #1a1a2e;
@@ -134,6 +136,7 @@
     transition: transform 0.08s cubic-bezier(.3,.7,.4,1), box-shadow 0.08s;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
+    touch-action: manipulation;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -545,6 +548,10 @@
       }
     );
   });
+
+  document.addEventListener('dblclick', function (e) {
+    e.preventDefault();
+  }, { passive: false });
 
   render();
 })();
