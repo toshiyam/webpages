@@ -1,0 +1,450 @@
+<!doctype html>
+<!--
+name: 今日の一言おみくじ
+version: 1.0
+type: single-html-app
+status: stable
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>今日の一言おみくじ</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #fbf3e7;
+    --card: #ffffff;
+    --text: #2c2117;
+    --muted: #8a7a66;
+    --line: #ecdfc9;
+    --accent: #c8452c;
+    --accent-soft: #fdece7;
+    --gold: #b8860b;
+    --danger: #c8452c;
+    --danger-soft: #fdece7;
+    --warn: #8a5d00;
+    --warn-soft: #fff3d6;
+  }
+  * { box-sizing: border-box; }
+  html, body { touch-action: manipulation; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    line-height: 1.6;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  button { font: inherit; cursor: pointer; }
+  .app {
+    max-width: 460px;
+    margin: 0 auto;
+    padding: 18px 14px 40px;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  header .icon {
+    font-size: 1.8rem;
+    display: block;
+  }
+  header h1 {
+    margin: 4px 0 2px;
+    font-size: 1.25rem;
+  }
+  header .date {
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .banner {
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    margin-bottom: 14px;
+    border: 1px solid transparent;
+  }
+  .banner.warn { background: var(--warn-soft); color: var(--warn); border-color: #ecd28e; }
+  .banner.error { background: var(--danger-soft); color: var(--danger); border-color: #f0b9ac; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 18px 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 2px 10px rgba(60, 40, 10, 0.06);
+    text-align: center;
+  }
+  .empty-state {
+    padding: 22px 8px;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .draw-btn {
+    width: 100%;
+    min-height: 56px;
+    margin-top: 16px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1.05rem;
+    font-weight: 700;
+  }
+  .draw-btn:disabled {
+    opacity: 0.6;
+  }
+  .rank {
+    display: inline-block;
+    padding: 10px 26px;
+    border-radius: 999px;
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  .status-line {
+    margin-top: 4px;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .result-block {
+    text-align: left;
+    margin-top: 16px;
+    display: grid;
+    gap: 12px;
+  }
+  .result-row {
+    background: #fbf6ee;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px;
+  }
+  .result-row .label {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .result-row .value {
+    font-size: 0.98rem;
+  }
+  .reroll-btn {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 16px;
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    background: #fff;
+    color: var(--accent);
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+  .reroll-btn:disabled {
+    opacity: 0.55;
+  }
+  .reroll-note {
+    margin-top: 14px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    background: #f5efe2;
+    border-radius: 10px;
+    padding: 8px 10px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <span class="icon">🎴</span>
+    <h1>今日の一言おみくじ</h1>
+    <div class="date" id="dateLabel"></div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <section class="card">
+    <div id="emptyState" class="empty-state" hidden>
+      まだ今日のおみくじは引いていません。<br>ボタンを押して運勢を占ってみましょう。
+    </div>
+
+    <div id="resultView" hidden>
+      <span id="rankBadge" class="rank"></span>
+      <div class="status-line" id="statusLine"></div>
+      <div class="result-block">
+        <div class="result-row">
+          <span class="label">今日の一言</span>
+          <span class="value" id="phraseValue"></span>
+        </div>
+        <div class="result-row">
+          <span class="label">ラッキー行動</span>
+          <span class="value" id="luckyValue"></span>
+        </div>
+        <div class="result-row">
+          <span class="label">注意ポイント</span>
+          <span class="value" id="cautionValue"></span>
+        </div>
+      </div>
+    </div>
+
+    <button type="button" id="drawBtn" class="draw-btn" hidden>おみくじを引く</button>
+    <button type="button" id="rerollBtn" class="reroll-btn" hidden>今日はもう一回だけ引く</button>
+    <div id="rerollNote" class="reroll-note" hidden>今日はもう再抽選できません。また明日引いてください。</div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'dailyOmikuji:v1';
+
+  var RANKS = ['大吉', '吉', '中吉', '小吉', '末吉', '凶'];
+  var RANK_COLOR = {
+    '大吉': '#c8452c',
+    '吉': '#d97b2b',
+    '中吉': '#3a7ca5',
+    '小吉': '#4a9d5b',
+    '末吉': '#8a7a66',
+    '凶': '#4a4038'
+  };
+
+  var PHRASES = [
+    '今日はいつもより一歩だけ早く動くと、うまくいきます。',
+    '小さな「ありがとう」が今日の運を引き寄せます。',
+    '迷ったら、深呼吸してから決めるとうまくいく日。',
+    '今日はいつもの道を少し変えてみると発見あり。',
+    '思い切って片付けをすると、気分がすっきりします。',
+    '誰かの話をじっくり聞くと良いことが起きそう。',
+    '今日は「まあいっか」と言える回数が多いほど吉。',
+    '好きな飲み物を一杯、自分にごほうびしましょう。',
+    '早めに寝ると明日の運気がぐっと上がります。',
+    '今日は連絡を後回しにせず、先に済ませて正解。',
+    '笑うと福が来る日。無理にでも一回笑ってみて。',
+    '身の回りを少し整えると、心も軽くなります。',
+    '今日は自分をほめる練習をしてみましょう。',
+    '新しいことを一つだけ試すと、良い刺激になりそう。',
+    '焦らずゆっくり進めば、今日はうまくいきます。'
+  ];
+
+  var LUCKY_ACTIONS = [
+    '朝、水を一杯飲む',
+    '深呼吸を3回する',
+    '机の上を片付ける',
+    '誰かにありがとうを伝える',
+    '好きな音楽を一曲聴く',
+    '5分だけ散歩する',
+    '早めにお風呂に入る',
+    '今日の予定を紙に書き出す',
+    'いつもと違う道を歩く',
+    '窓を開けて空気を入れ替える',
+    'スマホを少し置いて休憩する',
+    '小さな目標を一つ達成する'
+  ];
+
+  var CAUTIONS = [
+    '寝不足には気をつけて',
+    '早口な発言はトラブルのもと',
+    '忘れ物に注意',
+    '調子に乗りすぎ注意',
+    '甘いものの食べすぎに注意',
+    '返信を後回しにしすぎない',
+    '衝動買いは一晩考えてから',
+    '人の話は最後まで聞くこと',
+    '思い込みで判断しないこと',
+    '姿勢が悪くなりがちなので注意',
+    '予定の詰め込みすぎに注意',
+    '小さな約束ほど大切に'
+  ];
+
+  var state = { date: '', result: null, rerolled: false, busy: false };
+  var els = {};
+
+  function isPlainObject(v) {
+    return v !== null && typeof v === 'object' && !Array.isArray(v);
+  }
+
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  function todayLabel() {
+    var d = new Date();
+    var weekday = ['日', '月', '火', '水', '木', '金', '土'][d.getDay()];
+    return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日（' + weekday + '）';
+  }
+
+  function pickRandom(list) {
+    return list[Math.floor(Math.random() * list.length)];
+  }
+
+  function drawResult() {
+    return {
+      rank: pickRandom(RANKS),
+      phrase: pickRandom(PHRASES),
+      lucky: pickRandom(LUCKY_ACTIONS),
+      caution: pickRandom(CAUTIONS)
+    };
+  }
+
+  function sanitizeResult(raw) {
+    if (!isPlainObject(raw)) return null;
+    if (typeof raw.rank !== 'string' || RANKS.indexOf(raw.rank) === -1) return null;
+    if (typeof raw.phrase !== 'string' || !raw.phrase) return null;
+    if (typeof raw.lucky !== 'string' || !raw.lucky) return null;
+    if (typeof raw.caution !== 'string' || !raw.caution) return null;
+    return {
+      rank: raw.rank,
+      phrase: raw.phrase.slice(0, 200),
+      lucky: raw.lucky.slice(0, 200),
+      caution: raw.caution.slice(0, 200)
+    };
+  }
+
+  function showBanner(msg, type) {
+    els.banner.textContent = msg;
+    els.banner.className = 'banner ' + (type || '');
+    els.banner.hidden = false;
+  }
+
+  function hideBanner() {
+    els.banner.hidden = true;
+  }
+
+  function freshState() {
+    return { date: todayStr(), result: null, rerolled: false, busy: false };
+  }
+
+  function loadState() {
+    var raw;
+    try {
+      raw = window.localStorage.getItem(STORAGE_KEY);
+    } catch (e) {
+      showBanner('この端末では保存機能を利用できないため、抽選結果はこの画面を閉じると失われます。', 'warn');
+      return freshState();
+    }
+    if (!raw) return freshState();
+    try {
+      var parsed = JSON.parse(raw);
+      if (!isPlainObject(parsed)) throw new Error('invalid shape');
+      if (typeof parsed.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(parsed.date)) {
+        return freshState();
+      }
+      if (parsed.date !== todayStr()) {
+        return freshState();
+      }
+      var result = sanitizeResult(parsed.result);
+      var rerolled = typeof parsed.rerolled === 'boolean' ? parsed.rerolled : false;
+      return { date: todayStr(), result: result, rerolled: result ? rerolled : false, busy: false };
+    } catch (e) {
+      showBanner('保存データを読み込めなかったため、今日のおみくじを引き直せます。', 'warn');
+      return freshState();
+    }
+  }
+
+  function saveState() {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        date: state.date,
+        result: state.result,
+        rerolled: state.rerolled
+      }));
+      return true;
+    } catch (e) {
+      showBanner('保存できませんでした。この画面を閉じると結果は失われます。', 'error');
+      return false;
+    }
+  }
+
+  function render() {
+    els.dateLabel.textContent = todayLabel();
+
+    if (!state.result) {
+      els.emptyState.hidden = false;
+      els.resultView.hidden = true;
+      els.drawBtn.hidden = false;
+      els.drawBtn.disabled = state.busy;
+      els.rerollBtn.hidden = true;
+      els.rerollNote.hidden = true;
+      return;
+    }
+
+    els.emptyState.hidden = true;
+    els.resultView.hidden = false;
+    els.drawBtn.hidden = true;
+
+    els.rankBadge.textContent = state.result.rank;
+    els.rankBadge.style.background = RANK_COLOR[state.result.rank] || '#8a7a66';
+    els.statusLine.textContent = state.rerolled ? '再抽選済み' : '本日1回目の結果';
+    els.phraseValue.textContent = state.result.phrase;
+    els.luckyValue.textContent = state.result.lucky;
+    els.cautionValue.textContent = state.result.caution;
+
+    if (state.rerolled) {
+      els.rerollBtn.hidden = true;
+      els.rerollNote.hidden = false;
+    } else {
+      els.rerollBtn.hidden = false;
+      els.rerollBtn.disabled = state.busy;
+      els.rerollNote.hidden = true;
+    }
+  }
+
+  function handleDraw() {
+    if (state.busy || state.result) return;
+    state.busy = true;
+    hideBanner();
+    state.date = todayStr();
+    state.result = drawResult();
+    state.rerolled = false;
+    saveState();
+    state.busy = false;
+    render();
+  }
+
+  function handleReroll() {
+    if (state.busy || !state.result || state.rerolled) return;
+    state.busy = true;
+    hideBanner();
+    state.result = drawResult();
+    state.rerolled = true;
+    saveState();
+    state.busy = false;
+    render();
+  }
+
+  function init() {
+    els.banner = document.getElementById('banner');
+    els.dateLabel = document.getElementById('dateLabel');
+    els.emptyState = document.getElementById('emptyState');
+    els.resultView = document.getElementById('resultView');
+    els.rankBadge = document.getElementById('rankBadge');
+    els.statusLine = document.getElementById('statusLine');
+    els.phraseValue = document.getElementById('phraseValue');
+    els.luckyValue = document.getElementById('luckyValue');
+    els.cautionValue = document.getElementById('cautionValue');
+    els.drawBtn = document.getElementById('drawBtn');
+    els.rerollBtn = document.getElementById('rerollBtn');
+    els.rerollNote = document.getElementById('rerollNote');
+
+    els.drawBtn.addEventListener('click', handleDraw);
+    els.rerollBtn.addEventListener('click', handleReroll);
+
+    state = loadState();
+    render();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
