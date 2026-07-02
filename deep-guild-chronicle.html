@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>深層ギルド運営録</title>
+</head>
+<body>
+<p>深層ギルド運営録を読み込み中...</p>
+<script>
+(function () {
+  'use strict';
+  fetch('./deep-guild-chronicle.html.txt', { cache: 'no-store' })
+    .then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.text();
+    })
+    .then(function (html) {
+      document.open();
+      document.write(html);
+      document.close();
+    })
+    .catch(function (err) {
+      document.body.innerHTML = '<h1>読み込みに失敗しました</h1><p>deep-guild-chronicle.html.txt を確認してください。</p><pre>' + String(err).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }) + '</pre>';
+    });
+}());
+</script>
+</body>
+</html>
