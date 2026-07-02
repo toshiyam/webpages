@@ -1,0 +1,1056 @@
+<!doctype html>
+<!--
+name: ポケットダンジョンラン
+version: 1.0
+type: single-html-app
+status: stable
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ポケットダンジョンラン</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #201a2c;
+    --card: #2b2340;
+    --card-line: #453a63;
+    --text: #f1ecdf;
+    --muted: #a89bc4;
+    --accent: #e0a94a;
+    --accent-soft: #4a3d24;
+    --good: #4caf7d;
+    --warn: #e0a94a;
+    --danger: #d9534f;
+    --danger-soft: #4a2226;
+    --soft: #241d36;
+  }
+  * { box-sizing: border-box; }
+  html, body { touch-action: manipulation; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    line-height: 1.55;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  button { font: inherit; cursor: pointer; }
+  .app { max-width: 480px; margin: 0 auto; padding: 16px 12px 40px; }
+  header { text-align: center; margin-bottom: 12px; }
+  header h1 { margin: 0 0 2px; font-size: 1.25rem; }
+  header .lead { color: var(--muted); font-size: 0.78rem; }
+
+  .banner {
+    padding: 10px 12px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+    background: var(--danger-soft);
+    color: #f3b6b2;
+    border: 1px solid #6b3a38;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-line);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .card h2 { margin: 0 0 12px; font-size: 1rem; }
+  .card h3 { margin: 14px 0 8px; font-size: 0.85rem; color: var(--muted); }
+
+  .primary-btn {
+    width: 100%; min-height: 52px; border: 0; border-radius: 13px;
+    background: var(--accent); color: #2a1c05; font-size: 1rem; font-weight: 800;
+  }
+  .primary-btn:disabled { opacity: 0.5; }
+  .secondary-btn {
+    width: 100%; min-height: 48px; border: 1px solid var(--accent); border-radius: 12px;
+    background: transparent; color: var(--accent); font-size: 0.92rem; font-weight: 700;
+  }
+  .secondary-btn:disabled { opacity: 0.45; }
+  .ghost-btn {
+    width: 100%; min-height: 44px; border: 1px solid var(--card-line); border-radius: 12px;
+    background: transparent; color: var(--muted); font-size: 0.86rem;
+  }
+  .ghost-btn:disabled { opacity: 0.45; }
+  .danger-btn {
+    width: 100%; min-height: 44px; margin-top: 14px; border: 1px solid #6b3a38; border-radius: 12px;
+    background: var(--danger-soft); color: #f3b6b2; font-size: 0.84rem;
+  }
+  .choice-btn {
+    width: 100%; min-height: 50px; border: 1px solid var(--accent); border-radius: 12px;
+    background: var(--accent-soft); color: var(--text); font-size: 0.9rem; font-weight: 700;
+    text-align: left; padding: 8px 14px;
+  }
+  .choice-btn:disabled { opacity: 0.45; }
+
+  .stat-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--soft); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; font-size: 0.9rem;
+  }
+  .stat-row b { font-size: 1.15rem; color: var(--accent); }
+
+  .history-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .history-item { background: var(--soft); border-radius: 10px; padding: 8px 10px; font-size: 0.8rem; }
+  .history-item .h-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .history-item .h-date { color: var(--muted); font-size: 0.72rem; }
+  .history-item .h-status { font-weight: 700; }
+  .history-item .h-status.success { color: var(--good); }
+  .history-item .h-status.retreat { color: var(--accent); }
+  .history-item .h-status.failure { color: var(--danger); }
+  .history-item .h-cause { color: var(--muted); font-size: 0.72rem; margin-top: 4px; }
+  .empty-note { color: var(--muted); font-size: 0.82rem; padding: 6px 2px; }
+
+  .status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .stat-box { background: var(--soft); border-radius: 12px; padding: 8px 4px; text-align: center; }
+  .stat-box span { display: block; font-size: 0.66rem; color: var(--muted); }
+  .stat-box b { display: block; margin-top: 2px; font-size: 1.05rem; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .chip-row:empty { display: none; margin: 0; }
+  .chip {
+    background: var(--soft); border: 1px solid var(--card-line); border-radius: 999px;
+    padding: 4px 10px; font-size: 0.7rem; color: var(--muted);
+  }
+  .chip.relic { color: var(--accent); border-color: var(--accent); }
+  .chip.poison { color: var(--danger); border-color: #6b3a38; }
+
+  .hp-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 0.8rem; }
+  .hp-bar-wrap { flex: 1; height: 14px; background: var(--soft); border-radius: 999px; overflow: hidden; border: 1px solid var(--card-line); }
+  .hp-bar-fill { height: 100%; background: var(--good); transition: width 0.3s ease, background-color 0.3s ease; }
+  .hp-bar-fill.low { animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+  .boss-hint { background: var(--danger-soft); color: #f3b6b2; border-radius: 10px; padding: 8px 10px; font-size: 0.78rem; margin-bottom: 10px; }
+
+  .event-panel { background: var(--soft); border-radius: 12px; padding: 10px 12px; margin-bottom: 14px; }
+  .event-label { font-size: 0.68rem; color: var(--muted); margin-bottom: 4px; }
+  .event-text { font-size: 0.92rem; }
+
+  .choice-panel { background: var(--soft); border-radius: 12px; padding: 12px; margin-bottom: 14px; }
+  .choice-title { font-weight: 800; margin-bottom: 4px; }
+  .choice-desc { color: var(--muted); font-size: 0.82rem; margin-bottom: 10px; }
+  .choice-options { display: grid; gap: 8px; }
+
+  .actions { display: grid; gap: 9px; }
+
+  .log-panel { margin-top: 14px; }
+  .log-label { font-size: 0.7rem; color: var(--muted); margin-bottom: 6px; }
+  .log-list { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow-y: auto; display: grid; gap: 6px; }
+  .log-item { background: var(--soft); border-radius: 8px; padding: 7px 9px; font-size: 0.78rem; color: var(--muted); }
+  .log-item b { color: var(--text); font-weight: 600; }
+
+  .result-card { text-align: center; }
+  .result-title { font-size: 1.2rem; font-weight: 800; margin-bottom: 8px; }
+  .result-title.success { color: var(--good); }
+  .result-title.retreat { color: var(--accent); }
+  .result-title.failure { color: var(--danger); }
+  .result-body { font-size: 0.9rem; color: var(--muted); margin-bottom: 14px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>ポケットダンジョンラン</h1>
+    <div class="lead">短時間で遊べるポケット探索ローグライク</div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <section id="resultCard" class="card result-card" hidden>
+    <div id="resultTitle" class="result-title"></div>
+    <div id="resultBody" class="result-body"></div>
+    <button type="button" id="resultCloseBtn" class="primary-btn">閉じる</button>
+  </section>
+
+  <section id="startCard" class="card" hidden>
+    <h2>探索の準備</h2>
+    <div class="stat-row"><span>最高スコア</span><b id="highScoreValue">0</b></div>
+    <div class="stat-row"><span>最深到達階層</span><b id="bestFloorValue">-</b></div>
+    <div class="stat-row"><span>勝利回数</span><b id="victoriesValue">0</b></div>
+    <button type="button" id="startBtn" class="primary-btn">新規探索を始める</button>
+    <h3>直近の履歴</h3>
+    <ul id="historyList" class="history-list"></ul>
+    <div id="historyEmpty" class="empty-note" hidden>まだ探索記録がありません。</div>
+    <button type="button" id="resetBtn" class="danger-btn" hidden>保存データをリセット</button>
+  </section>
+
+  <section id="runCard" class="card" hidden>
+    <div class="status-grid">
+      <div class="stat-box"><span>階層</span><b id="floorValue">1</b></div>
+      <div class="stat-box"><span>スコア</span><b id="scoreValue">0</b></div>
+      <div class="stat-box"><span>ポーション</span><b id="potionValue">0</b></div>
+    </div>
+    <div class="hp-row">
+      <span>HP</span>
+      <div class="hp-bar-wrap"><div id="hpBarFill" class="hp-bar-fill"></div></div>
+      <span id="hpText">100/100</span>
+    </div>
+    <div id="chipRow" class="chip-row"></div>
+    <div id="bossHint" class="boss-hint" hidden>次に「進む」を選ぶと最深部のボスと対峙します。</div>
+
+    <div id="eventPanel" class="event-panel">
+      <div class="event-label">現在イベント</div>
+      <div id="eventText" class="event-text"></div>
+    </div>
+
+    <div id="choicePanel" class="choice-panel" hidden>
+      <div id="choiceTitle" class="choice-title"></div>
+      <div id="choiceDesc" class="choice-desc"></div>
+      <div id="choiceOptions" class="choice-options"></div>
+    </div>
+
+    <div id="actionButtons" class="actions">
+      <button type="button" id="advanceBtn" class="primary-btn">進む</button>
+      <button type="button" id="restBtn" class="secondary-btn">休む / 応急処置</button>
+      <button type="button" id="potionBtn" class="secondary-btn">ポーション使用</button>
+      <button type="button" id="retreatBtn" class="ghost-btn">撤退する（成果を持ち帰る）</button>
+    </div>
+
+    <div class="log-panel">
+      <div class="log-label">探索ログ</div>
+      <ul id="logList" class="log-list"></ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'pocketDungeonRun:v1';
+  var MAX_HP = 120;
+  var INITIAL_POTIONS = 4;
+  var POTION_MAX = 6;
+  var POTION_HEAL = 34;
+  var BOSS_FLOOR = 18;
+  var HISTORY_MAX = 10;
+  var LOG_MAX = 60;
+  var SHIELD_MAX = 2;
+  var POISON_MAX_TURNS = 6;
+
+  var RELICS = ['luckyCharm', 'toughHide', 'swiftBoots'];
+  var RELIC_LABEL = {
+    luckyCharm: '幸運のお守り',
+    toughHide: '頑丈な毛皮',
+    swiftBoots: '俊足のブーツ'
+  };
+
+  var CHOICE_KEYS = ['enemyStrong', 'treasure', 'merchant', 'fork', 'altar', 'growth'];
+
+  var EVENT_WEIGHTS = {
+    early: { enemyWeak: 16, enemyStrong: 7, trap: 10, trapPoison: 5, treasure: 15, spring: 12, merchant: 8, safe: 8, fork: 6, altar: 4, growth: 4, relic: 5 },
+    mid: { enemyWeak: 13, enemyStrong: 13, trap: 10, trapPoison: 7, treasure: 13, spring: 9, merchant: 8, safe: 5, fork: 8, altar: 6, growth: 3, relic: 5 },
+    late: { enemyWeak: 8, enemyStrong: 20, trap: 9, trapPoison: 9, treasure: 11, spring: 6, merchant: 6, safe: 2, fork: 9, altar: 8, growth: 2, relic: 10 }
+  };
+
+  var state = {
+    run: null,
+    highScore: 0,
+    history: [],
+    lifetimeStats: { bestFloor: 0, victories: 0 },
+    lastResult: null,
+    busy: false
+  };
+  var els = {};
+
+  // ---------- utilities ----------
+
+  function isPlainObject(v) {
+    return v !== null && typeof v === 'object' && !Array.isArray(v);
+  }
+
+  function clamp(v, min, max) {
+    return Math.min(max, Math.max(min, v));
+  }
+
+  function toSafeInt(v, fallback) {
+    var n = Number(v);
+    return Number.isFinite(n) ? Math.floor(n) : fallback;
+  }
+
+  function randInt(min, max) {
+    if (max < min) max = min;
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function pickWeighted(pool) {
+    var keys = Object.keys(pool);
+    var total = keys.reduce(function (sum, k) { return sum + pool[k]; }, 0);
+    var r = Math.random() * total;
+    var acc = 0;
+    for (var i = 0; i < keys.length; i++) {
+      acc += pool[keys[i]];
+      if (r < acc) return keys[i];
+    }
+    return keys[keys.length - 1];
+  }
+
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+  function nowLabel() {
+    var d = new Date();
+    return d.getFullYear() + '/' + pad2(d.getMonth() + 1) + '/' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+
+  function tierOf(floor) {
+    if (floor <= 6) return 'early';
+    if (floor <= 12) return 'mid';
+    return 'late';
+  }
+
+  // ---------- persistence ----------
+
+  function showBanner(msg) {
+    els.banner.textContent = msg;
+    els.banner.hidden = false;
+  }
+
+  function hideBanner() {
+    els.banner.hidden = true;
+  }
+
+  function sanitizeLog(raw) {
+    if (!Array.isArray(raw)) return [];
+    var out = [];
+    for (var i = 0; i < raw.length && out.length < LOG_MAX; i++) {
+      if (typeof raw[i] === 'string' && raw[i]) out.push(raw[i].slice(0, 200));
+    }
+    return out;
+  }
+
+  function sanitizeRelics(raw) {
+    if (!Array.isArray(raw)) return [];
+    var out = [];
+    raw.forEach(function (r) {
+      if (typeof r === 'string' && RELICS.indexOf(r) !== -1 && out.indexOf(r) === -1) out.push(r);
+    });
+    return out;
+  }
+
+  function sanitizePendingChoice(raw, floor) {
+    if (!isPlainObject(raw)) return null;
+    if (CHOICE_KEYS.indexOf(raw.kind) === -1) return null;
+    var pFloor = toSafeInt(raw.floor, floor);
+    if (pFloor !== floor) return null;
+    return { kind: raw.kind, floor: floor };
+  }
+
+  function sanitizeRun(raw) {
+    if (!isPlainObject(raw)) return null;
+    if (raw.status !== 'active') return null;
+    var maxHp = toSafeInt(raw.maxHp, MAX_HP);
+    if (maxHp <= 0) maxHp = MAX_HP;
+    var floor = clamp(toSafeInt(raw.floor, 1), 1, BOSS_FLOOR);
+    var hp = clamp(toSafeInt(raw.hp, maxHp), 0, maxHp);
+    if (hp <= 0) return null;
+    return {
+      floor: floor,
+      hp: hp,
+      maxHp: maxHp,
+      potions: clamp(toSafeInt(raw.potions, 0), 0, POTION_MAX),
+      score: Math.max(0, toSafeInt(raw.score, 0)),
+      atk: Math.max(0, toSafeInt(raw.atk, 0)),
+      def: Math.max(0, toSafeInt(raw.def, 0)),
+      keys: Math.max(0, toSafeInt(raw.keys, 0)),
+      shieldCharges: clamp(toSafeInt(raw.shieldCharges, 0), 0, SHIELD_MAX),
+      poisonTurns: clamp(toSafeInt(raw.poisonTurns, 0), 0, POISON_MAX_TURNS),
+      relics: sanitizeRelics(raw.relics),
+      log: sanitizeLog(raw.log),
+      lastEventText: typeof raw.lastEventText === 'string' ? raw.lastEventText.slice(0, 200) : '',
+      pendingChoice: sanitizePendingChoice(raw.pendingChoice, floor),
+      status: 'active'
+    };
+  }
+
+  function sanitizeHistoryEntry(raw) {
+    if (!isPlainObject(raw)) return null;
+    if (['success', 'retreat', 'failure'].indexOf(raw.status) === -1) return null;
+    var floor = clamp(toSafeInt(raw.floor, 1), 1, BOSS_FLOOR);
+    var score = Math.max(0, toSafeInt(raw.score, 0));
+    var date = typeof raw.date === 'string' && raw.date ? raw.date.slice(0, 40) : null;
+    if (!date) return null;
+    var cause = typeof raw.cause === 'string' ? raw.cause.slice(0, 200) : '';
+    var relics = sanitizeRelics(raw.relics);
+    return { date: date, floor: floor, score: score, status: raw.status, cause: cause, relics: relics };
+  }
+
+  function sanitizeLifetimeStats(raw) {
+    if (!isPlainObject(raw)) return { bestFloor: 0, victories: 0 };
+    return {
+      bestFloor: Math.max(0, toSafeInt(raw.bestFloor, 0)),
+      victories: Math.max(0, toSafeInt(raw.victories, 0))
+    };
+  }
+
+  function loadState() {
+    var raw;
+    try {
+      raw = window.localStorage.getItem(STORAGE_KEY);
+    } catch (e) {
+      showBanner('この端末では保存機能を利用できないため、記録はこの画面を閉じると失われます。');
+      return { run: null, highScore: 0, history: [], lifetimeStats: { bestFloor: 0, victories: 0 } };
+    }
+    if (!raw) return { run: null, highScore: 0, history: [], lifetimeStats: { bestFloor: 0, victories: 0 } };
+    try {
+      var parsed = JSON.parse(raw);
+      if (!isPlainObject(parsed)) throw new Error('invalid shape');
+      var run = sanitizeRun(parsed.run);
+      var highScore = Math.max(0, toSafeInt(parsed.highScore, 0));
+      var history = [];
+      if (Array.isArray(parsed.history)) {
+        for (var i = 0; i < parsed.history.length && history.length < HISTORY_MAX; i++) {
+          var entry = sanitizeHistoryEntry(parsed.history[i]);
+          if (entry) history.push(entry);
+        }
+      }
+      var lifetimeStats = sanitizeLifetimeStats(parsed.lifetimeStats);
+      return { run: run, highScore: highScore, history: history, lifetimeStats: lifetimeStats };
+    } catch (e) {
+      showBanner('保存データを読み込めなかったため、初期状態から始めます。');
+      return { run: null, highScore: 0, history: [], lifetimeStats: { bestFloor: 0, victories: 0 } };
+    }
+  }
+
+  function persist() {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        run: state.run,
+        highScore: state.highScore,
+        history: state.history,
+        lifetimeStats: state.lifetimeStats
+      }));
+    } catch (e) {
+      showBanner('保存できませんでした。この画面を閉じるとプレイ内容は失われますが、続けてプレイできます。');
+    }
+  }
+
+  // ---------- combat / reward helpers ----------
+
+  function pushLog(run, text) {
+    run.log.unshift(text);
+    if (run.log.length > LOG_MAX) run.log.length = LOG_MAX;
+    run.lastEventText = text;
+  }
+
+  function mitigateDamage(run, rawDmg) {
+    var dmg = rawDmg - run.def - Math.floor(run.atk / 2);
+    if (run.relics.indexOf('toughHide') !== -1) dmg -= 2;
+    if (run.shieldCharges > 0) {
+      dmg = Math.ceil(dmg * 0.5);
+      run.shieldCharges -= 1;
+    }
+    return Math.max(0, Math.round(dmg));
+  }
+
+  function applyBonus(run, rawReward, kind) {
+    var v = rawReward;
+    if (kind === 'treasure' && run.relics.indexOf('luckyCharm') !== -1) v = Math.round(v * 1.15);
+    v = Math.round(v * (1 + run.atk * 0.02));
+    return Math.max(0, v);
+  }
+
+  // ---------- instant events ----------
+
+  function resolveInstant(key, floor, run) {
+    var dmg, reward, heal;
+    switch (key) {
+      case 'enemyWeak':
+        dmg = mitigateDamage(run, randInt(6 + floor * 2, 13 + floor * 3));
+        reward = applyBonus(run, randInt(10 + floor * 4, 18 + floor * 6), 'combat');
+        return { hpDelta: -dmg, scoreDelta: reward,
+          text: floor + '階で敵と遭遇した。' + dmg + 'ダメージを受けたが撃退し、' + reward + '点を獲得した。' };
+      case 'trap':
+        dmg = mitigateDamage(run, randInt(5 + floor * 2, 11 + floor * 2));
+        return { hpDelta: -dmg, text: floor + '階で罠を踏んでしまった。' + dmg + 'ダメージを受けた。' };
+      case 'trapPoison':
+        dmg = mitigateDamage(run, randInt(3 + floor, 7 + floor));
+        return { hpDelta: -dmg, poisonAdd: randInt(2, 3),
+          text: floor + '階で毒の罠にかかった。' + dmg + 'ダメージを受け、毒に侵された。' };
+      case 'spring':
+        heal = randInt(16, 26);
+        if (run.poisonTurns > 0) {
+          return { hpDelta: heal, curePoison: true, text: floor + '階で回復の泉を見つけた。HPが' + heal + '回復し、毒も浄化された。' };
+        }
+        return { hpDelta: heal, text: floor + '階で回復の泉を見つけた。HPが' + heal + '回復した。' };
+      case 'safe':
+        if (Math.random() < 0.35) {
+          reward = applyBonus(run, randInt(3, 9), 'safe');
+          return { scoreDelta: reward, text: floor + '階は静かだった。小銭を' + reward + '点拾った。' };
+        }
+        if (Math.random() < 0.3) {
+          heal = randInt(4, 8);
+          return { hpDelta: heal, text: floor + '階は休める場所だった。HPが' + heal + '回復した。' };
+        }
+        return { text: floor + '階は特に何も起こらなかった。' };
+      case 'relic':
+        var available = RELICS.filter(function (id) { return run.relics.indexOf(id) === -1; });
+        var roll = Math.random();
+        if (available.length > 0 && roll < 0.45) {
+          var id = available[randInt(0, available.length - 1)];
+          return { relicGain: id, text: floor + '階で' + RELIC_LABEL[id] + 'を手に入れた。' };
+        } else if (roll < 0.7) {
+          return { keyDelta: 1, text: floor + '階で鍵を手に入れた。' };
+        }
+        reward = applyBonus(run, randInt(15, 30), 'safe');
+        return { scoreDelta: reward, text: floor + '階でわずかな財宝を見つけた。' + reward + '点を得た。' };
+      default:
+        return { text: floor + '階は特に何も起こらなかった。' };
+    }
+  }
+
+  function resolveBoss(run) {
+    var dmg = mitigateDamage(run, randInt(34, 52));
+    var reward = applyBonus(run, randInt(160, 220), 'combat');
+    return { hpDelta: -dmg, scoreDelta: reward,
+      text: '最深部でボスと激突した。' + dmg + 'ダメージを受けながらも死闘の末に撃破し、' + reward + '点を獲得した！' };
+  }
+
+  function resolveRest(run) {
+    var ambushChance = Math.min(0.28, 0.10 + run.floor * 0.015);
+    if (run.relics.indexOf('swiftBoots') !== -1) ambushChance *= 0.5;
+    if (Math.random() < ambushChance) {
+      var dmg = mitigateDamage(run, randInt(6 + Math.floor(run.floor * 1.2), 12 + Math.floor(run.floor * 1.6)));
+      return { hpDelta: -dmg, text: '休もうとした矢先、奇襲を受けた！' + dmg + 'ダメージ。' };
+    }
+    var heal = randInt(14, 22);
+    return { hpDelta: heal, text: '応急処置を行い、HPが' + heal + '回復した。' };
+  }
+
+  // ---------- choice events ----------
+
+  function buildChoice(kind, floor, run) {
+    switch (kind) {
+      case 'enemyStrong':
+        return { kind: kind, floor: floor, title: '強敵が立ちはだかる',
+          desc: floor + '階で手強い相手に遭遇した。戦うか、逃げるか選べる。',
+          options: [{ key: 'fight', label: '戦う' }, { key: 'flee', label: '逃げる' }] };
+      case 'treasure':
+        return { kind: kind, floor: floor, title: '宝箱を発見',
+          desc: floor + '階で宝箱を見つけた。開けてみるか、無視して進むか選べる。',
+          options: [{ key: 'open', label: '開ける' }, { key: 'ignore', label: '無視する' }] };
+      case 'merchant':
+        return { kind: kind, floor: floor, title: '商人に遭遇',
+          desc: '商人が声をかけてきた。所持スコア: ' + run.score + '点',
+          options: [
+            { key: 'potion', label: 'ポーションを買う（消費15点）' },
+            { key: 'maxhp', label: '体力の上限を強化する（消費20点）' },
+            { key: 'charm', label: '護符を買う（消費12点）' },
+            { key: 'leave', label: '立ち去る' }
+          ] };
+      case 'fork':
+        return { kind: kind, floor: floor, title: '道が分かれている',
+          desc: '危険な近道と、安全な遠回りのどちらを選ぶか。',
+          options: [{ key: 'risky', label: '危険な近道' }, { key: 'safe', label: '安全な遠回り' }] };
+      case 'altar':
+        return { kind: kind, floor: floor, title: '古い祭壇',
+          desc: 'HPを捧げると力を得られそうだ。',
+          options: [{ key: 'offer', label: 'HPを捧げる' }, { key: 'ignore', label: '無視する' }] };
+      case 'growth':
+        return { kind: kind, floor: floor, title: '力の泉',
+          desc: 'どちらの力を鍛えるか選べる。',
+          options: [{ key: 'atk', label: '攻撃力を鍛える' }, { key: 'def', label: '守りを固める' }] };
+      default:
+        return null;
+    }
+  }
+
+  function resolvePendingChoiceOutcome(pending, optionKey, run) {
+    var floor = pending.floor;
+    var dmg, reward, roll, cost;
+    switch (pending.kind) {
+      case 'enemyStrong':
+        if (optionKey === 'fight') {
+          dmg = mitigateDamage(run, randInt(18 + floor * 3, 30 + floor * 4));
+          reward = applyBonus(run, randInt(35 + floor * 7, 60 + floor * 9), 'combat');
+          return { hpDelta: -dmg, scoreDelta: reward,
+            text: floor + '階の強敵に立ち向かった。' + dmg + 'ダメージを受けながらも撃破し、' + reward + '点を獲得した。' };
+        }
+        if (Math.random() < 0.3) {
+          dmg = mitigateDamage(run, randInt(4, 10));
+          return { hpDelta: -dmg, text: '逃げる際に一撃を受けた。' + dmg + 'ダメージ。' };
+        }
+        return { text: 'うまく逃げ切った。' };
+
+      case 'treasure':
+        if (optionKey !== 'open') return { text: '宝箱を無視してそのまま進んだ。' };
+        roll = Math.random();
+        if (roll < 0.10) {
+          dmg = mitigateDamage(run, randInt(4 + floor, 9 + floor));
+          reward = applyBonus(run, randInt(14 + floor * 5, 28 + floor * 7), 'treasure');
+          return { hpDelta: -dmg, scoreDelta: reward,
+            text: '宝箱を開けたが罠だった。' + dmg + 'ダメージを受けつつ' + reward + '点を得た。' };
+        }
+        if (roll < 0.25) {
+          if (run.keys > 0) {
+            reward = applyBonus(run, randInt(30 + floor * 6, 55 + floor * 8), 'treasure');
+            return { scoreDelta: reward, keyDelta: -1,
+              text: '鍵付きの宝箱を鍵で開け、' + reward + '点の豪華な報酬を得た。' };
+          }
+          return { text: '鍵付きの宝箱だったが、鍵がなく開けられなかった。' };
+        }
+        if (roll < 0.32) {
+          dmg = mitigateDamage(run, randInt(6, 12));
+          reward = applyBonus(run, randInt(20 + floor * 5, 35 + floor * 7), 'treasure');
+          return { hpDelta: -dmg, scoreDelta: reward,
+            text: '呪われた宝箱だった。' + dmg + 'ダメージを受けたが' + reward + '点を得た。' };
+        }
+        reward = applyBonus(run, randInt(16 + floor * 5, 30 + floor * 7), 'treasure');
+        return { scoreDelta: reward, text: '宝箱を開け、' + reward + '点を獲得した。' };
+
+      case 'merchant':
+        if (optionKey === 'potion') {
+          if (run.score >= 15 && run.potions < POTION_MAX) {
+            return { scoreDelta: -15, potionDelta: 1, text: '商人からポーションを購入した。' };
+          }
+          return { text: run.potions >= POTION_MAX ? 'ポーションは十分持っていたので購入しなかった。' : 'スコアが足りず購入できなかった。' };
+        }
+        if (optionKey === 'maxhp') {
+          if (run.score >= 20) {
+            return { scoreDelta: -20, maxHpDelta: 8, hpDelta: 8, text: '代金を払い、体力の上限が8上がった。' };
+          }
+          return { text: 'スコアが足りず断念した。' };
+        }
+        if (optionKey === 'charm') {
+          if (run.score >= 12 && run.shieldCharges < SHIELD_MAX) {
+            return { scoreDelta: -12, shieldDelta: 1, text: '護符を購入した。次の被ダメージを軽減する。' };
+          }
+          return { text: run.shieldCharges >= SHIELD_MAX ? '護符はもう十分持っている。' : 'スコアが足りず購入できなかった。' };
+        }
+        return { text: '商人から何も買わずに立ち去った。' };
+
+      case 'fork':
+        if (optionKey === 'risky') {
+          dmg = mitigateDamage(run, randInt(10 + floor * 2, 20 + floor * 3));
+          reward = applyBonus(run, randInt(30 + floor * 6, 55 + floor * 8), 'combat');
+          return { hpDelta: -dmg, scoreDelta: reward,
+            text: '危険な近道を選んだ。' + dmg + 'ダメージを受けたが' + reward + '点を得た。' };
+        }
+        reward = applyBonus(run, randInt(5, 12), 'safe');
+        return { scoreDelta: reward, text: '安全な遠回りを選び、' + reward + '点を拾いつつ無事に進んだ。' };
+
+      case 'altar':
+        if (optionKey === 'offer') {
+          cost = Math.max(0, Math.min(run.hp - 1, randInt(15, 25)));
+          reward = applyBonus(run, randInt(40 + floor * 3, 70 + floor * 4), 'altar');
+          return { hpDelta: -cost, scoreDelta: reward,
+            text: '祭壇にHPを捧げ、' + cost + 'のHPと引き換えに' + reward + '点を得た。' };
+        }
+        return { text: '祭壇を無視して通り過ぎた。' };
+
+      case 'growth':
+        if (optionKey === 'atk') return { atkDelta: 2, text: '力を鍛え、攻撃力が上がった。' };
+        return { defDelta: 2, text: '守りを固め、防御力が上がった。' };
+
+      default:
+        return { text: '何も起こらなかった。' };
+    }
+  }
+
+  // ---------- run lifecycle ----------
+
+  function applyOutcome(run, outcome) {
+    if (outcome.hpDelta) run.hp = clamp(run.hp + outcome.hpDelta, 0, run.maxHp);
+    if (outcome.maxHpDelta) {
+      run.maxHp = Math.max(1, run.maxHp + outcome.maxHpDelta);
+      run.hp = clamp(run.hp, 0, run.maxHp);
+    }
+    if (outcome.scoreDelta) run.score = Math.max(0, run.score + outcome.scoreDelta);
+    if (outcome.potionDelta) run.potions = clamp(run.potions + outcome.potionDelta, 0, POTION_MAX);
+    if (outcome.atkDelta) run.atk = Math.max(0, run.atk + outcome.atkDelta);
+    if (outcome.defDelta) run.def = Math.max(0, run.def + outcome.defDelta);
+    if (outcome.keyDelta) run.keys = Math.max(0, run.keys + outcome.keyDelta);
+    if (outcome.shieldDelta) run.shieldCharges = clamp(run.shieldCharges + outcome.shieldDelta, 0, SHIELD_MAX);
+    if (outcome.poisonAdd) run.poisonTurns = clamp(run.poisonTurns + outcome.poisonAdd, 0, POISON_MAX_TURNS);
+    if (outcome.curePoison) run.poisonTurns = 0;
+    if (outcome.relicGain && run.relics.indexOf(outcome.relicGain) === -1) run.relics.push(outcome.relicGain);
+    pushLog(run, outcome.text);
+    return run.hp <= 0;
+  }
+
+  function applyPoisonTick(run) {
+    if (run.poisonTurns <= 0) return false;
+    var dmg = Math.max(0, randInt(3, 6) - Math.floor(run.def / 2));
+    run.hp = clamp(run.hp - dmg, 0, run.maxHp);
+    run.poisonTurns -= 1;
+    pushLog(run, '毒の効果で' + dmg + 'ダメージを受けた。（残り' + run.poisonTurns + 'ターン）');
+    return run.hp <= 0;
+  }
+
+  function finalizeRun(status, causeText) {
+    var run = state.run;
+    var entry = {
+      date: nowLabel(), floor: run.floor, score: run.score, status: status,
+      cause: causeText || run.lastEventText || '', relics: run.relics.slice()
+    };
+    state.history.unshift(entry);
+    if (state.history.length > HISTORY_MAX) state.history.length = HISTORY_MAX;
+    state.highScore = Math.max(state.highScore, run.score);
+    state.lifetimeStats.bestFloor = Math.max(state.lifetimeStats.bestFloor, run.floor);
+    if (status === 'success') state.lifetimeStats.victories += 1;
+    state.lastResult = { status: status, floor: run.floor, score: run.score };
+    state.run = null;
+    persist();
+    render();
+  }
+
+  function handleStart() {
+    if (state.busy || (state.run && state.run.status === 'active')) return;
+    state.busy = true;
+    hideBanner();
+    state.lastResult = null;
+    state.run = {
+      floor: 1, hp: MAX_HP, maxHp: MAX_HP, potions: INITIAL_POTIONS, score: 0,
+      atk: 0, def: 0, keys: 0, shieldCharges: 0, poisonTurns: 0, relics: [],
+      log: [], lastEventText: '洞窟の入り口に立った。奥へ進むか、ここで引き返すか選べる。',
+      pendingChoice: null, status: 'active'
+    };
+    persist();
+    render();
+    state.busy = false;
+  }
+
+  function handleAdvance() {
+    if (state.busy || !state.run || state.run.status !== 'active' || state.run.pendingChoice) return;
+    state.busy = true;
+    var run = state.run;
+    var nextFloor = run.floor + 1;
+
+    if (nextFloor >= BOSS_FLOOR) {
+      run.floor = BOSS_FLOOR;
+      var bossOutcome = resolveBoss(run);
+      var bossDied = applyOutcome(run, bossOutcome);
+      if (bossDied) finalizeRun('failure', run.lastEventText);
+      else finalizeRun('success', 'ボスを撃破した');
+      state.busy = false;
+      return;
+    }
+
+    run.floor = nextFloor;
+
+    if (applyPoisonTick(run)) {
+      finalizeRun('failure', '毒により力尽きた');
+      state.busy = false;
+      return;
+    }
+
+    var pool = EVENT_WEIGHTS[tierOf(nextFloor)];
+    var key = pickWeighted(pool);
+
+    if (CHOICE_KEYS.indexOf(key) !== -1) {
+      run.pendingChoice = { kind: key, floor: nextFloor };
+      run.lastEventText = '判断が必要な状況になった。';
+      persist();
+      render();
+      state.busy = false;
+      return;
+    }
+
+    var outcome = resolveInstant(key, nextFloor, run);
+    var died = applyOutcome(run, outcome);
+    if (died) {
+      finalizeRun('failure', run.lastEventText);
+    } else {
+      persist();
+      render();
+    }
+    state.busy = false;
+  }
+
+  function handleChoiceOption(optionKey) {
+    if (state.busy || !state.run || state.run.status !== 'active' || !state.run.pendingChoice) return;
+    state.busy = true;
+    var run = state.run;
+    var pending = run.pendingChoice;
+    var outcome = resolvePendingChoiceOutcome(pending, optionKey, run);
+    run.pendingChoice = null;
+    var died = applyOutcome(run, outcome);
+    if (died) {
+      finalizeRun('failure', run.lastEventText);
+    } else {
+      persist();
+      render();
+    }
+    state.busy = false;
+  }
+
+  function handleRest() {
+    if (state.busy || !state.run || state.run.status !== 'active' || state.run.pendingChoice) return;
+    state.busy = true;
+    var run = state.run;
+    var outcome = resolveRest(run);
+    var died = applyOutcome(run, outcome);
+    if (died) finalizeRun('failure', run.lastEventText);
+    else { persist(); render(); }
+    state.busy = false;
+  }
+
+  function handleUsePotion() {
+    if (state.busy || !state.run || state.run.status !== 'active' || state.run.pendingChoice || state.run.potions <= 0) return;
+    state.busy = true;
+    var run = state.run;
+    var outcome = { hpDelta: POTION_HEAL, potionDelta: -1, text: 'ポーションを使い、HPが' + POTION_HEAL + '回復した。' };
+    applyOutcome(run, outcome);
+    persist();
+    render();
+    state.busy = false;
+  }
+
+  function handleRetreat() {
+    if (state.busy || !state.run || state.run.status !== 'active' || state.run.pendingChoice) return;
+    state.busy = true;
+    finalizeRun('retreat', '自らの判断で撤退した');
+    state.busy = false;
+  }
+
+  function handleResultClose() {
+    state.lastResult = null;
+    render();
+  }
+
+  function handleReset() {
+    if (state.busy) return;
+    if (!window.confirm('保存されている探索データ・最高スコア・履歴をすべて削除します。よろしいですか？')) return;
+    state.run = null;
+    state.highScore = 0;
+    state.history = [];
+    state.lifetimeStats = { bestFloor: 0, victories: 0 };
+    state.lastResult = null;
+    persist();
+    render();
+  }
+
+  // ---------- rendering ----------
+
+  function statusLabel(status) {
+    if (status === 'success') return '探索成功';
+    if (status === 'retreat') return '撤退成功';
+    return '探索失敗';
+  }
+
+  function renderHistory() {
+    els.historyList.innerHTML = '';
+    if (state.history.length === 0) {
+      els.historyEmpty.hidden = false;
+      return;
+    }
+    els.historyEmpty.hidden = true;
+    state.history.forEach(function (entry) {
+      var li = document.createElement('li');
+      li.className = 'history-item';
+
+      var top = document.createElement('div');
+      top.className = 'h-top';
+
+      var left = document.createElement('span');
+      var statusSpan = document.createElement('span');
+      statusSpan.className = 'h-status ' + entry.status;
+      statusSpan.textContent = statusLabel(entry.status);
+      var dateSpan = document.createElement('span');
+      dateSpan.className = 'h-date';
+      dateSpan.textContent = ' ' + entry.date;
+      left.appendChild(statusSpan);
+      left.appendChild(dateSpan);
+
+      var right = document.createElement('span');
+      right.textContent = entry.floor + '階 / ' + entry.score + '点';
+
+      top.appendChild(left);
+      top.appendChild(right);
+      li.appendChild(top);
+
+      if (entry.cause) {
+        var cause = document.createElement('div');
+        cause.className = 'h-cause';
+        var relicNote = entry.relics.length ? '（所持: ' + entry.relics.map(function (r) { return RELIC_LABEL[r] || r; }).join('、') + '）' : '';
+        cause.textContent = entry.cause + relicNote;
+        li.appendChild(cause);
+      }
+
+      els.historyList.appendChild(li);
+    });
+  }
+
+  function renderLog(run) {
+    els.logList.innerHTML = '';
+    var frag = document.createDocumentFragment();
+    run.log.forEach(function (text, idx) {
+      var li = document.createElement('li');
+      li.className = 'log-item';
+      var b = document.createElement('b');
+      b.textContent = (run.log.length - idx) + '. ';
+      li.appendChild(b);
+      li.appendChild(document.createTextNode(text));
+      frag.appendChild(li);
+    });
+    els.logList.appendChild(frag);
+  }
+
+  function renderChips(run) {
+    els.chipRow.innerHTML = '';
+    var chips = [];
+    if (run.atk > 0) chips.push({ text: '攻撃+' + run.atk, cls: '' });
+    if (run.def > 0) chips.push({ text: '防御+' + run.def, cls: '' });
+    if (run.keys > 0) chips.push({ text: '鍵×' + run.keys, cls: '' });
+    if (run.shieldCharges > 0) chips.push({ text: '護符×' + run.shieldCharges, cls: '' });
+    if (run.poisonTurns > 0) chips.push({ text: '毒(残' + run.poisonTurns + ')', cls: 'poison' });
+    run.relics.forEach(function (r) { chips.push({ text: RELIC_LABEL[r] || r, cls: 'relic' }); });
+    chips.forEach(function (c) {
+      var span = document.createElement('span');
+      span.className = 'chip' + (c.cls ? ' ' + c.cls : '');
+      span.textContent = c.text;
+      els.chipRow.appendChild(span);
+    });
+  }
+
+  function renderChoice(run) {
+    var pending = run.pendingChoice;
+    if (!pending) {
+      els.choicePanel.hidden = true;
+      els.actionButtons.hidden = false;
+      return;
+    }
+    var choice = buildChoice(pending.kind, pending.floor, run);
+    if (!choice) {
+      run.pendingChoice = null;
+      els.choicePanel.hidden = true;
+      els.actionButtons.hidden = false;
+      return;
+    }
+    els.choicePanel.hidden = false;
+    els.actionButtons.hidden = true;
+    els.choiceTitle.textContent = choice.title;
+    els.choiceDesc.textContent = choice.desc;
+    els.choiceOptions.innerHTML = '';
+    choice.options.forEach(function (opt) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'choice-btn';
+      btn.textContent = opt.label;
+      btn.addEventListener('click', function () { handleChoiceOption(opt.key); });
+      els.choiceOptions.appendChild(btn);
+    });
+  }
+
+  function render() {
+    els.highScoreValue.textContent = String(state.highScore);
+    els.bestFloorValue.textContent = state.lifetimeStats.bestFloor > 0 ? String(state.lifetimeStats.bestFloor) : '-';
+    els.victoriesValue.textContent = String(state.lifetimeStats.victories);
+    els.resetBtn.hidden = !(state.highScore > 0 || state.history.length > 0);
+    renderHistory();
+
+    if (state.lastResult) {
+      els.resultCard.hidden = false;
+      els.resultTitle.className = 'result-title ' + state.lastResult.status;
+      els.resultTitle.textContent = statusLabel(state.lastResult.status);
+      els.resultBody.textContent = '到達階層: ' + state.lastResult.floor + '階 / 最終スコア: ' + state.lastResult.score + '点';
+    } else {
+      els.resultCard.hidden = true;
+    }
+
+    var run = state.run;
+    if (!run) {
+      els.startCard.hidden = false;
+      els.runCard.hidden = true;
+      return;
+    }
+
+    els.startCard.hidden = true;
+    els.runCard.hidden = false;
+
+    els.floorValue.textContent = String(run.floor);
+    els.scoreValue.textContent = String(run.score);
+    els.potionValue.textContent = String(run.potions);
+
+    var hpPct = clamp(Math.round((run.hp / run.maxHp) * 100), 0, 100);
+    els.hpBarFill.style.width = hpPct + '%';
+    els.hpText.textContent = run.hp + '/' + run.maxHp;
+    if (hpPct <= 25) {
+      els.hpBarFill.style.backgroundColor = 'var(--danger)';
+      els.hpBarFill.classList.add('low');
+    } else if (hpPct <= 50) {
+      els.hpBarFill.style.backgroundColor = 'var(--warn)';
+      els.hpBarFill.classList.remove('low');
+    } else {
+      els.hpBarFill.style.backgroundColor = 'var(--good)';
+      els.hpBarFill.classList.remove('low');
+    }
+
+    renderChips(run);
+
+    els.bossHint.hidden = !(run.floor === BOSS_FLOOR - 1 && !run.pendingChoice);
+    els.eventText.textContent = run.lastEventText || '';
+
+    els.potionBtn.disabled = run.potions <= 0;
+
+    renderChoice(run);
+    renderLog(run);
+  }
+
+  // ---------- init ----------
+
+  function init() {
+    els.banner = document.getElementById('banner');
+    els.resultCard = document.getElementById('resultCard');
+    els.resultTitle = document.getElementById('resultTitle');
+    els.resultBody = document.getElementById('resultBody');
+    els.resultCloseBtn = document.getElementById('resultCloseBtn');
+    els.startCard = document.getElementById('startCard');
+    els.highScoreValue = document.getElementById('highScoreValue');
+    els.bestFloorValue = document.getElementById('bestFloorValue');
+    els.victoriesValue = document.getElementById('victoriesValue');
+    els.startBtn = document.getElementById('startBtn');
+    els.historyList = document.getElementById('historyList');
+    els.historyEmpty = document.getElementById('historyEmpty');
+    els.resetBtn = document.getElementById('resetBtn');
+    els.runCard = document.getElementById('runCard');
+    els.floorValue = document.getElementById('floorValue');
+    els.scoreValue = document.getElementById('scoreValue');
+    els.potionValue = document.getElementById('potionValue');
+    els.hpBarFill = document.getElementById('hpBarFill');
+    els.hpText = document.getElementById('hpText');
+    els.chipRow = document.getElementById('chipRow');
+    els.bossHint = document.getElementById('bossHint');
+    els.eventPanel = document.getElementById('eventPanel');
+    els.eventText = document.getElementById('eventText');
+    els.choicePanel = document.getElementById('choicePanel');
+    els.choiceTitle = document.getElementById('choiceTitle');
+    els.choiceDesc = document.getElementById('choiceDesc');
+    els.choiceOptions = document.getElementById('choiceOptions');
+    els.actionButtons = document.getElementById('actionButtons');
+    els.advanceBtn = document.getElementById('advanceBtn');
+    els.restBtn = document.getElementById('restBtn');
+    els.potionBtn = document.getElementById('potionBtn');
+    els.retreatBtn = document.getElementById('retreatBtn');
+    els.logList = document.getElementById('logList');
+
+    els.startBtn.addEventListener('click', handleStart);
+    els.resetBtn.addEventListener('click', handleReset);
+    els.resultCloseBtn.addEventListener('click', handleResultClose);
+    els.advanceBtn.addEventListener('click', handleAdvance);
+    els.restBtn.addEventListener('click', handleRest);
+    els.potionBtn.addEventListener('click', handleUsePotion);
+    els.retreatBtn.addEventListener('click', handleRetreat);
+
+    var loaded = loadState();
+    state.run = loaded.run;
+    state.highScore = loaded.highScore;
+    state.history = loaded.history;
+    state.lifetimeStats = loaded.lifetimeStats;
+
+    render();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
