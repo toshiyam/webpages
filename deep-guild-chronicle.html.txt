@@ -1,0 +1,1274 @@
+<!doctype html>
+<!--
+name: 深層ギルド運営録
+version: 0.1
+type: single-html-app
+status: draft
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>深層ギルド運営録</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #1b1a24;
+    --card: #262433;
+    --line: #3d3a52;
+    --soft: #211f2d;
+    --text: #ece7d8;
+    --muted: #a29bb8;
+    --accent: #d9a441;
+    --accent-soft: #453a1e;
+    --good: #58b380;
+    --warn: #d9a441;
+    --danger: #d95f57;
+    --danger-soft: #46262a;
+    --info: #6f9fd8;
+  }
+  * { box-sizing: border-box; }
+  html, body { touch-action: manipulation; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    line-height: 1.55;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  button { font: inherit; cursor: pointer; }
+  button:disabled { opacity: 0.42; cursor: default; }
+  .app { max-width: 520px; margin: 0 auto; padding: 12px 10px 48px; }
+  header { text-align: center; margin-bottom: 8px; }
+  header h1 { margin: 0; font-size: 1.15rem; letter-spacing: 0.06em; }
+  .kpi-bar {
+    display: flex; flex-wrap: wrap; gap: 5px; justify-content: center;
+    margin: 8px 0 4px; font-size: 0.72rem;
+  }
+  .kpi {
+    background: var(--soft); border: 1px solid var(--line); border-radius: 999px;
+    padding: 3px 9px; color: var(--muted);
+  }
+  .kpi b { color: var(--accent); font-weight: 700; }
+  .banner {
+    padding: 9px 11px; border-radius: 10px; font-size: 0.82rem; margin: 8px 0;
+    background: var(--danger-soft); color: #f3b6b2; border: 1px solid #6b3a38;
+  }
+  .tabs {
+    display: flex; gap: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    padding: 6px 0; margin-bottom: 8px; scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex: 0 0 auto; min-height: 40px; padding: 6px 13px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--soft); color: var(--muted);
+    font-size: 0.82rem; white-space: nowrap;
+  }
+  .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #2a1c05; font-weight: 700; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 13px; margin-bottom: 10px;
+  }
+  .card h2 { margin: 0 0 10px; font-size: 0.95rem; }
+  .card h3 { margin: 12px 0 8px; font-size: 0.82rem; color: var(--muted); }
+  .primary-btn {
+    width: 100%; min-height: 50px; border: 0; border-radius: 12px;
+    background: var(--accent); color: #2a1c05; font-size: 0.98rem; font-weight: 800;
+  }
+  .small-btn {
+    min-height: 40px; padding: 6px 12px; border-radius: 10px; font-size: 0.8rem;
+    border: 1px solid var(--accent); background: transparent; color: var(--accent); font-weight: 700;
+  }
+  .ghost-btn {
+    min-height: 40px; padding: 6px 12px; border-radius: 10px; font-size: 0.78rem;
+    border: 1px solid var(--line); background: transparent; color: var(--muted);
+  }
+  .danger-btn {
+    width: 100%; min-height: 46px; border-radius: 11px; font-size: 0.85rem;
+    border: 1px solid #6b3a38; background: var(--danger-soft); color: #f3b6b2;
+  }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .row + .row { margin-top: 6px; }
+  .note { color: var(--muted); font-size: 0.76rem; }
+  .empty-note { color: var(--muted); font-size: 0.82rem; padding: 8px 2px; }
+
+  .chip {
+    display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 0.68rem;
+    background: var(--soft); border: 1px solid var(--line); color: var(--muted);
+  }
+  .chip.gold { color: var(--accent); border-color: var(--accent); }
+  .chip.red { color: var(--danger); border-color: #6b3a38; }
+  .chip.green { color: var(--good); border-color: var(--good); }
+  .chip.blue { color: var(--info); border-color: var(--info); }
+
+  .quest-card, .adv-card, .fac-card, .recruit-card {
+    background: var(--soft); border: 1px solid var(--line); border-radius: 12px;
+    padding: 11px; margin-bottom: 9px;
+  }
+  .quest-title { font-weight: 700; font-size: 0.92rem; margin-bottom: 4px; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 5px 0; }
+  .q-meta { font-size: 0.76rem; color: var(--muted); }
+
+  .adv-card.selectable { cursor: pointer; }
+  .adv-card.selected { border-color: var(--accent); background: var(--accent-soft); }
+  .adv-name { font-weight: 700; font-size: 0.9rem; }
+  .hp-bar { height: 9px; background: #191722; border-radius: 999px; overflow: hidden; border: 1px solid var(--line); margin: 5px 0; }
+  .hp-fill { height: 100%; background: var(--good); }
+  .hp-fill.mid { background: var(--warn); }
+  .hp-fill.low { background: var(--danger); }
+  .adv-stats { font-size: 0.72rem; color: var(--muted); }
+  .btn-row { display: flex; gap: 7px; margin-top: 8px; }
+
+  .log-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+  .log-list li {
+    background: var(--soft); border-radius: 8px; padding: 6px 9px;
+    font-size: 0.76rem; color: var(--muted);
+  }
+  .log-list li.good { color: var(--good); }
+  .log-list li.bad { color: var(--danger); }
+  .log-list li.gold { color: var(--accent); }
+
+  .stat-row2 {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--soft); border-radius: 10px; padding: 9px 11px; margin-bottom: 7px; font-size: 0.84rem;
+  }
+  .stat-row2 b { color: var(--accent); }
+
+  #overlay {
+    position: fixed; inset: 0; background: rgba(10, 8, 16, 0.82);
+    display: flex; align-items: center; justify-content: center; padding: 14px; z-index: 50;
+  }
+  #overlay[hidden] { display: none; }
+  .overlay-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 16px; width: 100%; max-width: 480px; max-height: 82vh;
+    display: flex; flex-direction: column;
+  }
+  .overlay-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 4px; }
+  .overlay-title.success { color: var(--good); }
+  .overlay-title.retreat { color: var(--accent); }
+  .overlay-title.failure { color: var(--danger); }
+  .overlay-sub { font-size: 0.8rem; color: var(--muted); margin-bottom: 10px; }
+  .overlay-log { overflow-y: auto; flex: 1; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>深層ギルド運営録</h1>
+    <div id="kpiBar" class="kpi-bar"></div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <nav class="tabs" id="tabBar">
+    <button type="button" class="tab-btn" data-tab="home">ホーム</button>
+    <button type="button" class="tab-btn" data-tab="quests">依頼</button>
+    <button type="button" class="tab-btn" data-tab="party">編成</button>
+    <button type="button" class="tab-btn" data-tab="advs">冒険者</button>
+    <button type="button" class="tab-btn" data-tab="facs">施設</button>
+    <button type="button" class="tab-btn" data-tab="history">履歴</button>
+    <button type="button" class="tab-btn" data-tab="stats">統計</button>
+    <button type="button" class="tab-btn" data-tab="settings">設定</button>
+  </nav>
+
+  <main id="tabContent"></main>
+</div>
+
+<div id="overlay" hidden>
+  <div class="overlay-card">
+    <div id="overlayTitle" class="overlay-title"></div>
+    <div id="overlaySub" class="overlay-sub"></div>
+    <div class="overlay-log"><ul id="overlayLog" class="log-list"></ul></div>
+    <button type="button" id="overlayClose" class="primary-btn">閉じる</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var KEY = 'deepGuildChronicle:v1';
+  var PARTY_MAX = 4;
+  var FAC_MAX = 5;
+  var GEAR_MAX = 5;
+  var HISTORY_MAX = 30;
+  var CHRONICLE_MAX = 60;
+  var DEATHS_MAX = 30;
+
+  var RANKS = ['F', 'E', 'D', 'C', 'B', 'A', 'S', 'SS', '伝説'];
+  var RANK_REQ = [null,
+    { fame: 30, succ: 3 }, { fame: 80, succ: 8 }, { fame: 160, succ: 15 },
+    { fame: 300, succ: 26 }, { fame: 520, succ: 40 }, { fame: 820, succ: 60 },
+    { fame: 1250, succ: 90 }, { fame: 1900, succ: 130 }];
+
+  var JOBS = {
+    '戦士': { hp: 46, hpG: 7, base: { atk: 9, def: 8, mag: 2, spd: 4, luck: 3 }, grow: { atk: 2.4, def: 2.0, mag: 0.3, spd: 0.7, luck: 0.5 }, aff: { '討伐': 1.3, '護衛': 1.2, '緊急依頼': 1.15 } },
+    '斥候': { hp: 36, hpG: 5, base: { atk: 5, def: 4, mag: 3, spd: 9, luck: 6 }, grow: { atk: 1.2, def: 0.9, mag: 0.6, spd: 2.2, luck: 1.2 }, aff: { 'ダンジョン探索': 1.3, '調査': 1.25, '迷い猫探し': 1.25, '配達': 1.15 } },
+    '僧侶': { hp: 38, hpG: 5.5, base: { atk: 3, def: 5, mag: 8, spd: 4, luck: 5 }, grow: { atk: 0.6, def: 1.2, mag: 2.2, spd: 0.7, luck: 0.9 }, aff: { '救助': 1.35, '護衛': 1.1 } },
+    '魔術師': { hp: 32, hpG: 4.5, base: { atk: 2, def: 3, mag: 10, spd: 4, luck: 4 }, grow: { atk: 0.4, def: 0.6, mag: 2.6, spd: 0.8, luck: 0.8 }, aff: { '調査': 1.3, '討伐': 1.15, '緊急依頼': 1.1 } },
+    '狩人': { hp: 38, hpG: 5.5, base: { atk: 7, def: 4, mag: 3, spd: 7, luck: 5 }, grow: { atk: 1.8, def: 0.9, mag: 0.5, spd: 1.6, luck: 1.0 }, aff: { '採取': 1.3, '迷い猫探し': 1.2, '討伐': 1.1 } },
+    '荷運び': { hp: 42, hpG: 6.5, base: { atk: 4, def: 6, mag: 2, spd: 5, luck: 4 }, grow: { atk: 0.9, def: 1.6, mag: 0.3, spd: 1.0, luck: 0.8 }, aff: { '配達': 1.35, '採取': 1.25 } }
+  };
+  var JOB_NAMES = Object.keys(JOBS);
+
+  var TRAITS = {
+    '慎重': { desc: '危険な場面で安全策を選ぶ。死亡率が下がる', death: -0.10, safe: true },
+    '豪胆': { desc: '戦闘系イベントで力+15%。負傷しやすい', combat: 1.15, dmg: 1.15 },
+    '強運': { desc: '宝箱・希少素材・追加報酬に強い', loot: 1.4 },
+    '鉄人': { desc: '疲労の蓄積が半分になる', fatigue: 0.5 },
+    '食いしん坊': { desc: '食料を2倍消費するが回復量+50%', food: 2, recover: 1.5 },
+    '臆病': { desc: '撤退判断が早い。死亡率減・失敗しやすい', retreat: 0.15, death: -0.12 },
+    '責任感': { desc: '護衛・救助の依頼で力+20%', boost: { '護衛': 1.2, '救助': 1.2 } },
+    '探索好き': { desc: '調査・探索・迷い猫探しで力+20%', boost: { '調査': 1.2, 'ダンジョン探索': 1.2, '迷い猫探し': 1.2 } },
+    '守護者': { desc: '仲間への被害を一部肩代わりする', guard: true },
+    '収集家': { desc: '素材の持ち帰りが1.5倍になる', material: 1.5 }
+  };
+  var TRAIT_NAMES = Object.keys(TRAITS);
+
+  var NAMES = ['アレン', 'ミラ', 'ガイ', 'リナ', 'ドルフ', 'セラ', 'カイ', 'ノア', 'ユナ', 'レオン', 'ティア', 'バルド', 'エマ', 'ロイ', 'サラ', 'ギデオン', 'ルカ', 'メル', 'ハウル', 'イヴ', 'ダン', 'リズ', 'オルガ', 'ネロ', 'フィオ', 'ザック', 'マリ', 'ケント', 'ルル', 'ブラン'];
+  var MONSTERS = ['ゴブリン', '大ネズミ', 'スライム', 'ワイルドボア', 'コボルト', 'オーク', 'ウルフ', 'ゴーレム', 'ワイバーン', 'リッチ'];
+  var LOCS = ['東の森', '西の街道', '廃坑', '古い水路', '霧の湿地', '断崖の道', '忘れられた神殿', '地下墳墓', '雪の峠', '竜の谷'];
+  var CATS = ['タマ', 'ミケ', 'クロ', 'シロ', 'トラ'];
+  var ITEMS = ['薬草', '鉄鉱石', '蜂蜜', '木の実', '魔石のかけら'];
+
+  var STAGES = {
+    '戦闘': { w: { atk: 1.2, def: 0.8, mag: 0.6, spd: 0.4, luck: 0.2 }, danger: 1.2, combat: true, ok: '敵を退けた', ng: '苦戦し手傷を負った' },
+    'ボス': { w: { atk: 1.3, def: 1.0, mag: 0.9, spd: 0.5, luck: 0.3 }, danger: 1.8, combat: true, ok: '強敵を打ち倒した！', ng: '強敵の猛攻を受けた' },
+    '分岐路': { w: { spd: 0.8, luck: 0.9, mag: 0.5, atk: 0.3, def: 0.3 }, danger: 0.8, ok: '正しい道を見抜いた', ng: '悪路に迷い込み消耗した' },
+    '宝箱': { w: { luck: 1.4, spd: 0.6, mag: 0.4 }, danger: 0.6, loot: true, ok: '宝箱を無事に開けた', ng: '罠を作動させてしまった' },
+    '休憩地点': { rest: true, ok: '安全な場所で休息した' },
+    '遭難者': { w: { mag: 0.9, def: 0.7, luck: 0.5 }, danger: 0.9, fame: 2, ok: '遭難者を保護した', ng: '救護に手間取り消耗した' },
+    '盗賊': { w: { atk: 1.0, spd: 0.9, luck: 0.4 }, danger: 1.1, combat: true, gold: true, ok: '盗賊を追い払った', ng: '盗賊に金品を奪われた' },
+    '悪天候': { w: { def: 1.0, spd: 0.7, luck: 0.3 }, danger: 1.0, fatigueX: 1.5, ok: '悪天候を乗り切った', ng: '嵐に打たれ体力を削られた' },
+    '商人': { trade: true, ok: '行商人と取引した' },
+    '希少素材': { w: { luck: 1.2, mag: 0.7, spd: 0.5 }, danger: 0.7, loot: true, ok: '希少な素材を採取した', ng: '採取に失敗し時間を浪費した' },
+    '野生動物': { w: { atk: 0.9, spd: 0.9, luck: 0.4 }, danger: 1.0, combat: true, hunter: true, ok: '野生動物をいなした', ng: '獣に襲われ負傷した' },
+    '交渉': { w: { mag: 0.8, luck: 0.8, spd: 0.4 }, danger: 0.7, ok: '住民との交渉がまとまった', ng: '交渉が難航し疲弊した' },
+    '足跡': { w: { spd: 1.1, luck: 0.8, mag: 0.3 }, danger: 0.7, ok: '手がかりの足跡を追った', ng: '足跡を見失った' },
+    '聞き込み': { w: { luck: 0.9, mag: 0.8, spd: 0.4 }, danger: 0.6, ok: '有力な情報を得た', ng: '空振りに終わり消耗した' },
+    '発見': { w: { spd: 1.0, luck: 1.0, mag: 0.6 }, danger: 1.2, ok: 'ついに目標を発見した！', ng: 'あと一歩のところで逃した' }
+  };
+
+  var QTYPES = {
+    '討伐': { pool: ['戦闘', '戦闘', '分岐路', '悪天候', '野生動物', '休憩地点'], climax: 'ボス', jobs: ['戦士', '魔術師'], stat: '攻撃', rw: 1.2 },
+    'ダンジョン探索': { pool: ['戦闘', '分岐路', '宝箱', '休憩地点', '盗賊', '希少素材'], climax: 'ボス', jobs: ['斥候', '戦士'], stat: '速度', rw: 1.15 },
+    '護衛': { pool: ['盗賊', '悪天候', '戦闘', '休憩地点', '商人'], climax: '戦闘', jobs: ['戦士', '僧侶'], stat: '防御', rw: 1.0 },
+    '採取': { pool: ['野生動物', '悪天候', '希少素材', '分岐路', '休憩地点'], climax: '希少素材', jobs: ['狩人', '荷運び'], stat: '幸運', rw: 0.9, mat: true },
+    '配達': { pool: ['悪天候', '盗賊', '分岐路', '商人', '休憩地点'], climax: '交渉', jobs: ['荷運び', '斥候'], stat: '速度', rw: 0.9 },
+    '迷い猫探し': { pool: ['聞き込み', '足跡', '野生動物', '分岐路'], climax: '発見', jobs: ['斥候', '狩人'], stat: '幸運', rw: 0.85 },
+    '救助': { pool: ['悪天候', '遭難者', '戦闘', '足跡'], climax: '発見', jobs: ['僧侶', '斥候'], stat: '魔力', rw: 1.1 },
+    '調査': { pool: ['聞き込み', '分岐路', '戦闘', '希少素材'], climax: '発見', jobs: ['魔術師', '斥候'], stat: '魔力', rw: 1.0 },
+    '緊急依頼': { pool: ['戦闘', '戦闘', '悪天候', '盗賊'], climax: 'ボス', jobs: ['戦士', '魔術師'], stat: '攻撃', rw: 1.6, minRank: 1 }
+  };
+  var QTYPE_NAMES = Object.keys(QTYPES);
+
+  var FACS = {
+    dorm: { label: '宿舎', mat: 'ore', effect: function (lv) { return '所属上限 ' + rosterCap(lv) + '人 / 夜間疲労回復 ' + (20 + lv * 6); } },
+    tavern: { label: '酒場', mat: 'food', effect: function (lv) { return '新人候補 ' + recruitCount(lv) + '人 / 候補の質が向上'; } },
+    training: { label: '訓練場', mat: 'food', effect: function (lv) { return '獲得経験値 +' + (lv * 8) + '%'; } },
+    clinic: { label: '医務室', mat: 'herb', effect: function (lv) { return '夜間回復 ' + (8 + lv * 4) + ' / 死亡率 -' + (lv * 3) + '% / 重傷 ' + injuryDays(lv) + '日'; } },
+    forge: { label: '鍛冶場', mat: 'ore', effect: function (lv) { return '装備ランク上限 ' + Math.min(GEAR_MAX, lv) + ' (1ランク=戦力+6%)'; } },
+    warehouse: { label: '倉庫', mat: 'ore', effect: function (lv) { return '素材上限 ' + matCap(lv) + ' / 採取量 +' + (lv * 10) + '%'; } }
+  };
+  var FAC_KEYS = Object.keys(FACS);
+  var RES_LABEL = { gold: '資金', fame: '名声', food: '食料', herb: '薬草', ore: '鉱石', magicStone: '魔石' };
+  var MAT_KEYS = ['food', 'herb', 'ore', 'magicStone'];
+
+  var S = null;
+  var activeTab = 'home';
+  var busy = false;
+  var els = {};
+
+  // ---------- utils ----------
+
+  function rnd(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+  function chance(p) { return Math.random() < p; }
+  function clampN(v, a, b) { return Math.min(b, Math.max(a, v)); }
+  function toInt(v, f) { var n = Number(v); return Number.isFinite(n) ? Math.floor(n) : f; }
+  function isObj(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined && text !== null) e.textContent = text;
+    return e;
+  }
+
+  function rosterCap(lv) { return 4 + lv * 2; }
+  function recruitCount(lv) { return Math.min(4, 1 + Math.ceil(lv / 2)); }
+  function injuryDays(lv) { return Math.max(1, 4 - Math.ceil(lv / 2)); }
+  function matCap(lv) { return 20 + lv * 15; }
+  function expNeed(level) { return level * 25; }
+
+  // ---------- generation ----------
+
+  function usedNames() {
+    var set = {};
+    S.adventurers.forEach(function (a) { set[a.name] = 1; });
+    S.recruits.forEach(function (a) { set[a.name] = 1; });
+    return set;
+  }
+
+  function genName(used) {
+    for (var i = 0; i < 40; i++) {
+      var n = pick(NAMES);
+      if (i >= 20) n = n + '・' + pick(['二', '参', '新', '影', '若']);
+      if (!used[n]) { used[n] = 1; return n; }
+    }
+    return pick(NAMES) + rnd(2, 99);
+  }
+
+  function newAdventurer(level, used) {
+    var job = pick(JOB_NAMES);
+    var j = JOBS[job];
+    var lv = Math.max(1, level);
+    var maxHp = Math.round(j.hp + j.hpG * (lv - 1));
+    var a = {
+      id: S.nextId++, name: genName(used), job: job, level: lv, exp: 0,
+      hp: maxHp, maxHp: maxHp, fatigue: 0, morale: 70,
+      atk: Math.round(j.base.atk + j.grow.atk * (lv - 1)),
+      def: Math.round(j.base.def + j.grow.def * (lv - 1)),
+      mag: Math.round(j.base.mag + j.grow.mag * (lv - 1)),
+      spd: Math.round(j.base.spd + j.grow.spd * (lv - 1)),
+      luck: Math.round(j.base.luck + j.grow.luck * (lv - 1)),
+      gearRank: 1, trait: pick(TRAIT_NAMES), status: '健康',
+      injuryDays: 0, lastDay: 0, quests: 0, wins: 0
+    };
+    return a;
+  }
+
+  function genQuest() {
+    var rank = S.rank;
+    var type;
+    do { type = pick(QTYPE_NAMES); } while (QTYPES[type].minRank && rank < QTYPES[type].minRank);
+    var t = QTYPES[type];
+    var d = clampN(rnd(Math.max(1, rank), rank + 3) + (type === '緊急依頼' ? 1 : 0), 1, 12);
+    var reqLevel = Math.max(1, Math.round(d * 1.4));
+    var chainLen = rnd(3, Math.min(8, 3 + Math.ceil(d / 2)));
+    var reward = Math.round((25 + d * 22) * t.rw * rnd(90, 115) / 100);
+    var name;
+    var mIdx = clampN(Math.floor(d * MONSTERS.length / 13), 0, MONSTERS.length - 1);
+    switch (type) {
+      case '討伐': name = MONSTERS[mIdx] + '討伐：' + pick(LOCS); break;
+      case 'ダンジョン探索': name = pick(LOCS) + 'の探索'; break;
+      case '護衛': name = '商隊護衛：' + pick(LOCS); break;
+      case '採取': name = pick(ITEMS) + 'の採取'; break;
+      case '配達': name = '急ぎの配達：' + pick(LOCS); break;
+      case '迷い猫探し': name = '迷い猫「' + pick(CATS) + '」を探せ'; break;
+      case '救助': name = '行方不明者の救助：' + pick(LOCS); break;
+      case '調査': name = pick(LOCS) + 'の異変調査'; break;
+      default: name = '緊急！' + MONSTERS[mIdx] + 'の襲撃';
+    }
+    return {
+      id: S.nextId++, name: name, type: type, difficulty: d, reqLevel: reqLevel,
+      chainLen: chainLen, reward: reward, fame: 2 + d,
+      unlockRank: clampN(Math.floor((d - 1) / 2), 0, 8),
+      power: 4 * (14 + reqLevel * 6.5)
+    };
+  }
+
+  function refreshBoard() {
+    var n = 4 + Math.min(2, Math.floor(S.rank / 2));
+    S.quests = [];
+    for (var i = 0; i < n; i++) S.quests.push(genQuest());
+    // 必ず現ランクで受注可能な低難度依頼を2件保証する
+    var open = S.quests.filter(function (q) { return q.unlockRank <= S.rank; });
+    while (open.length < 2) {
+      var q = genQuest();
+      q.difficulty = clampN(rnd(1, Math.max(1, S.rank + 1)), 1, 12);
+      q.reqLevel = Math.max(1, Math.round(q.difficulty * 1.4));
+      q.unlockRank = 0;
+      q.power = 4 * (14 + q.reqLevel * 6.5);
+      S.quests.push(q);
+      open.push(q);
+    }
+  }
+
+  function refreshRecruits() {
+    var used = usedNames();
+    var lv = S.facilities.tavern;
+    S.recruits = [];
+    for (var i = 0; i < recruitCount(lv); i++) {
+      S.recruits.push(newAdventurer(rnd(1, 1 + lv), used));
+    }
+  }
+
+  // ---------- persistence ----------
+
+  function showBanner(msg) { els.banner.textContent = msg; els.banner.hidden = false; }
+  function hideBanner() { els.banner.hidden = true; }
+
+  function freshState() {
+    return {
+      day: 1, gold: 250, fame: 0, food: 20, herb: 5, ore: 3, magicStone: 0,
+      rank: 0, facilities: { dorm: 1, tavern: 1, training: 1, clinic: 1, forge: 1, warehouse: 1 },
+      adventurers: [], recruits: [], quests: [], party: [],
+      history: [], chronicle: [], deaths: [], morningLog: [],
+      stats: { days: 1, succ: 0, fail: 0, deaths: 0, earned: 0, bestRank: 0, byType: {}, mvp: {} },
+      nextId: 1
+    };
+  }
+
+  function newGame() {
+    S = freshState();
+    var used = {};
+    ['戦士', '斥候', '僧侶', '狩人'].forEach(function (job) {
+      var a = newAdventurer(rnd(1, 2), used);
+      // 初期メンバーは職業を固定で揃える
+      var j = JOBS[job];
+      a.job = job;
+      a.maxHp = Math.round(j.hp + j.hpG * (a.level - 1)); a.hp = a.maxHp;
+      a.atk = Math.round(j.base.atk + j.grow.atk * (a.level - 1));
+      a.def = Math.round(j.base.def + j.grow.def * (a.level - 1));
+      a.mag = Math.round(j.base.mag + j.grow.mag * (a.level - 1));
+      a.spd = Math.round(j.base.spd + j.grow.spd * (a.level - 1));
+      a.luck = Math.round(j.base.luck + j.grow.luck * (a.level - 1));
+      S.adventurers.push(a);
+    });
+    refreshBoard();
+    refreshRecruits();
+    S.chronicle.unshift({ day: 1, text: 'ギルドを創設した。ランクFからの出発。', kind: 'info' });
+    S.morningLog = ['ギルド設立初日。冒険者4名とともに歩みを始めた。'];
+  }
+
+  function sanitizeAdv(raw) {
+    if (!isObj(raw)) return null;
+    if (typeof raw.name !== 'string' || !raw.name) return null;
+    if (!JOBS[raw.job]) return null;
+    if (!TRAITS[raw.trait]) return null;
+    var status = ['健康', '疲労', '軽傷', '重傷'].indexOf(raw.status) !== -1 ? raw.status : '健康';
+    var maxHp = clampN(toInt(raw.maxHp, 30), 10, 999);
+    return {
+      id: Math.max(1, toInt(raw.id, 1)), name: raw.name.slice(0, 20), job: raw.job,
+      level: clampN(toInt(raw.level, 1), 1, 99), exp: Math.max(0, toInt(raw.exp, 0)),
+      hp: clampN(toInt(raw.hp, maxHp), 0, maxHp), maxHp: maxHp,
+      fatigue: clampN(toInt(raw.fatigue, 0), 0, 100), morale: clampN(toInt(raw.morale, 70), 0, 100),
+      atk: clampN(toInt(raw.atk, 5), 0, 999), def: clampN(toInt(raw.def, 5), 0, 999),
+      mag: clampN(toInt(raw.mag, 5), 0, 999), spd: clampN(toInt(raw.spd, 5), 0, 999),
+      luck: clampN(toInt(raw.luck, 5), 0, 999),
+      gearRank: clampN(toInt(raw.gearRank, 1), 1, GEAR_MAX), trait: raw.trait, status: status,
+      injuryDays: clampN(toInt(raw.injuryDays, 0), 0, 10), lastDay: Math.max(0, toInt(raw.lastDay, 0)),
+      quests: Math.max(0, toInt(raw.quests, 0)), wins: Math.max(0, toInt(raw.wins, 0))
+    };
+  }
+
+  function sanitizeQuest(raw) {
+    if (!isObj(raw)) return null;
+    if (!QTYPES[raw.type]) return null;
+    if (typeof raw.name !== 'string' || !raw.name) return null;
+    var d = clampN(toInt(raw.difficulty, 1), 1, 12);
+    return {
+      id: Math.max(1, toInt(raw.id, 1)), name: raw.name.slice(0, 40), type: raw.type,
+      difficulty: d, reqLevel: clampN(toInt(raw.reqLevel, 1), 1, 99),
+      chainLen: clampN(toInt(raw.chainLen, 3), 3, 8),
+      reward: clampN(toInt(raw.reward, 30), 1, 99999), fame: clampN(toInt(raw.fame, 2), 0, 999),
+      unlockRank: clampN(toInt(raw.unlockRank, 0), 0, 8),
+      power: clampN(Number(raw.power) || 100, 10, 99999)
+    };
+  }
+
+  function loadState() {
+    var raw;
+    try { raw = window.localStorage.getItem(KEY); }
+    catch (e) {
+      showBanner('この端末では保存機能を利用できません。この画面を閉じると進行は失われます。');
+      newGame(); return;
+    }
+    if (!raw) { newGame(); return; }
+    try {
+      var p = JSON.parse(raw);
+      if (!isObj(p)) throw new Error('shape');
+      var f = freshState();
+      f.day = Math.max(1, toInt(p.day, 1));
+      f.gold = clampN(toInt(p.gold, 250), 0, 9999999);
+      f.fame = clampN(toInt(p.fame, 0), 0, 9999999);
+      MAT_KEYS.forEach(function (k) { f[k] = clampN(toInt(p[k], 0), 0, 99999); });
+      f.rank = clampN(toInt(p.rank, 0), 0, 8);
+      if (isObj(p.facilities)) FAC_KEYS.forEach(function (k) { f.facilities[k] = clampN(toInt(p.facilities[k], 1), 1, FAC_MAX); });
+      f.nextId = Math.max(1, toInt(p.nextId, 1));
+      (Array.isArray(p.adventurers) ? p.adventurers : []).forEach(function (r) {
+        var a = sanitizeAdv(r); if (a) f.adventurers.push(a);
+      });
+      (Array.isArray(p.recruits) ? p.recruits : []).forEach(function (r) {
+        var a = sanitizeAdv(r); if (a) f.recruits.push(a);
+      });
+      (Array.isArray(p.quests) ? p.quests : []).forEach(function (r) {
+        var q = sanitizeQuest(r); if (q) f.quests.push(q);
+      });
+      f.party = (Array.isArray(p.party) ? p.party : []).filter(function (id) {
+        return f.adventurers.some(function (a) { return a.id === id; });
+      }).slice(0, PARTY_MAX);
+      ['history', 'chronicle', 'deaths'].forEach(function (k) {
+        (Array.isArray(p[k]) ? p[k] : []).forEach(function (r) {
+          if (isObj(r) && typeof r.text === 'string') {
+            f[k].push({ day: Math.max(1, toInt(r.day, 1)), text: r.text.slice(0, 200), kind: typeof r.kind === 'string' ? r.kind.slice(0, 12) : 'info' });
+          }
+        });
+        f[k] = f[k].slice(0, k === 'chronicle' ? CHRONICLE_MAX : (k === 'deaths' ? DEATHS_MAX : HISTORY_MAX));
+      });
+      f.morningLog = (Array.isArray(p.morningLog) ? p.morningLog : []).filter(function (t) { return typeof t === 'string'; }).slice(0, 12);
+      if (isObj(p.stats)) {
+        var st = p.stats;
+        f.stats.days = Math.max(1, toInt(st.days, f.day));
+        f.stats.succ = Math.max(0, toInt(st.succ, 0));
+        f.stats.fail = Math.max(0, toInt(st.fail, 0));
+        f.stats.deaths = Math.max(0, toInt(st.deaths, 0));
+        f.stats.earned = Math.max(0, toInt(st.earned, 0));
+        f.stats.bestRank = clampN(toInt(st.bestRank, f.rank), 0, 8);
+        if (isObj(st.byType)) QTYPE_NAMES.forEach(function (t) {
+          if (isObj(st.byType[t])) f.stats.byType[t] = { s: Math.max(0, toInt(st.byType[t].s, 0)), f: Math.max(0, toInt(st.byType[t].f, 0)) };
+        });
+        if (isObj(st.mvp)) Object.keys(st.mvp).slice(0, 60).forEach(function (n) {
+          f.stats.mvp[n.slice(0, 20)] = Math.max(0, toInt(st.mvp[n], 0));
+        });
+      }
+      S = f;
+      if (S.quests.length === 0) refreshBoard();
+      else while (S.quests.length < 2) S.quests.push(genQuest());
+      if (S.recruits.length === 0) refreshRecruits();
+    } catch (e) {
+      showBanner('保存データを読み込めなかったため、新しいギルドを設立します。');
+      newGame();
+    }
+  }
+
+  function persist() {
+    try { window.localStorage.setItem(KEY, JSON.stringify(S)); }
+    catch (e) { showBanner('保存できませんでした。この画面を閉じると進行は失われますが、プレイは継続できます。'); }
+  }
+
+  // ---------- dispatch (event chain) ----------
+
+  function jobAff(job, qtype) { return (JOBS[job].aff && JOBS[job].aff[qtype]) || 1.0; }
+
+  function memberPower(m, stKey, quest) {
+    var st = STAGES[stKey];
+    var w = st.w || {};
+    var s = m.atk * (w.atk || 0) + m.def * (w.def || 0) + m.mag * (w.mag || 0) + m.spd * (w.spd || 0) + m.luck * (w.luck || 0);
+    s *= 1 + m.gearRank * 0.06;
+    s *= jobAff(m.job, quest.type);
+    var t = TRAITS[m.trait];
+    if (st.combat && t.combat) s *= t.combat;
+    if (t.boost && t.boost[quest.type]) s *= t.boost[quest.type];
+    if (st.hunter && m.job === '狩人') s *= 1.25;
+    if (m.fatigue >= 70) s *= 0.75; else if (m.fatigue >= 40) s *= 0.9;
+    if (m.status === '軽傷') s *= 0.8;
+    s *= 0.7 + 0.3 * (m.morale / 100);
+    return s;
+  }
+
+  function addMat(key, amount, collector) {
+    var mult = 1 + S.facilities.warehouse * 0.1;
+    if (collector) mult *= 1.5;
+    var v = Math.round(amount * mult);
+    S[key] = clampN(S[key] + v, 0, matCap(S.facilities.warehouse));
+    return v;
+  }
+
+  function dispatchQuest(quest) {
+    var party = S.party.map(function (id) {
+      return S.adventurers.find(function (a) { return a.id === id; });
+    }).filter(Boolean);
+    if (party.length === 0) return null;
+
+    var log = [];
+    var t = QTYPES[quest.type];
+    var chain = [];
+    for (var i = 0; i < quest.chainLen - 1; i++) chain.push(pick(t.pool));
+    chain.push(t.climax);
+
+    var cleared = 0, outcome = null, lootGold = 0, casualties = [];
+    var hasPriest = party.some(function (m) { return m.job === '僧侶'; });
+    var guard = party.find(function (m) { return TRAITS[m.trait].guard && m.hp > 0; });
+    var hasCoward = party.some(function (m) { return TRAITS[m.trait].retreat; });
+    var bestLoot = party.reduce(function (mx, m) { return Math.max(mx, TRAITS[m.trait].loot || 1); }, 1);
+    var hasCollector = party.some(function (m) { return TRAITS[m.trait].material; });
+
+    for (var si = 0; si < chain.length; si++) {
+      var stKey = chain[si];
+      var st = STAGES[stKey];
+      var prefix = '【' + (si + 1) + '/' + chain.length + ' ' + stKey + '】';
+
+      if (st.rest) {
+        party.forEach(function (m) {
+          if (m.hp <= 0) return;
+          var rec = TRAITS[m.trait].recover || 1;
+          m.hp = clampN(m.hp + Math.round(8 * rec), 0, m.maxHp);
+          m.fatigue = clampN(m.fatigue - 10, 0, 100);
+        });
+        log.push({ text: prefix + st.ok + '。少し回復した。', kind: 'good' });
+        cleared++;
+        continue;
+      }
+      if (st.trade) {
+        if (chance(0.5)) { var g = rnd(5, 15); S.gold += g; lootGold += g; log.push({ text: prefix + st.ok + '。' + g + 'Gの儲けが出た。', kind: 'gold' }); }
+        else { var got = addMat(pick(MAT_KEYS), rnd(1, 3), hasCollector); log.push({ text: prefix + st.ok + '。素材を' + got + 'つ譲り受けた。', kind: 'gold' }); }
+        cleared++;
+        continue;
+      }
+
+      var power = party.reduce(function (sum, m) { return sum + (m.hp > 0 ? memberPower(m, stKey, quest) : 0); }, 0);
+      var need = quest.power * st.danger;
+      var ratio = power / need;
+      var p = clampN(0.74 + (ratio - 1) * 0.5, 0.08, 0.96);
+      var hasCareful = party.some(function (m) { return TRAITS[m.trait].safe && m.hp > 0; });
+      if (hasCareful && st.danger >= 1.0) p = clampN(p + 0.05, 0.08, 0.97);
+
+      var fatGain = Math.round((5 + st.danger * 4) * (st.fatigueX || 1));
+      party.forEach(function (m) {
+        if (m.hp <= 0) return;
+        m.fatigue = clampN(m.fatigue + Math.round(fatGain * (TRAITS[m.trait].fatigue || 1)), 0, 100);
+      });
+
+      if (chance(p)) {
+        cleared++;
+        var extra = '';
+        if (st.loot) {
+          if (chance(0.55 * bestLoot)) {
+            var mk = stKey === '希少素材' ? pick(['ore', 'magicStone', 'herb']) : pick(MAT_KEYS);
+            var got2 = addMat(mk, rnd(1, 2 + Math.ceil(quest.difficulty / 4)), hasCollector);
+            extra = ' ' + RES_LABEL[mk] + '×' + got2 + 'を入手。';
+          }
+          if (chance(0.35 * bestLoot)) { var g2 = rnd(8, 8 + quest.difficulty * 4); S.gold += g2; lootGold += g2; extra += ' ' + g2 + 'Gを発見。'; }
+        }
+        if (st.fame) { S.fame += st.fame; extra += ' 名声+' + st.fame + '。'; }
+        party.forEach(function (m) { if (m.hp > 0) m.morale = clampN(m.morale + 2, 0, 100); });
+        log.push({ text: prefix + st.ok + '。' + extra, kind: 'good' });
+      } else {
+        // 失敗: 被害処理
+        var alive = party.filter(function (m) { return m.hp > 0; });
+        var victims = alive.length > 2 && chance(0.4) ? [pick(alive), pick(alive)] : [pick(alive)];
+        var downed = null;
+        victims.forEach(function (v) {
+          if (!v || v.hp <= 0) return;
+          var dmg = Math.round(rnd(8, 16) * st.danger * (0.85 + quest.difficulty * 0.12) * (TRAITS[v.trait].dmg || 1));
+          if (guard && guard !== v && guard.hp > 0) {
+            var share = Math.round(dmg * 0.3);
+            guard.hp = clampN(guard.hp - Math.max(2, share - Math.round(guard.def * 0.4)), 0, guard.maxHp);
+            dmg -= share;
+          }
+          dmg = Math.max(3, dmg - Math.round(v.def * 0.6));
+          v.hp = clampN(v.hp - dmg, 0, v.maxHp);
+          if (v.hp <= 0 && !downed) downed = v;
+        });
+        if (st.gold && S.gold > 0) { var lost = Math.min(S.gold, rnd(5, 20)); S.gold -= lost; log.push({ text: prefix + st.ng + '。' + lost + 'Gを失った。', kind: 'bad' }); }
+        else log.push({ text: prefix + st.ng + '。', kind: 'bad' });
+        party.forEach(function (m) { if (m.hp > 0) m.morale = clampN(m.morale - 8, 0, 100); });
+
+        // ガード役が倒れた場合も検出
+        if (!downed) downed = party.find(function (m) { return m.hp <= 0 && m.status !== '死亡'; });
+        if (downed) {
+          var deathP = clampN(0.32 - (hasPriest ? 0.12 : 0) - S.facilities.clinic * 0.03 + (TRAITS[downed.trait].death || 0), 0.05, 0.6);
+          if (chance(deathP)) {
+            downed.status = '死亡';
+            casualties.push(downed.name);
+            log.push({ text: downed.name + 'は帰らぬ人となった…', kind: 'bad' });
+          } else {
+            downed.status = '重傷';
+            downed.injuryDays = injuryDays(S.facilities.clinic);
+            downed.hp = Math.max(1, Math.round(downed.maxHp * 0.15));
+            log.push({ text: downed.name + 'が重傷を負った。パーティは引き返す。', kind: 'bad' });
+          }
+          outcome = (cleared / chain.length >= 0.7) ? '撤退' : '失敗';
+          break;
+        }
+        // 自主撤退判定
+        var aliveNow = party.filter(function (m) { return m.hp > 0; });
+        var avgHpPct = aliveNow.reduce(function (s2, m) { return s2 + m.hp / m.maxHp; }, 0) / Math.max(1, aliveNow.length);
+        var th = 0.35 + (hasCoward ? 0.15 : 0);
+        if (avgHpPct < th) {
+          log.push({ text: '消耗が激しく、パーティは撤退を決断した。', kind: 'bad' });
+          outcome = '撤退';
+          break;
+        }
+      }
+    }
+    if (!outcome) outcome = (cleared >= chain.length) ? '成功' : '撤退';
+
+    // 報酬と反映
+    var goldGain = 0, fameDelta = 0;
+    if (outcome === '成功') {
+      goldGain = quest.reward; fameDelta = quest.fame;
+      if (t.mat) { var m1 = addMat(pick(['food', 'herb']), rnd(2, 4 + Math.ceil(quest.difficulty / 3)), hasCollector); log.push({ text: '依頼品として素材×' + m1 + 'を納品し、余剰を持ち帰った。', kind: 'gold' }); }
+    } else if (outcome === '撤退') {
+      goldGain = Math.round(quest.reward * (cleared / chain.length >= 0.5 ? 0.4 : 0.2));
+    } else {
+      fameDelta = -Math.ceil(quest.fame / 2);
+    }
+    S.gold += goldGain;
+    S.fame = Math.max(0, S.fame + fameDelta);
+    S.stats.earned += goldGain + lootGold;
+
+    // 経験値・レベルアップ・記録
+    var expBase = (quest.difficulty * 10 + cleared * 4) * (outcome === '成功' ? 1.2 : 0.8) * (1 + S.facilities.training * 0.08);
+    party.forEach(function (m) {
+      if (m.status === '死亡') return;
+      m.lastDay = S.day;
+      m.quests++;
+      if (outcome === '成功') { m.wins++; S.stats.mvp[m.name] = (S.stats.mvp[m.name] || 0) + 1; }
+      m.exp += Math.round(expBase);
+      var ups = 0;
+      while (m.exp >= expNeed(m.level) && ups < 5) {
+        m.exp -= expNeed(m.level); m.level++; ups++;
+        var j = JOBS[m.job];
+        m.maxHp += Math.round(j.hpG); m.hp = clampN(m.hp + Math.round(j.hpG), 0, m.maxHp);
+        m.atk += Math.round(j.grow.atk); m.def += Math.round(j.grow.def);
+        m.mag += Math.round(j.grow.mag); m.spd += Math.round(j.grow.spd); m.luck += Math.round(j.grow.luck);
+      }
+      if (ups > 0) log.push({ text: m.name + 'はLv' + m.level + 'に成長した！', kind: 'gold' });
+      m.morale = clampN(m.morale + (outcome === '成功' ? 10 : outcome === '撤退' ? -6 : -12), 0, 100);
+      if (m.status !== '重傷') {
+        if (m.hp < m.maxHp * 0.4) m.status = '軽傷';
+        else if (m.fatigue >= 70) m.status = '疲労';
+        else m.status = '健康';
+      }
+    });
+
+    // 死亡者の除籍
+    casualties.forEach(function (name) {
+      var idx = S.adventurers.findIndex(function (a) { return a.name === name && a.status === '死亡'; });
+      if (idx !== -1) {
+        var d = S.adventurers[idx];
+        S.deaths.unshift({ day: S.day, text: d.name + '（' + d.job + ' Lv' + d.level + '） ' + quest.name + 'にて殉職', kind: 'bad' });
+        if (S.deaths.length > DEATHS_MAX) S.deaths.length = DEATHS_MAX;
+        S.adventurers.splice(idx, 1);
+        S.stats.deaths++;
+      }
+    });
+    S.party = [];
+
+    // 履歴・統計
+    if (!S.stats.byType[quest.type]) S.stats.byType[quest.type] = { s: 0, f: 0 };
+    if (outcome === '成功') { S.stats.succ++; S.stats.byType[quest.type].s++; }
+    else { S.stats.fail++; S.stats.byType[quest.type].f++; }
+    S.history.unshift({
+      day: S.day,
+      text: quest.name + '（' + quest.type + '・難度' + quest.difficulty + '）→ ' + outcome + (goldGain ? ' +' + goldGain + 'G' : '') + (casualties.length ? ' 死亡:' + casualties.join('、') : ''),
+      kind: outcome === '成功' ? 'good' : 'bad'
+    });
+    if (S.history.length > HISTORY_MAX) S.history.length = HISTORY_MAX;
+    if (outcome === '成功' && quest.difficulty >= 8) addChronicle('難度' + quest.difficulty + 'の「' + quest.name + '」を制覇。伝説的成功として語り継がれる。', 'gold');
+    if (casualties.length >= 2) addChronicle('「' + quest.name + '」で' + casualties.length + '名が殉職。壊滅的失敗だった。', 'bad');
+
+    // 依頼を掲示板から除去
+    S.quests = S.quests.filter(function (q) { return q.id !== quest.id; });
+
+    checkRank(log);
+    persist();
+    return { outcome: outcome, gold: goldGain, fame: fameDelta, cleared: cleared, total: chain.length, log: log, casualties: casualties };
+  }
+
+  function addChronicle(text, kind) {
+    S.chronicle.unshift({ day: S.day, text: text, kind: kind || 'info' });
+    if (S.chronicle.length > CHRONICLE_MAX) S.chronicle.length = CHRONICLE_MAX;
+  }
+
+  function checkRank(log) {
+    while (S.rank < 8) {
+      var req = RANK_REQ[S.rank + 1];
+      if (S.fame >= req.fame && S.stats.succ >= req.succ) {
+        S.rank++;
+        S.stats.bestRank = Math.max(S.stats.bestRank, S.rank);
+        var msg = 'ギルドランクが' + RANKS[S.rank] + 'に昇格！上位依頼が解放された。';
+        addChronicle(msg, 'gold');
+        if (log) log.push({ text: msg, kind: 'gold' });
+        else S.morningLog.push(msg);
+      } else break;
+    }
+  }
+
+  // ---------- morning ----------
+
+  var MORNING_EVENTS = [
+    function () { var g = rnd(20, 60); S.gold += g; return '街の商人から寄付が届いた（+' + g + 'G）。'; },
+    function () { var l = Math.min(S.food, rnd(2, 5)); S.food -= l; return '食料が傷んでしまった（-' + l + '）。'; },
+    function () { if (S.gold >= 10) { S.gold -= 10; addMat('herb', 2, false); return '行商人から薬草を仕入れた（-10G / 薬草+2）。'; } return '行商人が来たが、資金が足りず見送った。'; },
+    function () { S.fame += 3; return '良い評判が街に広まった（名声+3）。'; },
+    function () { if (S.recruits.length < 4) { S.recruits.push(newAdventurer(rnd(1, 2 + S.facilities.tavern), usedNames())); return '流れの冒険者が酒場に現れた。'; } return '静かな朝だった。'; }
+  ];
+
+  function nextDay() {
+    if (busy) return;
+    busy = true;
+    hideBanner();
+    S.day++;
+    S.stats.days = Math.max(S.stats.days, S.day);
+    var ml = [];
+
+    // 維持費
+    var wages = S.adventurers.reduce(function (s2, a) { return s2 + 3 + a.level * 2; }, 0);
+    if (S.gold >= wages) { S.gold -= wages; ml.push('冒険者への給金 ' + wages + 'G を支払った。'); }
+    else {
+      S.gold = 0;
+      S.fame = Math.max(0, S.fame - 2);
+      S.adventurers.forEach(function (a) { a.morale = clampN(a.morale - 10, 0, 100); });
+      ml.push('給金 ' + wages + 'G を払えなかった…士気と名声が下がった。');
+    }
+    // 食料
+    var foodNeed = S.adventurers.reduce(function (s2, a) { return s2 + (TRAITS[a.trait].food || 1); }, 0);
+    if (S.food >= foodNeed) { S.food -= foodNeed; }
+    else {
+      S.food = 0;
+      S.adventurers.forEach(function (a) { a.morale = clampN(a.morale - 8, 0, 100); });
+      ml.push('食料が足りない！（必要' + foodNeed + '）士気が下がった。酒場で購入できる。');
+    }
+
+    // 回復
+    var dormRec = 20 + S.facilities.dorm * 6;
+    var clinicRec = 8 + S.facilities.clinic * 4;
+    S.adventurers.forEach(function (a) {
+      a.fatigue = clampN(a.fatigue - dormRec, 0, 100);
+      var rec = Math.round(clinicRec * (TRAITS[a.trait].recover || 1));
+      if (a.hp < a.maxHp && S.herb > 0 && (a.status === '軽傷' || a.status === '重傷')) { S.herb--; rec += 12; }
+      a.hp = clampN(a.hp + rec, 0, a.maxHp);
+      if (a.status === '重傷') {
+        a.injuryDays--;
+        if (a.injuryDays <= 0) { a.status = '軽傷'; a.hp = Math.max(a.hp, Math.round(a.maxHp * 0.4)); }
+      } else if (a.hp >= a.maxHp * 0.7 && a.fatigue < 70) a.status = '健康';
+      else if (a.hp < a.maxHp * 0.4) a.status = '軽傷';
+      else if (a.fatigue >= 70) a.status = '疲労';
+      else a.status = '健康';
+      a.morale = clampN(a.morale + (a.morale < 70 ? 5 : -2), 0, 100);
+    });
+
+    // 掲示板・募集更新
+    refreshBoard();
+    refreshRecruits();
+
+    // ランダムイベント
+    if (chance(0.35)) ml.push(pick(MORNING_EVENTS)());
+
+    // 全滅・資金難の救済
+    if (S.adventurers.length === 0 && S.gold < 60) {
+      S.gold += 100;
+      ml.push('ギルドの窮状を見かねた街の人々から100Gの支援が届いた。');
+    }
+
+    S.morningLog = ml;
+    checkRank(null);
+    persist();
+    busy = false;
+    render();
+  }
+
+  // ---------- actions ----------
+
+  function hire(recruitId) {
+    var idx = S.recruits.findIndex(function (r) { return r.id === recruitId; });
+    if (idx === -1) return;
+    var r = S.recruits[idx];
+    var cost = 25 + r.level * 18;
+    if (S.adventurers.length >= rosterCap(S.facilities.dorm)) { showBanner('宿舎が満員です。宿舎を強化してください。'); return; }
+    if (S.gold < cost) { showBanner('資金が足りません（必要' + cost + 'G）。'); return; }
+    S.gold -= cost;
+    S.recruits.splice(idx, 1);
+    S.adventurers.push(r);
+    addChronicle(r.name + '（' + r.job + '）が仲間に加わった。', 'info');
+    persist(); render();
+  }
+
+  function fire(advId) {
+    var idx = S.adventurers.findIndex(function (a) { return a.id === advId; });
+    if (idx === -1) return;
+    var a = S.adventurers[idx];
+    if (!window.confirm(a.name + 'を解雇しますか？この操作は取り消せません。')) return;
+    S.adventurers.splice(idx, 1);
+    S.party = S.party.filter(function (id) { return id !== advId; });
+    addChronicle(a.name + 'がギルドを去った。', 'info');
+    persist(); render();
+  }
+
+  function upgradeGear(advId) {
+    var a = S.adventurers.find(function (x) { return x.id === advId; });
+    if (!a) return;
+    var cap = Math.min(GEAR_MAX, S.facilities.forge);
+    if (a.gearRank >= cap) { showBanner('鍛冶場のレベルが足りません。'); return; }
+    var costG = 40 * (a.gearRank + 1), costOre = a.gearRank + 1;
+    if (S.gold < costG || S.ore < costOre) { showBanner('強化には ' + costG + 'G と鉱石' + costOre + ' が必要です。'); return; }
+    S.gold -= costG; S.ore -= costOre; a.gearRank++;
+    persist(); render();
+  }
+
+  function upgradeFac(key) {
+    var lv = S.facilities[key];
+    if (lv >= FAC_MAX) return;
+    var costG = 60 + lv * 80, costM = lv + 1, mk = FACS[key].mat;
+    if (S.gold < costG || S[mk] < costM) { showBanner('強化には ' + costG + 'G と' + RES_LABEL[mk] + '×' + costM + ' が必要です。'); return; }
+    S.gold -= costG; S[mk] -= costM; S.facilities[key]++;
+    addChronicle(FACS[key].label + 'をLv' + S.facilities[key] + 'に強化した。', 'info');
+    persist(); render();
+  }
+
+  function buySupply(kind) {
+    if (kind === 'food') { if (S.gold < 10) { showBanner('資金が足りません。'); return; } S.gold -= 10; addMat('food', 5, false); }
+    else { if (S.gold < 15) { showBanner('資金が足りません。'); return; } S.gold -= 15; addMat('herb', 3, false); }
+    persist(); render();
+  }
+
+  function toggleMember(advId) {
+    var a = S.adventurers.find(function (x) { return x.id === advId; });
+    if (!a) return;
+    var i = S.party.indexOf(advId);
+    if (i !== -1) { S.party.splice(i, 1); persist(); render(); return; }
+    if (a.status === '重傷') { showBanner(a.name + 'は重傷で出動できません。'); return; }
+    if (a.lastDay === S.day) { showBanner(a.name + 'は本日すでに出動済みです。'); return; }
+    if (S.party.length >= PARTY_MAX) { showBanner('パーティは最大' + PARTY_MAX + '人までです。'); return; }
+    S.party.push(advId);
+    persist(); render();
+  }
+
+  function tryDispatch(questId) {
+    if (busy) return;
+    var quest = S.quests.find(function (q) { return q.id === questId; });
+    if (!quest) return;
+    if (quest.unlockRank > S.rank) { showBanner('ランク' + RANKS[quest.unlockRank] + '以上で受注可能な依頼です。'); return; }
+    if (S.party.length === 0) { showBanner('編成タブでパーティを選んでください。'); return; }
+    var bad = S.party.map(function (id) { return S.adventurers.find(function (a) { return a.id === id; }); })
+      .find(function (a) { return !a || a.status === '重傷' || a.lastDay === S.day; });
+    if (bad) { showBanner('出動できないメンバーが含まれています。編成を見直してください。'); return; }
+    busy = true;
+    hideBanner();
+    var result = dispatchQuest(quest);
+    busy = false;
+    if (result) showResult(quest, result);
+    render();
+  }
+
+  function resetAll() {
+    if (!window.confirm('保存データをすべて削除して最初からやり直します。よろしいですか？')) return;
+    try { window.localStorage.removeItem(KEY); } catch (e) { /* 続行 */ }
+    newGame();
+    persist();
+    activeTab = 'home';
+    render();
+  }
+
+  // ---------- rendering ----------
+
+  function showResult(quest, r) {
+    var cls = r.outcome === '成功' ? 'success' : (r.outcome === '撤退' ? 'retreat' : 'failure');
+    els.overlayTitle.className = 'overlay-title ' + cls;
+    els.overlayTitle.textContent = quest.name + '：' + r.outcome;
+    els.overlaySub.textContent = '進行 ' + r.cleared + '/' + r.total + '段階 / 報酬 ' + r.gold + 'G / 名声 ' + (r.fame >= 0 ? '+' : '') + r.fame;
+    els.overlayLog.innerHTML = '';
+    r.log.forEach(function (line) {
+      els.overlayLog.appendChild(el('li', line.kind === 'info' ? '' : line.kind, line.text));
+    });
+    els.overlay.hidden = false;
+  }
+
+  function statusChip(a) {
+    var cls = a.status === '健康' ? 'green' : (a.status === '重傷' ? 'red' : '');
+    return { text: a.status + (a.status === '重傷' ? '(' + a.injuryDays + '日)' : ''), cls: cls };
+  }
+
+  function hpBar(a) {
+    var wrap = el('div', 'hp-bar');
+    var pct = clampN(Math.round(a.hp / a.maxHp * 100), 0, 100);
+    var fill = el('div', 'hp-fill' + (pct <= 25 ? ' low' : pct <= 55 ? ' mid' : ''));
+    fill.style.width = pct + '%';
+    wrap.appendChild(fill);
+    return wrap;
+  }
+
+  function advCard(a, opts) {
+    var c = el('div', 'adv-card' + (opts.selectable ? ' selectable' : '') + (S.party.indexOf(a.id) !== -1 && opts.selectable ? ' selected' : ''));
+    if (opts.selectable) { c.dataset.action = 'toggle-member'; c.dataset.id = a.id; }
+    var top = el('div', 'row');
+    top.appendChild(el('span', 'adv-name', a.name + '（' + a.job + ' Lv' + a.level + '）'));
+    var st = statusChip(a);
+    top.appendChild(el('span', 'chip ' + st.cls, st.text));
+    c.appendChild(top);
+    c.appendChild(hpBar(a));
+    c.appendChild(el('div', 'adv-stats', 'HP ' + a.hp + '/' + a.maxHp + ' 疲労' + a.fatigue + ' 士気' + a.morale + ' | 攻' + a.atk + ' 防' + a.def + ' 魔' + a.mag + ' 速' + a.spd + ' 運' + a.luck + ' | 装備' + a.gearRank));
+    var chips = el('div', 'chip-row');
+    chips.appendChild(el('span', 'chip blue', a.trait));
+    chips.appendChild(el('span', 'chip', TRAITS[a.trait].desc));
+    if (a.lastDay === S.day) chips.appendChild(el('span', 'chip gold', '本日出動済'));
+    c.appendChild(chips);
+    if (opts.detail) {
+      c.appendChild(el('div', 'note', '出動' + a.quests + '回 / 達成' + a.wins + '回 / 経験値 ' + a.exp + '/' + expNeed(a.level)));
+      var btns = el('div', 'btn-row');
+      var gearBtn = el('button', 'small-btn', '装備強化（' + (40 * (a.gearRank + 1)) + 'G+鉱石' + (a.gearRank + 1) + '）');
+      gearBtn.type = 'button'; gearBtn.dataset.action = 'gear'; gearBtn.dataset.id = a.id;
+      if (a.gearRank >= Math.min(GEAR_MAX, S.facilities.forge)) gearBtn.disabled = true;
+      var fireBtn = el('button', 'ghost-btn', '解雇');
+      fireBtn.type = 'button'; fireBtn.dataset.action = 'fire'; fireBtn.dataset.id = a.id;
+      btns.appendChild(gearBtn); btns.appendChild(fireBtn);
+      c.appendChild(btns);
+    }
+    return c;
+  }
+
+  function renderKpi() {
+    els.kpiBar.innerHTML = '';
+    var items = [
+      ['日数', S.day + '日目'], ['ランク', RANKS[S.rank]], ['資金', S.gold + 'G'], ['名声', S.fame],
+      ['食料', S.food], ['薬草', S.herb], ['鉱石', S.ore], ['魔石', S.magicStone]
+    ];
+    items.forEach(function (it) {
+      var k = el('span', 'kpi');
+      k.appendChild(document.createTextNode(it[0] + ' '));
+      k.appendChild(el('b', null, String(it[1])));
+      els.kpiBar.appendChild(k);
+    });
+  }
+
+  function renderHome(root) {
+    var c = el('div', 'card');
+    c.appendChild(el('h2', null, 'ギルドの朝 — ' + S.day + '日目'));
+    var rate = S.stats.succ + S.stats.fail > 0 ? Math.round(S.stats.succ / (S.stats.succ + S.stats.fail) * 100) : 0;
+    [['所属冒険者', S.adventurers.length + ' / ' + rosterCap(S.facilities.dorm) + '人'],
+     ['依頼成功率', rate + '%（' + S.stats.succ + '勝' + S.stats.fail + '敗）'],
+     ['次のランクまで', S.rank >= 8 ? '最高位到達' : '名声' + RANK_REQ[S.rank + 1].fame + ' / 成功' + RANK_REQ[S.rank + 1].succ + '件']
+    ].forEach(function (r2) {
+      var row = el('div', 'stat-row2');
+      row.appendChild(el('span', null, r2[0]));
+      row.appendChild(el('b', null, r2[1]));
+      c.appendChild(row);
+    });
+    root.appendChild(c);
+
+    var c2 = el('div', 'card');
+    c2.appendChild(el('h2', null, '朝の報せ'));
+    var ul = el('ul', 'log-list');
+    (S.morningLog.length ? S.morningLog : ['特に変わったことはない。']).forEach(function (t) { ul.appendChild(el('li', null, t)); });
+    c2.appendChild(ul);
+    var nd = el('button', 'primary-btn', '翌日へ進む');
+    nd.type = 'button'; nd.dataset.action = 'next-day'; nd.style.marginTop = '12px';
+    c2.appendChild(nd);
+    c2.appendChild(el('div', 'note', '翌日には給金・食料の消費、回復、依頼掲示板の更新が行われます。'));
+    root.appendChild(c2);
+  }
+
+  function renderQuests(root) {
+    var c = el('div', 'card');
+    c.appendChild(el('h2', null, '依頼掲示板'));
+    var names = S.party.map(function (id) {
+      var a = S.adventurers.find(function (x) { return x.id === id; });
+      return a ? a.name : '';
+    }).filter(Boolean);
+    c.appendChild(el('div', 'note', names.length ? '編成中: ' + names.join('、') : 'パーティ未編成。「編成」タブで選んでください。'));
+    root.appendChild(c);
+
+    S.quests.forEach(function (q) {
+      var qc = el('div', 'quest-card');
+      qc.appendChild(el('div', 'quest-title', q.name));
+      var chips = el('div', 'chip-row');
+      chips.appendChild(el('span', 'chip blue', q.type));
+      chips.appendChild(el('span', 'chip', '難度' + q.difficulty));
+      chips.appendChild(el('span', 'chip', '推奨Lv' + q.reqLevel));
+      chips.appendChild(el('span', 'chip', 'チェーン' + q.chainLen));
+      chips.appendChild(el('span', 'chip ' + (q.difficulty >= 7 ? 'red' : q.difficulty >= 4 ? 'gold' : 'green'), q.difficulty >= 7 ? '危険' : q.difficulty >= 4 ? 'リスク中' : 'リスク低'));
+      if (q.unlockRank > S.rank) chips.appendChild(el('span', 'chip red', 'ランク' + RANKS[q.unlockRank] + '必要'));
+      qc.appendChild(chips);
+      qc.appendChild(el('div', 'q-meta', '推奨職: ' + QTYPES[q.type].jobs.join('・') + ' / 重要能力: ' + QTYPES[q.type].stat + ' / 報酬 ' + q.reward + 'G / 名声 +' + q.fame));
+      var btn = el('button', 'small-btn', '現在のパーティで派遣する');
+      btn.type = 'button'; btn.dataset.action = 'dispatch'; btn.dataset.id = q.id;
+      btn.style.marginTop = '8px'; btn.style.width = '100%'; btn.style.minHeight = '44px';
+      if (q.unlockRank > S.rank || S.party.length === 0) btn.disabled = true;
+      qc.appendChild(btn);
+      root.appendChild(qc);
+    });
+    if (S.quests.length === 0) root.appendChild(el('div', 'empty-note', '本日の依頼はすべて消化しました。翌日に新しい依頼が届きます。'));
+  }
+
+  function renderParty(root) {
+    var c = el('div', 'card');
+    c.appendChild(el('h2', null, 'パーティ編成（' + S.party.length + '/' + PARTY_MAX + '）'));
+    c.appendChild(el('div', 'note', 'カードをタップして選択。重傷・出動済みのメンバーは選べません。'));
+    root.appendChild(c);
+    if (S.adventurers.length === 0) { root.appendChild(el('div', 'empty-note', '冒険者がいません。「冒険者」タブの酒場で雇用しましょう。')); return; }
+    S.adventurers.forEach(function (a) { root.appendChild(advCard(a, { selectable: true })); });
+  }
+
+  function renderAdvs(root) {
+    var c = el('div', 'card');
+    c.appendChild(el('h2', null, '所属冒険者（' + S.adventurers.length + '/' + rosterCap(S.facilities.dorm) + '）'));
+    root.appendChild(c);
+    if (S.adventurers.length === 0) root.appendChild(el('div', 'empty-note', '所属冒険者がいません。'));
+    S.adventurers.forEach(function (a) { root.appendChild(advCard(a, { detail: true })); });
+
+    var c2 = el('div', 'card');
+    c2.appendChild(el('h2', null, '酒場の新人募集'));
+    if (S.recruits.length === 0) c2.appendChild(el('div', 'empty-note', '今日は募集者がいません。'));
+    S.recruits.forEach(function (r) {
+      var rc = el('div', 'recruit-card');
+      var top = el('div', 'row');
+      top.appendChild(el('span', 'adv-name', r.name + '（' + r.job + ' Lv' + r.level + '）'));
+      top.appendChild(el('span', 'chip blue', r.trait));
+      rc.appendChild(top);
+      rc.appendChild(el('div', 'adv-stats', '攻' + r.atk + ' 防' + r.def + ' 魔' + r.mag + ' 速' + r.spd + ' 運' + r.luck + ' | ' + TRAITS[r.trait].desc));
+      var cost = 25 + r.level * 18;
+      var hb = el('button', 'small-btn', '雇用する（' + cost + 'G）');
+      hb.type = 'button'; hb.dataset.action = 'hire'; hb.dataset.id = r.id;
+      hb.style.marginTop = '8px'; hb.style.width = '100%'; hb.style.minHeight = '44px';
+      if (S.gold < cost || S.adventurers.length >= rosterCap(S.facilities.dorm)) hb.disabled = true;
+      rc.appendChild(hb);
+      c2.appendChild(rc);
+    });
+    var buyRow = el('div', 'btn-row');
+    var bf = el('button', 'ghost-btn', '食料を買う（10Gで5）'); bf.type = 'button'; bf.dataset.action = 'buy-food';
+    var bh = el('button', 'ghost-btn', '薬草を買う（15Gで3）'); bh.type = 'button'; bh.dataset.action = 'buy-herb';
+    buyRow.appendChild(bf); buyRow.appendChild(bh);
+    c2.appendChild(buyRow);
+    root.appendChild(c2);
+  }
+
+  function renderFacs(root) {
+    FAC_KEYS.forEach(function (k) {
+      var lv = S.facilities[k];
+      var fc = el('div', 'fac-card');
+      var top = el('div', 'row');
+      top.appendChild(el('span', 'adv-name', FACS[k].label + ' Lv' + lv));
+      if (lv >= FAC_MAX) top.appendChild(el('span', 'chip gold', '最大'));
+      fc.appendChild(top);
+      fc.appendChild(el('div', 'note', FACS[k].effect(lv)));
+      if (lv < FAC_MAX) {
+        var costG = 60 + lv * 80, costM = lv + 1;
+        var ub = el('button', 'small-btn', '強化する（' + costG + 'G + ' + RES_LABEL[FACS[k].mat] + '×' + costM + '）');
+        ub.type = 'button'; ub.dataset.action = 'upfac'; ub.dataset.id = k;
+        ub.style.marginTop = '8px'; ub.style.width = '100%'; ub.style.minHeight = '44px';
+        if (S.gold < costG || S[FACS[k].mat] < costM) ub.disabled = true;
+        fc.appendChild(ub);
+      }
+      root.appendChild(fc);
+    });
+  }
+
+  function logSection(root, title, arr, emptyText) {
+    var c = el('div', 'card');
+    c.appendChild(el('h2', null, title));
+    if (arr.length === 0) c.appendChild(el('div', 'empty-note', emptyText));
+    else {
+      var ul = el('ul', 'log-list');
+      arr.forEach(function (r) {
+        ul.appendChild(el('li', r.kind === 'info' ? '' : (r.kind === 'gold' ? 'gold' : r.kind), r.day + '日目: ' + r.text));
+      });
+      c.appendChild(ul);
+    }
+    root.appendChild(c);
+  }
+
+  function renderHistory(root) {
+    logSection(root, '依頼結果ログ', S.history, 'まだ依頼結果がありません。');
+    logSection(root, 'ギルド年表', S.chronicle, 'まだ出来事がありません。');
+    logSection(root, '殉職者名簿', S.deaths, '殉職者はいません。');
+  }
+
+  function renderStats(root) {
+    var c = el('div', 'card');
+    c.appendChild(el('h2', null, 'ギルド統計'));
+    var total = S.stats.succ + S.stats.fail;
+    var mvpName = '-', mvpN = 0;
+    Object.keys(S.stats.mvp).forEach(function (n) { if (S.stats.mvp[n] > mvpN) { mvpN = S.stats.mvp[n]; mvpName = n; } });
+    [['通算日数', S.stats.days + '日'], ['成功依頼', S.stats.succ + '件'], ['失敗・撤退', S.stats.fail + '件'],
+     ['依頼成功率', (total ? Math.round(S.stats.succ / total * 100) : 0) + '%'],
+     ['殉職者数', S.stats.deaths + '名'], ['総収益', S.stats.earned + 'G'],
+     ['最高ランク', RANKS[S.stats.bestRank]], ['最も活躍', mvpName + (mvpN ? '（' + mvpN + '回達成）' : '')]
+    ].forEach(function (r2) {
+      var row = el('div', 'stat-row2');
+      row.appendChild(el('span', null, r2[0]));
+      row.appendChild(el('b', null, r2[1]));
+      c.appendChild(row);
+    });
+    root.appendChild(c);
+
+    var c2 = el('div', 'card');
+    c2.appendChild(el('h2', null, '依頼種別実績'));
+    var any = false;
+    QTYPE_NAMES.forEach(function (t) {
+      var b = S.stats.byType[t];
+      if (!b) return;
+      any = true;
+      var row = el('div', 'stat-row2');
+      row.appendChild(el('span', null, t));
+      row.appendChild(el('b', null, b.s + '勝 ' + b.f + '敗'));
+      c2.appendChild(row);
+    });
+    if (!any) c2.appendChild(el('div', 'empty-note', 'まだ実績がありません。'));
+    root.appendChild(c2);
+  }
+
+  function renderSettings(root) {
+    var c = el('div', 'card');
+    c.appendChild(el('h2', null, '設定'));
+    c.appendChild(el('div', 'note', '保存データはこの端末のブラウザ内（localStorage）にのみ保存されます。'));
+    var rb = el('button', 'danger-btn', '保存データをリセットして最初から');
+    rb.type = 'button'; rb.dataset.action = 'reset'; rb.style.marginTop = '12px';
+    c.appendChild(rb);
+    root.appendChild(c);
+  }
+
+  function render() {
+    renderKpi();
+    var tabs = els.tabBar.querySelectorAll('.tab-btn');
+    for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('active', tabs[i].dataset.tab === activeTab);
+    var root = els.tabContent;
+    root.innerHTML = '';
+    switch (activeTab) {
+      case 'home': renderHome(root); break;
+      case 'quests': renderQuests(root); break;
+      case 'party': renderParty(root); break;
+      case 'advs': renderAdvs(root); break;
+      case 'facs': renderFacs(root); break;
+      case 'history': renderHistory(root); break;
+      case 'stats': renderStats(root); break;
+      case 'settings': renderSettings(root); break;
+    }
+  }
+
+  // ---------- init ----------
+
+  function onAction(e) {
+    var t = e.target.closest('[data-action]');
+    if (!t) return;
+    var id = toInt(t.dataset.id, 0);
+    switch (t.dataset.action) {
+      case 'next-day': nextDay(); break;
+      case 'dispatch': tryDispatch(id); break;
+      case 'toggle-member': toggleMember(id); break;
+      case 'hire': hire(id); break;
+      case 'fire': fire(id); break;
+      case 'gear': upgradeGear(id); break;
+      case 'upfac': upgradeFac(t.dataset.id); break;
+      case 'buy-food': buySupply('food'); break;
+      case 'buy-herb': buySupply('herb'); break;
+      case 'reset': resetAll(); break;
+    }
+  }
+
+  function init() {
+    els.kpiBar = document.getElementById('kpiBar');
+    els.banner = document.getElementById('banner');
+    els.tabBar = document.getElementById('tabBar');
+    els.tabContent = document.getElementById('tabContent');
+    els.overlay = document.getElementById('overlay');
+    els.overlayTitle = document.getElementById('overlayTitle');
+    els.overlaySub = document.getElementById('overlaySub');
+    els.overlayLog = document.getElementById('overlayLog');
+    els.overlayClose = document.getElementById('overlayClose');
+
+    els.tabBar.addEventListener('click', function (e) {
+      var b = e.target.closest('.tab-btn');
+      if (!b) return;
+      activeTab = b.dataset.tab;
+      hideBanner();
+      render();
+    });
+    els.tabContent.addEventListener('click', onAction);
+    els.overlayClose.addEventListener('click', function () { els.overlay.hidden = true; render(); });
+
+    loadState();
+    persist();
+    render();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+</body>
+</html>
