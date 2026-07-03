@@ -1,0 +1,744 @@
+<!doctype html>
+<!--
+name: シフトクエストボード
+version: 1.0
+type: single-html-app
+status: stable
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>シフトクエストボード</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f1f3f7;
+    --card: #ffffff;
+    --line: #dde2ec;
+    --soft: #f6f8fc;
+    --text: #23262e;
+    --muted: #6f7787;
+    --accent: #4a63d8;
+    --accent-soft: #e9edfd;
+    --good: #2f9e63;
+    --good-soft: #e5f6ec;
+    --warn: #b57c0a;
+    --warn-soft: #fdf3d9;
+    --danger: #cf4437;
+    --danger-soft: #fdeae8;
+  }
+  * { box-sizing: border-box; }
+  html, body { touch-action: manipulation; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    line-height: 1.55;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  button { font: inherit; cursor: pointer; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  input, select, textarea { font: inherit; }
+  .app { max-width: 520px; margin: 0 auto; padding: 14px 12px 48px; }
+  header { text-align: center; margin-bottom: 10px; }
+  header h1 { margin: 0 0 2px; font-size: 1.2rem; }
+  header .lead { color: var(--muted); font-size: 0.76rem; }
+  .banner {
+    padding: 9px 11px; border-radius: 10px; font-size: 0.82rem; margin: 8px 0;
+    background: var(--danger-soft); color: #a1281f; border: 1px solid #f0b9ac;
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 14px; margin-bottom: 12px;
+  }
+  .card h2 { margin: 0 0 10px; font-size: 0.95rem; }
+  .status-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+  .stat-box { background: var(--soft); border-radius: 11px; padding: 8px 4px; text-align: center; }
+  .stat-box span { display: block; font-size: 0.64rem; color: var(--muted); }
+  .stat-box b { display: block; margin-top: 1px; font-size: 1.02rem; color: var(--accent); }
+  .exp-wrap { margin-top: 9px; }
+  .exp-label { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); margin-bottom: 3px; }
+  .exp-bar { height: 10px; background: var(--soft); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+  .exp-fill { height: 100%; background: var(--accent); }
+  .field { margin-bottom: 9px; }
+  .field label { display: block; font-size: 0.76rem; color: var(--muted); margin-bottom: 3px; }
+  .field input[type="text"], .field input[type="date"], .field select, .field textarea {
+    width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #fbfcfe;
+    color: var(--text); padding: 9px 11px; font-size: 0.92rem;
+  }
+  .field textarea { min-height: 52px; resize: vertical; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .primary-btn {
+    width: 100%; min-height: 48px; border: 0; border-radius: 12px;
+    background: var(--accent); color: #fff; font-size: 0.95rem; font-weight: 700;
+  }
+  .ghost-btn {
+    min-height: 42px; padding: 6px 12px; border-radius: 10px; font-size: 0.8rem;
+    border: 1px solid var(--line); background: transparent; color: var(--muted);
+  }
+  .danger-btn {
+    width: 100%; min-height: 46px; border-radius: 11px; font-size: 0.85rem;
+    border: 1px solid #f0b9ac; background: var(--danger-soft); color: var(--danger);
+  }
+  .form-error {
+    margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; font-size: 0.8rem;
+    background: var(--danger-soft); color: #a1281f; border: 1px solid #f0b9ac;
+  }
+  .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .filters select {
+    width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #fbfcfe;
+    padding: 8px 10px; font-size: 0.85rem; color: var(--text);
+  }
+  .check-row { display: flex; align-items: center; gap: 7px; font-size: 0.84rem; color: var(--muted); grid-column: 1 / -1; min-height: 40px; }
+  .check-row input { width: 20px; height: 20px; }
+  .quest-card {
+    background: var(--soft); border: 1px solid var(--line); border-radius: 12px;
+    padding: 11px; margin-bottom: 9px;
+  }
+  .quest-card.overdue { border-color: var(--danger); background: #fdf3f1; }
+  .quest-card.done { opacity: 0.82; }
+  .q-title { font-weight: 700; font-size: 0.92rem; word-break: break-word; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+  .chip {
+    display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 0.68rem;
+    background: #fff; border: 1px solid var(--line); color: var(--muted);
+  }
+  .chip.st-todo { color: var(--accent); border-color: var(--accent); }
+  .chip.st-done { color: var(--good); border-color: var(--good); background: var(--good-soft); }
+  .chip.st-fail { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
+  .chip.st-hold { color: var(--warn); border-color: var(--warn); background: var(--warn-soft); }
+  .chip.overdue-chip { color: var(--danger); border-color: var(--danger); font-weight: 700; }
+  .chip.applied-chip { color: #8250c8; border-color: #b9a0e2; background: #f3edfc; }
+  .q-memo { font-size: 0.82rem; color: var(--text); margin: 4px 0; white-space: pre-wrap; word-break: break-word; }
+  .q-dates { font-size: 0.68rem; color: var(--muted); }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .state-btn {
+    min-height: 40px; padding: 5px 11px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;
+    border: 1px solid var(--line); background: #fff; color: var(--text);
+  }
+  .state-btn.done { color: var(--good); border-color: var(--good); }
+  .state-btn.fail { color: var(--danger); border-color: var(--danger); }
+  .state-btn.hold { color: var(--warn); border-color: var(--warn); }
+  .empty-note { color: var(--muted); font-size: 0.82rem; padding: 8px 2px; }
+  .log-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+  .log-list li {
+    background: var(--soft); border-radius: 8px; padding: 6px 9px; font-size: 0.75rem; color: var(--muted);
+  }
+  .log-list li b { color: var(--text); }
+  .agg-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--soft); border-radius: 9px; padding: 7px 10px; margin-bottom: 6px; font-size: 0.82rem;
+  }
+  .agg-row b { color: var(--accent); }
+  .edit-note { font-size: 0.8rem; color: var(--warn); margin-bottom: 8px; font-weight: 700; white-space: pre-wrap; }
+  .goal-note {
+    margin-top: 9px; padding: 7px 10px; border-radius: 9px; font-size: 0.8rem; font-weight: 700;
+    background: var(--accent-soft); color: var(--accent);
+  }
+  .goal-note.achieved { background: var(--good-soft); color: var(--good); }
+  .title-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+  .title-chip {
+    display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 0.72rem; font-weight: 700;
+    background: #fff; border: 1px solid var(--accent); color: var(--accent);
+  }
+  .warn-note {
+    margin-bottom: 10px; padding: 8px 10px; border-radius: 10px; font-size: 0.8rem; font-weight: 700;
+    background: var(--warn-soft); color: var(--warn); border: 1px solid #e7cf96;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>シフトクエストボード</h1>
+    <div class="lead">毎日のタスクをクエストにして積み上げるタスクRPG</div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <section class="card">
+    <h2>ステータス</h2>
+    <div class="status-grid">
+      <div class="stat-box"><span>レベル</span><b id="stLevel">1</b></div>
+      <div class="stat-box"><span>コイン</span><b id="stCoin">0</b></div>
+      <div class="stat-box"><span>気力</span><b id="stEnergy">100</b></div>
+      <div class="stat-box"><span>今日の達成</span><b id="stToday">0</b></div>
+      <div class="stat-box"><span>連続達成</span><b id="stStreak">0日</b></div>
+      <div class="stat-box"><span>総達成</span><b id="stTotalDone">0</b></div>
+    </div>
+    <div class="exp-wrap">
+      <div class="exp-label"><span>経験値</span><span id="expText">0 / 50（次Lvまで50）</span></div>
+      <div class="exp-bar"><div id="expFill" class="exp-fill" style="width:0%"></div></div>
+    </div>
+    <div id="goalNote" class="goal-note"></div>
+    <div class="title-row">
+      <span id="streakTitle" class="title-chip"></span>
+      <span id="coinRank" class="title-chip"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2 id="formTitle">クエストを追加</h2>
+    <div id="editNote" class="edit-note" hidden></div>
+    <div class="field">
+      <label for="inTitle">クエスト名（必須）</label>
+      <input id="inTitle" type="text" maxlength="60" placeholder="例: 報告書を提出する">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="inCategory">カテゴリ</label>
+        <select id="inCategory"></select>
+      </div>
+      <div class="field">
+        <label for="inDifficulty">難易度</label>
+        <select id="inDifficulty"></select>
+      </div>
+    </div>
+    <div class="field">
+      <label for="inDue">期限日（任意）</label>
+      <input id="inDue" type="date">
+    </div>
+    <div class="field">
+      <label for="inMemo">メモ（任意・120文字まで）</label>
+      <textarea id="inMemo" maxlength="120" placeholder="補足があれば"></textarea>
+    </div>
+    <div id="formError" class="form-error" hidden></div>
+    <button type="button" id="submitBtn" class="primary-btn">クエストを追加</button>
+    <button type="button" id="cancelEditBtn" class="ghost-btn" style="width:100%;margin-top:8px" hidden>編集をやめる</button>
+  </section>
+
+  <section class="card">
+    <h2>クエスト一覧</h2>
+    <div id="overdueNote" class="warn-note" hidden></div>
+    <div class="filters">
+      <select id="fltStatus"></select>
+      <select id="fltCategory"></select>
+      <label class="check-row"><input id="fltOverdue" type="checkbox">期限切れのみ表示</label>
+    </div>
+    <div id="questList"></div>
+    <div id="questEmpty" class="empty-note" hidden>表示できるクエストがありません。</div>
+  </section>
+
+  <section class="card">
+    <h2>状態変更履歴（直近20件）</h2>
+    <ul id="historyList" class="log-list"></ul>
+    <div id="historyEmpty" class="empty-note" hidden>まだ履歴がありません。</div>
+  </section>
+
+  <section class="card">
+    <h2>集計</h2>
+    <div id="aggregate"></div>
+  </section>
+
+  <section class="card">
+    <h2>設定</h2>
+    <button type="button" id="resetBtn" class="danger-btn">全データをリセット</button>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var KEY = 'shiftQuestBoard:v1';
+  var CATEGORIES = ['仕事', '生活', '健康', '学習', 'その他'];
+  var DIFFICULTIES = ['低', '中', '高'];
+  var STATUSES = ['未着手', '達成', '失敗', '保留'];
+  var REWARD = { '低': { exp: 10, coin: 5 }, '中': { exp: 25, coin: 12 }, '高': { exp: 50, coin: 25 } };
+  var PENALTY = { '低': 5, '中': 8, '高': 12 };
+  var HISTORY_MAX = 20;
+  var ENERGY_MAX = 100;
+  var DAILY_GOAL = 3;
+  var STREAK_TITLES = [
+    [30, '伝説の冒険者'], [14, '歴戦の冒険者'], [7, '熟練冒険者'], [3, '常連冒険者'], [1, 'かけだし冒険者'], [0, '見習い冒険者']
+  ];
+  var COIN_RANKS = [
+    [1000, 'コイン王'], [400, 'プラチナ会員'], [150, 'ゴールド会員'], [50, 'シルバー会員'], [0, 'ブロンズ会員']
+  ];
+
+  var S = null;
+  var els = {};
+  var editingId = null;
+  var busy = false;
+
+  function isObj(v) { return v !== null && typeof v === 'object' && !Array.isArray(v); }
+  function clampN(v, a, b) { return Math.min(b, Math.max(a, v)); }
+  function toInt(v, f) { var n = Number(v); return Number.isFinite(n) ? Math.floor(n) : f; }
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined && text !== null) e.textContent = text;
+    return e;
+  }
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+  function nowLabel() {
+    var d = new Date();
+    return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+  function isDateStr(v) { return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(new Date(v + 'T00:00:00').getTime()); }
+  function yesterdayStr() {
+    var d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+  function genId() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
+    return 'q-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9);
+  }
+  function expNeed(level) { return level * 50; }
+  function isOverdue(q) { return !!q.dueDate && q.status === '未着手' && q.dueDate < todayStr(); }
+  function rankLabel(table, value) {
+    for (var i = 0; i < table.length; i++) { if (value >= table[i][0]) return table[i][1]; }
+    return table[table.length - 1][1];
+  }
+
+  function showBanner(msg) { els.banner.textContent = msg; els.banner.hidden = false; }
+  function hideBanner() { els.banner.hidden = true; }
+
+  // ---------- state ----------
+
+  function freshState() {
+    return {
+      quests: [],
+      stats: { level: 1, exp: 0, coin: 0, energy: ENERGY_MAX, todayDate: '', todayCount: 0, lastClearDate: '', streak: 0, totalDone: 0 },
+      history: []
+    };
+  }
+
+  function sanitizeQuest(raw) {
+    if (!isObj(raw)) return null;
+    if (typeof raw.title !== 'string' || !raw.title.trim()) return null;
+    if (CATEGORIES.indexOf(raw.category) === -1) return null;
+    if (DIFFICULTIES.indexOf(raw.difficulty) === -1) return null;
+    if (STATUSES.indexOf(raw.status) === -1) return null;
+    return {
+      id: typeof raw.id === 'string' && raw.id ? raw.id.slice(0, 60) : genId(),
+      title: raw.title.trim().slice(0, 60),
+      category: raw.category,
+      difficulty: raw.difficulty,
+      dueDate: isDateStr(raw.dueDate) ? raw.dueDate : null,
+      memo: typeof raw.memo === 'string' ? raw.memo.slice(0, 120) : '',
+      status: raw.status,
+      createdAt: typeof raw.createdAt === 'string' ? raw.createdAt.slice(0, 30) : nowLabel(),
+      updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt.slice(0, 30) : nowLabel(),
+      rewardApplied: raw.rewardApplied === true,
+      penaltyApplied: raw.penaltyApplied === true,
+      holdCount: Math.max(0, toInt(raw.holdCount, 0))
+    };
+  }
+
+  function loadState() {
+    var raw;
+    try { raw = window.localStorage.getItem(KEY); }
+    catch (e) {
+      showBanner('この端末では保存機能を利用できません。この画面を閉じると記録は失われます。');
+      S = freshState(); return;
+    }
+    if (!raw) { S = freshState(); return; }
+    try {
+      var p = JSON.parse(raw);
+      if (!isObj(p)) throw new Error('shape');
+      var f = freshState();
+      (Array.isArray(p.quests) ? p.quests : []).forEach(function (r) {
+        var q = sanitizeQuest(r);
+        if (q && !f.quests.some(function (x) { return x.id === q.id; })) f.quests.push(q);
+      });
+      if (isObj(p.stats)) {
+        var st = p.stats;
+        f.stats.level = clampN(toInt(st.level, 1), 1, 999);
+        f.stats.exp = clampN(toInt(st.exp, 0), 0, 999999);
+        f.stats.coin = clampN(toInt(st.coin, 0), 0, 9999999);
+        f.stats.energy = clampN(toInt(st.energy, ENERGY_MAX), 0, ENERGY_MAX);
+        f.stats.todayDate = isDateStr(st.todayDate) ? st.todayDate : '';
+        f.stats.todayCount = clampN(toInt(st.todayCount, 0), 0, 9999);
+        f.stats.lastClearDate = isDateStr(st.lastClearDate) ? st.lastClearDate : '';
+        f.stats.streak = clampN(toInt(st.streak, 0), 0, 99999);
+        f.stats.totalDone = clampN(toInt(st.totalDone, 0), 0, 999999);
+      }
+      (Array.isArray(p.history) ? p.history : []).forEach(function (r) {
+        if (isObj(r) && typeof r.text === 'string' && f.history.length < HISTORY_MAX) {
+          f.history.push({ at: typeof r.at === 'string' ? r.at.slice(0, 20) : '', text: r.text.slice(0, 120) });
+        }
+      });
+      S = f;
+    } catch (e) {
+      showBanner('保存データを読み込めなかったため、初期状態から始めます。');
+      S = freshState();
+    }
+  }
+
+  function persist() {
+    try { window.localStorage.setItem(KEY, JSON.stringify(S)); }
+    catch (e) { showBanner('保存できませんでした。この画面を閉じると変更は失われますが、操作は継続できます。'); }
+  }
+
+  // ---------- domain ----------
+
+  function pushHistory(text) {
+    S.history.unshift({ at: nowLabel(), text: text });
+    if (S.history.length > HISTORY_MAX) S.history.length = HISTORY_MAX;
+  }
+
+  function rollTodayCounter() {
+    var t = todayStr();
+    if (S.stats.todayDate !== t) { S.stats.todayDate = t; S.stats.todayCount = 0; }
+  }
+
+  function applyLevelUps() {
+    var ups = 0;
+    while (S.stats.exp >= expNeed(S.stats.level) && ups < 50) {
+      S.stats.exp -= expNeed(S.stats.level);
+      S.stats.level++;
+      ups++;
+    }
+    return ups;
+  }
+
+  function changeStatus(id, next) {
+    if (busy) return;
+    busy = true;
+    var q = S.quests.find(function (x) { return x.id === id; });
+    if (!q || STATUSES.indexOf(next) === -1 || q.status === next) { busy = false; return; }
+    hideBanner();
+    rollTodayCounter();
+
+    var dExp = 0, dCoin = 0, dEnergy = 0, extra = '';
+    if (next === '達成') {
+      if (!q.rewardApplied) {
+        var r = REWARD[q.difficulty];
+        dExp = r.exp; dCoin = r.coin; dEnergy = 2;
+        q.rewardApplied = true;
+        S.stats.exp += dExp;
+        S.stats.coin += dCoin;
+        S.stats.energy = clampN(S.stats.energy + dEnergy, 0, ENERGY_MAX);
+        var t = todayStr();
+        if (S.stats.lastClearDate !== t) {
+          S.stats.streak = (S.stats.lastClearDate === yesterdayStr()) ? S.stats.streak + 1 : 1;
+          S.stats.lastClearDate = t;
+        }
+        S.stats.todayCount++;
+        S.stats.totalDone++;
+        if (S.stats.todayCount === DAILY_GOAL) extra += ' 今日の目標' + DAILY_GOAL + '件を達成！';
+        var ups = applyLevelUps();
+        if (ups > 0) extra += ' レベル' + S.stats.level + 'に上がった！';
+      } else {
+        extra = '（このクエストの報酬は獲得済みのため、再加算されません）';
+      }
+    } else if (next === '失敗') {
+      if (!q.penaltyApplied) {
+        dEnergy = -PENALTY[q.difficulty];
+        q.penaltyApplied = true;
+        S.stats.energy = clampN(S.stats.energy + dEnergy, 0, ENERGY_MAX);
+      } else {
+        extra = '（このクエストの気力減少は反映済みのため、再減算されません）';
+      }
+    } else if (next === '保留') {
+      q.holdCount++;
+    } else if (next === '未着手') {
+      if (q.rewardApplied || q.penaltyApplied) extra = '（獲得済みの報酬・反映済みの気力減少はそのまま保持されます）';
+    }
+
+    q.status = next;
+    q.updatedAt = nowLabel();
+    var delta = [];
+    if (dExp) delta.push('EXP+' + dExp);
+    if (dCoin) delta.push('コイン+' + dCoin);
+    if (dEnergy) delta.push('気力' + (dEnergy > 0 ? '+' : '') + dEnergy);
+    pushHistory('「' + q.title + '」→ ' + next + (delta.length ? '（' + delta.join(' / ') + '）' : '') + extra);
+    persist();
+    render();
+    busy = false;
+  }
+
+  function deleteQuest(id) {
+    var idx = S.quests.findIndex(function (x) { return x.id === id; });
+    if (idx === -1) return;
+    if (!window.confirm('「' + S.quests[idx].title + '」を削除しますか？')) return;
+    pushHistory('「' + S.quests[idx].title + '」を削除した');
+    S.quests.splice(idx, 1);
+    if (editingId === id) stopEdit();
+    persist();
+    render();
+  }
+
+  function resetAll() {
+    if (!window.confirm('すべてのクエスト・ステータス・履歴を削除して最初からやり直します。よろしいですか？')) return;
+    try { window.localStorage.removeItem(KEY); } catch (e) { /* 続行 */ }
+    S = freshState();
+    stopEdit();
+    persist();
+    render();
+  }
+
+  // ---------- form ----------
+
+  function showFormError(msg) { els.formError.textContent = msg; els.formError.hidden = false; }
+  function clearFormError() { els.formError.hidden = true; }
+
+  function readForm() {
+    return {
+      title: els.inTitle.value.trim(),
+      category: CATEGORIES.indexOf(els.inCategory.value) !== -1 ? els.inCategory.value : CATEGORIES[0],
+      difficulty: DIFFICULTIES.indexOf(els.inDifficulty.value) !== -1 ? els.inDifficulty.value : DIFFICULTIES[0],
+      dueDate: isDateStr(els.inDue.value) ? els.inDue.value : null,
+      memo: els.inMemo.value.slice(0, 120)
+    };
+  }
+
+  function clearForm() {
+    els.inTitle.value = '';
+    els.inCategory.value = CATEGORIES[0];
+    els.inDifficulty.value = DIFFICULTIES[0];
+    els.inDue.value = '';
+    els.inMemo.value = '';
+    clearFormError();
+  }
+
+  function startEdit(id) {
+    var q = S.quests.find(function (x) { return x.id === id; });
+    if (!q) return;
+    editingId = id;
+    els.inTitle.value = q.title;
+    els.inCategory.value = q.category;
+    els.inDifficulty.value = q.difficulty;
+    els.inDue.value = q.dueDate || '';
+    els.inMemo.value = q.memo;
+    els.formTitle.textContent = 'クエストを編集';
+    var note = '編集中: ' + q.title;
+    if (q.rewardApplied || q.penaltyApplied) {
+      var flags = [];
+      if (q.rewardApplied) flags.push('報酬獲得済み');
+      if (q.penaltyApplied) flags.push('気力減少反映済み');
+      note += '\n※このクエストは' + flags.join('・') + 'です。難易度を変更しても、獲得済みの報酬やペナルティは再計算されません。';
+    }
+    els.editNote.textContent = note;
+    els.editNote.hidden = false;
+    els.submitBtn.textContent = '変更を保存';
+    els.cancelEditBtn.hidden = false;
+    clearFormError();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function stopEdit() {
+    editingId = null;
+    clearForm();
+    els.formTitle.textContent = 'クエストを追加';
+    els.editNote.hidden = true;
+    els.submitBtn.textContent = 'クエストを追加';
+    els.cancelEditBtn.hidden = true;
+  }
+
+  function handleSubmit() {
+    hideBanner();
+    var f = readForm();
+    if (!f.title) { showFormError('クエスト名を入力してください。'); return; }
+    clearFormError();
+    if (editingId) {
+      var q = S.quests.find(function (x) { return x.id === editingId; });
+      if (q) {
+        var diffChanged = q.difficulty !== f.difficulty && (q.rewardApplied || q.penaltyApplied);
+        q.title = f.title.slice(0, 60);
+        q.category = f.category;
+        q.difficulty = f.difficulty;
+        q.dueDate = f.dueDate;
+        q.memo = f.memo;
+        q.updatedAt = nowLabel();
+        pushHistory('「' + q.title + '」の内容を編集した' + (diffChanged ? '（難易度を変更。反映済みの報酬・ペナルティは再計算されません）' : ''));
+      }
+      stopEdit();
+    } else {
+      S.quests.unshift({
+        id: genId(), title: f.title.slice(0, 60), category: f.category, difficulty: f.difficulty,
+        dueDate: f.dueDate, memo: f.memo, status: '未着手',
+        createdAt: nowLabel(), updatedAt: nowLabel(),
+        rewardApplied: false, penaltyApplied: false, holdCount: 0
+      });
+      clearForm();
+    }
+    persist();
+    render();
+  }
+
+  // ---------- render ----------
+
+  function statusChipCls(st) {
+    return st === '達成' ? 'st-done' : st === '失敗' ? 'st-fail' : st === '保留' ? 'st-hold' : 'st-todo';
+  }
+
+  function renderStatus() {
+    rollTodayCounter();
+    els.stLevel.textContent = String(S.stats.level);
+    els.stCoin.textContent = String(S.stats.coin);
+    els.stEnergy.textContent = String(S.stats.energy);
+    els.stToday.textContent = String(S.stats.todayCount);
+    els.stStreak.textContent = S.stats.streak + '日';
+    els.stTotalDone.textContent = String(S.stats.totalDone);
+    var need = expNeed(S.stats.level);
+    els.expText.textContent = S.stats.exp + ' / ' + need + '（次Lvまで' + Math.max(0, need - S.stats.exp) + '）';
+    els.expFill.style.width = clampN(Math.round(S.stats.exp / need * 100), 0, 100) + '%';
+    var remain = DAILY_GOAL - S.stats.todayCount;
+    if (remain > 0) {
+      els.goalNote.textContent = '今日の目標: ' + DAILY_GOAL + '件達成（あと' + remain + '件）';
+      els.goalNote.classList.remove('achieved');
+    } else {
+      els.goalNote.textContent = '今日の目標' + DAILY_GOAL + '件を達成！おつかれさま！';
+      els.goalNote.classList.add('achieved');
+    }
+    els.streakTitle.textContent = '称号: ' + rankLabel(STREAK_TITLES, S.stats.streak) + '（連続' + S.stats.streak + '日）';
+    els.coinRank.textContent = 'ランク: ' + rankLabel(COIN_RANKS, S.stats.coin) + '（' + S.stats.coin + 'コイン）';
+  }
+
+  function questVisible(q) {
+    var st = els.fltStatus.value;
+    var cat = els.fltCategory.value;
+    if (st !== 'すべて' && q.status !== st) return false;
+    if (cat !== 'すべて' && q.category !== cat) return false;
+    if (els.fltOverdue.checked && !isOverdue(q)) return false;
+    return true;
+  }
+
+  function renderQuests() {
+    els.questList.innerHTML = '';
+    var overdueCount = S.quests.filter(isOverdue).length;
+    if (overdueCount > 0) {
+      els.overdueNote.textContent = '期限切れの未着手クエストが' + overdueCount + '件あります。期限を見直すか、着手しましょう。';
+      els.overdueNote.hidden = false;
+    } else {
+      els.overdueNote.hidden = true;
+    }
+    var shown = 0;
+    S.quests.forEach(function (q) {
+      if (!questVisible(q)) return;
+      shown++;
+      var c = el('div', 'quest-card' + (isOverdue(q) ? ' overdue' : '') + (q.status === '達成' ? ' done' : ''));
+      c.appendChild(el('div', 'q-title', q.title));
+      var chips = el('div', 'chip-row');
+      chips.appendChild(el('span', 'chip', q.category));
+      chips.appendChild(el('span', 'chip', '難易度' + q.difficulty));
+      chips.appendChild(el('span', 'chip ' + statusChipCls(q.status), q.status));
+      if (q.dueDate) chips.appendChild(el('span', 'chip' + (isOverdue(q) ? ' overdue-chip' : ''), '期限 ' + q.dueDate + (isOverdue(q) ? '（期限切れ）' : '')));
+      // 達成中は状態チップが報酬獲得を示すため、反映済みチップは状態を戻した後にだけ出して情報過多を避ける
+      if (q.rewardApplied && q.status !== '達成') chips.appendChild(el('span', 'chip applied-chip', '報酬済'));
+      if (q.penaltyApplied && q.status !== '失敗') chips.appendChild(el('span', 'chip applied-chip', 'ペナルティ済'));
+      if (q.holdCount > 0) chips.appendChild(el('span', 'chip', '保留' + q.holdCount + '回'));
+      c.appendChild(chips);
+      if (q.memo) c.appendChild(el('div', 'q-memo', q.memo));
+      c.appendChild(el('div', 'q-dates', '作成 ' + q.createdAt + ' / 更新 ' + q.updatedAt));
+      var row = el('div', 'btn-row');
+      STATUSES.forEach(function (st) {
+        if (st === q.status) return;
+        var label = st === '未着手' ? '未着手に戻す' : st;
+        var cls = st === '達成' ? ' done' : st === '失敗' ? ' fail' : st === '保留' ? ' hold' : '';
+        var b = el('button', 'state-btn' + cls, label);
+        b.type = 'button'; b.dataset.action = 'status'; b.dataset.id = q.id; b.dataset.next = st;
+        row.appendChild(b);
+      });
+      var eb = el('button', 'ghost-btn', '編集');
+      eb.type = 'button'; eb.dataset.action = 'edit'; eb.dataset.id = q.id;
+      var db = el('button', 'ghost-btn', '削除');
+      db.type = 'button'; db.dataset.action = 'delete'; db.dataset.id = q.id;
+      row.appendChild(eb); row.appendChild(db);
+      c.appendChild(row);
+      els.questList.appendChild(c);
+    });
+    els.questEmpty.textContent = S.quests.length === 0
+      ? 'まだクエストがありません。上のフォームから最初のクエストを追加しましょう。'
+      : '条件に一致するクエストがありません。フィルタを見直してください。';
+    els.questEmpty.hidden = shown > 0;
+  }
+
+  function renderHistory() {
+    els.historyList.innerHTML = '';
+    S.history.forEach(function (h) {
+      var li = el('li');
+      var b = el('b', null, h.at + ' ');
+      li.appendChild(b);
+      li.appendChild(document.createTextNode(h.text));
+      els.historyList.appendChild(li);
+    });
+    els.historyEmpty.hidden = S.history.length > 0;
+  }
+
+  function renderAggregate() {
+    els.aggregate.innerHTML = '';
+    var counts = { '未着手': 0, '達成': 0, '失敗': 0, '保留': 0 };
+    var byCat = {}, byDiff = {};
+    S.quests.forEach(function (q) {
+      counts[q.status]++;
+      if (q.status === '達成') {
+        byCat[q.category] = (byCat[q.category] || 0) + 1;
+        byDiff[q.difficulty] = (byDiff[q.difficulty] || 0) + 1;
+      }
+    });
+    var rows = [['全クエスト数', S.quests.length]];
+    STATUSES.forEach(function (st) { rows.push([st, counts[st]]); });
+    CATEGORIES.forEach(function (cat) { if (byCat[cat]) rows.push(['達成（' + cat + '）', byCat[cat]]); });
+    DIFFICULTIES.forEach(function (d) { if (byDiff[d]) rows.push(['達成（難易度' + d + '）', byDiff[d]]); });
+    rows.forEach(function (r) {
+      var row = el('div', 'agg-row');
+      row.appendChild(el('span', null, r[0]));
+      row.appendChild(el('b', null, String(r[1])));
+      els.aggregate.appendChild(row);
+    });
+  }
+
+  function render() {
+    renderStatus();
+    renderQuests();
+    renderHistory();
+    renderAggregate();
+  }
+
+  // ---------- init ----------
+
+  function fillSelect(sel, options, withAll) {
+    sel.innerHTML = '';
+    if (withAll) sel.appendChild(new Option('すべて', 'すべて'));
+    options.forEach(function (o) { sel.appendChild(new Option(o, o)); });
+  }
+
+  function init() {
+    ['banner', 'stLevel', 'stCoin', 'stEnergy', 'stToday', 'stStreak', 'stTotalDone', 'expText', 'expFill',
+     'goalNote', 'streakTitle', 'coinRank', 'overdueNote',
+     'formTitle', 'editNote', 'inTitle', 'inCategory', 'inDifficulty', 'inDue', 'inMemo', 'formError',
+     'submitBtn', 'cancelEditBtn', 'fltStatus', 'fltCategory', 'fltOverdue', 'questList', 'questEmpty',
+     'historyList', 'historyEmpty', 'aggregate', 'resetBtn'
+    ].forEach(function (id) { els[id] = document.getElementById(id); });
+
+    fillSelect(els.inCategory, CATEGORIES, false);
+    fillSelect(els.inDifficulty, DIFFICULTIES, false);
+    fillSelect(els.fltStatus, STATUSES, true);
+    fillSelect(els.fltCategory, CATEGORIES, true);
+
+    els.submitBtn.addEventListener('click', handleSubmit);
+    els.cancelEditBtn.addEventListener('click', stopEdit);
+    els.resetBtn.addEventListener('click', resetAll);
+    els.fltStatus.addEventListener('change', render);
+    els.fltCategory.addEventListener('change', render);
+    els.fltOverdue.addEventListener('change', render);
+    els.questList.addEventListener('click', function (e) {
+      var t = e.target.closest('[data-action]');
+      if (!t) return;
+      if (t.dataset.action === 'status') changeStatus(t.dataset.id, t.dataset.next);
+      else if (t.dataset.action === 'edit') startEdit(t.dataset.id);
+      else if (t.dataset.action === 'delete') deleteQuest(t.dataset.id);
+    });
+
+    loadState();
+    persist();
+    render();
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+</body>
+<!-- 2026-07-03: 自動複製ワークフロー(copy-html.yml)の動作確認用コミット。機能変更なし -->
+</html>
