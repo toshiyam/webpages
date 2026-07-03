@@ -865,7 +865,7 @@ status: stable
     else {
       S.food = 0;
       S.adventurers.forEach(function (a) { a.morale = clampN(a.morale - 8, 0, 100); });
-      ml.push('食料が足りない！（必要' + foodNeed + '）士気が下がった。酒場で購入できる。');
+      ml.push('食料が足りない！（必要' + foodNeed + '）士気が下がった。施設タブの酒場で購入できる。');
     }
 
     // 回復
@@ -1320,6 +1320,17 @@ status: stable
         ub.style.marginTop = '8px'; ub.style.width = '100%'; ub.style.minHeight = '44px';
         if (S.gold < costG || S[FACS[k].mat] < costM) ub.disabled = true;
         fc.appendChild(ub);
+      }
+      // 食料不足ログの案内先と一致するよう、酒場カードからも素材を購入できるようにする
+      if (k === 'tavern') {
+        var buyRow = el('div', 'btn-row');
+        buyRow.style.flexWrap = 'wrap';
+        [['buy-food', '食料を買う（10Gで5）'], ['buy-herb', '薬草を買う（15Gで3）'], ['buy-ore', '鉱石を買う（25Gで2）']].forEach(function (b) {
+          var bb = el('button', 'ghost-btn', b[1]);
+          bb.type = 'button'; bb.dataset.action = b[0];
+          buyRow.appendChild(bb);
+        });
+        fc.appendChild(buyRow);
       }
       root.appendChild(fc);
     });
