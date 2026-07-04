@@ -1,9 +1,9 @@
 <!doctype html>
 <!--
 name: 補給線フォーキャスター
-version: 0.1
+version: 1.1
 type: single-html-app
-status: draft
+status: stable
 -->
 <html lang="ja">
 <head>
@@ -27,6 +27,7 @@ status: draft
     --warn-soft: #fdf3d8;
     --danger: #cf4437;
     --danger-soft: #fce9e7;
+    --crit: #8a1f16;
   }
   * { box-sizing: border-box; }
   html, body { touch-action: manipulation; }
@@ -35,165 +36,110 @@ status: draft
     background: var(--bg);
     color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
-    line-height: 1.55;
+    line-height: 1.5;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
   button { font: inherit; cursor: pointer; }
   button:disabled { opacity: 0.45; cursor: default; }
-  input, select, textarea { font: inherit; }
-  .app { max-width: 560px; margin: 0 auto; padding: 14px 12px 48px; }
-  header { text-align: center; margin-bottom: 10px; }
-  header h1 { margin: 0 0 2px; font-size: 1.2rem; }
-  header .lead { color: var(--muted); font-size: 0.76rem; }
-  .banner {
-    padding: 9px 11px; border-radius: 10px; font-size: 0.82rem; margin: 8px 0;
-    background: var(--danger-soft); color: #a1281f; border: 1px solid #f0b9ac;
+  input, select { font: inherit; }
+  .app { max-width: 560px; margin: 0 auto; padding: 12px 12px 48px; }
+  header { text-align: center; margin-bottom: 8px; }
+  header h1 { margin: 0 0 2px; font-size: 1.18rem; }
+  header .lead { color: var(--muted); font-size: 0.74rem; }
+  .top-bar {
+    display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin: 8px 0; font-size: 0.72rem;
   }
-  .day-bar {
-    display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
-    margin: 8px 0; font-size: 0.74rem;
-  }
-  .day-chip {
-    background: var(--soft); border: 1px solid var(--line); border-radius: 999px;
-    padding: 3px 10px; color: var(--muted);
-  }
-  .day-chip b { color: var(--accent); }
-  .tabs {
-    display: flex; gap: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch;
-    padding: 6px 0; margin-bottom: 8px; scrollbar-width: none;
-  }
+  .top-chip { background: var(--soft); border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; color: var(--muted); }
+  .top-chip b { color: var(--accent); }
+  .banner { padding: 9px 11px; border-radius: 10px; font-size: 0.82rem; margin: 8px 0; background: var(--warn-soft); color: #8a5b06; border: 1px solid #e7cf96; }
+  .toast { margin: 8px 0; padding: 8px 11px; border-radius: 10px; font-size: 0.8rem; background: var(--good-soft); color: #1c7a48; border: 1px solid #a9ddbf; }
+  .tabs { display: flex; gap: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 6px 0; margin-bottom: 8px; scrollbar-width: none; }
   .tabs::-webkit-scrollbar { display: none; }
-  .tab-btn {
-    flex: 0 0 auto; min-height: 42px; padding: 6px 14px; border-radius: 999px;
-    border: 1px solid var(--line); background: var(--soft); color: var(--muted);
-    font-size: 0.84rem; white-space: nowrap;
-  }
+  .tab-btn { flex: 0 0 auto; min-height: 42px; padding: 6px 15px; border-radius: 999px; border: 1px solid var(--line); background: var(--soft); color: var(--muted); font-size: 0.84rem; white-space: nowrap; }
   .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
-  .card {
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-    padding: 13px; margin-bottom: 11px;
-  }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 13px; margin-bottom: 11px; }
   .card h2 { margin: 0 0 10px; font-size: 0.95rem; }
   .card h3 { margin: 12px 0 7px; font-size: 0.8rem; color: var(--muted); }
-  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
-  .sum-box { background: var(--soft); border-radius: 11px; padding: 8px 4px; text-align: center; }
-  .sum-box span { display: block; font-size: 0.62rem; color: var(--muted); }
-  .sum-box b { display: block; margin-top: 1px; font-size: 1.02rem; color: var(--accent); }
-  .sum-box.danger b { color: var(--danger); }
-  .sum-box.warn b { color: var(--warn); }
+  .status-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .stat-box { background: var(--soft); border-radius: 11px; padding: 9px 10px; }
+  .stat-box .st-name { font-size: 0.72rem; color: var(--muted); }
+  .stat-box .st-val { font-size: 1.15rem; font-weight: 800; }
+  .bar { height: 8px; background: #e4e8ef; border-radius: 999px; overflow: hidden; margin-top: 5px; border: 1px solid var(--line); }
+  .bar > div { height: 100%; }
+  .lv-good { color: var(--good); } .fill-good { background: var(--good); }
+  .lv-warn { color: var(--warn); } .fill-warn { background: var(--warn); }
+  .lv-danger { color: var(--danger); } .fill-danger { background: var(--danger); }
+  .lv-crit { color: var(--crit); } .fill-crit { background: var(--crit); }
+  .res-card { background: var(--soft); border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; margin-bottom: 8px; border-left: 4px solid var(--line); }
+  .res-card.s-余裕, .res-card.s-安定 { border-left-color: var(--good); }
+  .res-card.s-注意 { border-left-color: var(--warn); }
+  .res-card.s-危険 { border-left-color: var(--danger); }
+  .res-card.s-崩壊寸前, .res-card.s-供給停止 { border-left-color: var(--crit); }
+  .res-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .res-name { font-weight: 700; font-size: 0.9rem; }
+  .res-state { font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); background: #fff; }
+  .st-余裕, .st-安定 { color: var(--good); border-color: var(--good); background: var(--good-soft); }
+  .st-注意 { color: var(--warn); border-color: var(--warn); background: var(--warn-soft); }
+  .st-危険 { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
+  .st-崩壊寸前, .st-供給停止 { color: #fff; border-color: var(--crit); background: var(--crit); }
+  .res-line { font-size: 0.76rem; color: var(--text); margin-top: 4px; }
+  .res-line b { color: var(--accent); }
+  .res-sub { font-size: 0.71rem; color: var(--muted); margin-top: 2px; }
+  .ful-bar { height: 7px; background: #e4e8ef; border-radius: 999px; overflow: hidden; margin-top: 5px; border: 1px solid var(--line); }
+  .ful-bar > div { height: 100%; }
+  .primary-btn { width: 100%; min-height: 48px; border: 0; border-radius: 12px; background: var(--accent); color: #fff; font-size: 0.95rem; font-weight: 700; }
+  .ghost-btn { min-height: 42px; padding: 6px 12px; border-radius: 10px; font-size: 0.8rem; border: 1px solid var(--line); background: transparent; color: var(--muted); }
+  .danger-btn { width: 100%; min-height: 46px; border-radius: 11px; font-size: 0.85rem; border: 1px solid #f0b9ac; background: var(--danger-soft); color: var(--danger); }
   .field { margin-bottom: 9px; }
   .field label { display: block; font-size: 0.76rem; color: var(--muted); margin-bottom: 3px; }
-  .field input[type="text"], .field input[type="number"], .field input[type="date"], .field select, .field textarea {
-    width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #fbfcfe;
-    color: var(--text); padding: 9px 11px; font-size: 0.92rem;
-  }
-  .field textarea { min-height: 46px; resize: vertical; }
+  .field select, .field input[type="number"] { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #fbfcfe; color: var(--text); padding: 9px 11px; font-size: 0.92rem; }
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .field-row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-  .primary-btn {
-    width: 100%; min-height: 48px; border: 0; border-radius: 12px;
-    background: var(--accent); color: #fff; font-size: 0.95rem; font-weight: 700;
-  }
-  .ghost-btn {
-    min-height: 42px; padding: 6px 12px; border-radius: 10px; font-size: 0.8rem;
-    border: 1px solid var(--line); background: transparent; color: var(--muted);
-  }
-  .danger-btn {
-    width: 100%; min-height: 46px; border-radius: 11px; font-size: 0.85rem;
-    border: 1px solid #f0b9ac; background: var(--danger-soft); color: var(--danger);
-  }
-  .form-error {
-    margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; font-size: 0.8rem;
-    background: var(--danger-soft); color: #a1281f; border: 1px solid #f0b9ac;
-  }
-  .filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
-  .filters select {
-    width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #fbfcfe;
-    padding: 8px 10px; font-size: 0.85rem; color: var(--text);
-  }
-  .item-card {
-    background: var(--soft); border: 1px solid var(--line); border-radius: 12px;
-    padding: 11px; margin-bottom: 9px; border-left: 4px solid var(--line);
-  }
-  .item-card.risk-danger { border-left-color: var(--danger); }
-  .item-card.risk-warn { border-left-color: var(--warn); }
-  .item-card.risk-good { border-left-color: var(--good); }
-  .item-card.risk-none { border-left-color: var(--muted); }
-  .item-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-  .item-name { font-weight: 700; font-size: 0.92rem; word-break: break-word; }
-  .chip-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
-  .chip {
-    display: inline-block; border-radius: 999px; padding: 2px 8px; font-size: 0.68rem;
-    background: #fff; border: 1px solid var(--line); color: var(--muted);
-  }
-  .chip.risk-danger { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); font-weight: 700; }
-  .chip.risk-warn { color: var(--warn); border-color: var(--warn); background: var(--warn-soft); font-weight: 700; }
-  .chip.risk-good { color: var(--good); border-color: var(--good); background: var(--good-soft); }
-  .chip.risk-none { color: var(--muted); }
-  .chip.prio-高 { color: var(--danger); border-color: #f0b9ac; }
-  .chip.prio-中 { color: var(--warn); border-color: #e7cf96; }
-  .chip.prio-低 { color: var(--muted); }
-  .stock-line { font-size: 0.8rem; color: var(--text); margin: 3px 0; }
-  .stock-line b { color: var(--accent); }
-  .forecast-note { font-size: 0.74rem; color: var(--muted); margin-top: 3px; }
-  .item-memo { font-size: 0.78rem; color: var(--muted); margin: 4px 0; white-space: pre-wrap; word-break: break-word; }
-  .btn-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-  .mini-btn {
-    min-height: 38px; padding: 4px 10px; border-radius: 9px; font-size: 0.76rem; font-weight: 600;
-    border: 1px solid var(--line); background: #fff; color: var(--text);
-  }
-  .mini-btn.use { color: var(--danger); border-color: #f0b9ac; }
-  .mini-btn.add { color: var(--good); border-color: #a9ddbf; }
+  .form-error { margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; font-size: 0.8rem; background: var(--danger-soft); color: #a1281f; border: 1px solid #f0b9ac; }
+  .order-preview { font-size: 0.78rem; color: var(--text); background: var(--accent-soft); border-radius: 10px; padding: 9px 11px; margin: 8px 0; }
+  .order-preview b { color: var(--accent); }
+  .ship-card { background: var(--soft); border: 1px solid var(--line); border-radius: 11px; padding: 9px 11px; margin-bottom: 7px; }
+  .ship-card.risky { border-color: #e7cf96; }
+  .ship-main { font-size: 0.82rem; } .ship-main b { color: var(--accent); }
+  .ship-meta { font-size: 0.71rem; color: var(--muted); margin-top: 2px; }
   .empty-note { color: var(--muted); font-size: 0.82rem; padding: 8px 2px; }
-  .ship-card {
-    background: var(--soft); border: 1px solid var(--line); border-radius: 11px;
-    padding: 10px; margin-bottom: 8px;
-  }
-  .ship-card.due { border-color: var(--accent); background: var(--accent-soft); }
-  .ship-main { font-size: 0.84rem; }
-  .ship-main b { color: var(--accent); }
-  .ship-meta { font-size: 0.72rem; color: var(--muted); }
   .log-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
-  .log-list li {
-    background: var(--soft); border-radius: 8px; padding: 6px 9px; font-size: 0.75rem; color: var(--muted);
-  }
+  .log-list li { background: var(--soft); border-radius: 8px; padding: 6px 9px; font-size: 0.75rem; color: var(--muted); }
   .log-list li b { color: var(--text); }
-  .log-list li.t-danger { color: #a1281f; }
+  .log-list li.t-bad { color: #a1281f; }
+  .log-list li.t-good { color: var(--good); }
   .log-list li.t-event { color: var(--accent); }
-  .log-list li.t-add { color: var(--good); }
-  .agg-row {
-    display: flex; align-items: center; justify-content: space-between;
-    background: var(--soft); border-radius: 9px; padding: 7px 10px; margin-bottom: 6px; font-size: 0.82rem;
-  }
+  .forecast-item { background: var(--soft); border-radius: 9px; padding: 8px 10px; margin-bottom: 6px; font-size: 0.78rem; }
+  .forecast-item .fi-danger { color: var(--danger); font-weight: 700; }
+  .forecast-item .fi-warn { color: var(--warn); font-weight: 700; }
+  .note { color: var(--muted); font-size: 0.76rem; }
+  .result-hero { text-align: center; padding: 14px; border-radius: 14px; margin-bottom: 10px; }
+  .result-hero.win { background: var(--good-soft); border: 1px solid #a9ddbf; }
+  .result-hero.lose { background: var(--danger-soft); border: 1px solid #f0b9ac; }
+  .result-hero .rh-title { font-size: 1.3rem; font-weight: 800; }
+  .result-hero.win .rh-title { color: #1c7a48; }
+  .result-hero.lose .rh-title { color: #a1281f; }
+  .agg-row { display: flex; align-items: center; justify-content: space-between; background: var(--soft); border-radius: 9px; padding: 7px 10px; margin-bottom: 6px; font-size: 0.82rem; }
   .agg-row b { color: var(--accent); }
-  .agg-row.danger b { color: var(--danger); }
-  .agg-row.warn b { color: var(--warn); }
-  .edit-note { font-size: 0.8rem; color: var(--warn); margin-bottom: 8px; font-weight: 700; }
-  .row-actions { display: flex; gap: 6px; }
-  .inline-form { margin-top: 8px; padding: 10px; border: 1px dashed var(--line); border-radius: 10px; background: var(--soft); }
-  .toast {
-    margin: 8px 0; padding: 8px 11px; border-radius: 10px; font-size: 0.8rem;
-    background: var(--good-soft); color: #1c7a48; border: 1px solid #a9ddbf;
-  }
+  .rules { font-size: 0.8rem; color: var(--text); }
+  .rules li { margin-bottom: 5px; }
 </style>
 </head>
 <body>
 <div class="app">
   <header>
     <h1>補給線フォーキャスター</h1>
-    <div class="lead">在庫・消費・補充を管理し、数日先の欠品を予測する補給線ツール</div>
-    <div id="dayBar" class="day-bar"></div>
+    <div class="lead">限られた補給ポイントと輸送枠で、30日間 前線の健全度を守る補給バランスゲーム</div>
+    <div id="topBar" class="top-bar"></div>
   </header>
 
   <div id="banner" class="banner" hidden></div>
   <div id="toast" class="toast" hidden></div>
 
   <nav class="tabs" id="tabBar">
-    <button type="button" class="tab-btn" data-tab="dashboard">状況</button>
-    <button type="button" class="tab-btn" data-tab="items">品目</button>
-    <button type="button" class="tab-btn" data-tab="ships">補充予定</button>
+    <button type="button" class="tab-btn" data-tab="status">状況</button>
+    <button type="button" class="tab-btn" data-tab="supply">補給</button>
     <button type="button" class="tab-btn" data-tab="history">履歴</button>
-    <button type="button" class="tab-btn" data-tab="settings">設定</button>
+    <button type="button" class="tab-btn" data-tab="info">情報</button>
   </nav>
 
   <main id="tabContent"></main>
@@ -203,19 +149,47 @@ status: draft
 (function () {
   'use strict';
 
-  var KEY = 'supplyLineForecaster:v1';
-  var CATEGORIES = ['食料', '燃料', '医療', '弾薬', '資材', 'その他'];
-  var UNITS = ['個', 'kg', 'L', '箱', 'セット', '本'];
-  var PRIORITIES = ['高', '中', '低'];
-  var RISK_LABEL = { danger: '危険', warn: '注意', good: '安全', none: '消費なし' };
-  var HISTORY_MAX = 120;
+  var KEY = 'supplyLineForecaster:v2';
+  var OLD_KEY = 'supplyLineForecaster:v1';
+  var GAME_DAYS = 30;
+  var HISTORY_MAX = 140;
   var HISTORY_SHOW = 40;
-  var DAY_MAX = 999999;
+
+  // 物資定義（シナリオ固定）
+  // demand: 1日需要 / local: 現地供給/日 / stock: 初期在庫 / cap: 倉庫容量 / cost: 1単位あたり補給ポイント
+  // affects: この物資の充足率が影響するステータス
+  var RES_DEFS = [
+    { key: 'food', name: '食料', demand: 100, local: 58, stock: 150, cap: 400, cost: 1.0, affects: ['morale', 'health'] },
+    { key: 'fuel', name: '燃料', demand: 60, local: 36, stock: 105, cap: 300, cost: 1.3, affects: ['logistics'] },
+    { key: 'med', name: '医療', demand: 30, local: 18, stock: 62, cap: 150, cost: 1.8, affects: ['health'] },
+    { key: 'mat', name: '資材', demand: 45, local: 25, stock: 95, cap: 250, cost: 1.2, affects: ['logistics', 'health'] },
+    { key: 'ammo', name: '弾薬', demand: 70, local: 42, stock: 135, cap: 300, cost: 1.4, affects: ['defense'] }
+  ];
+  var RES_BY_KEY = {};
+  RES_DEFS.forEach(function (r) { RES_BY_KEY[r.key] = r; });
+  var RES_KEYS = RES_DEFS.map(function (r) { return r.key; });
+
+  var METHODS = {
+    normal: { label: '通常補給', lead: 3, pointMult: 1.0, desc: '到着3日・低コスト' },
+    express: { label: '速達補給', lead: 1, pointMult: 2.0, desc: '到着1日・高コスト' },
+    risky: { label: '危険輸送', lead: 2, pointMult: 1.25, desc: '到着2日・遅延/損耗リスク' }
+  };
+  var METHOD_KEYS = ['normal', 'express', 'risky'];
+
+  var STATUS_DEFS = [
+    { key: 'health', name: '健全度' },
+    { key: 'morale', name: '士気' },
+    { key: 'logistics', name: '輸送力' },
+    { key: 'defense', name: '防衛力' }
+  ];
+
+  var BASE_TRANSPORT = 140; // logistics 100% のときの1日輸送枠
+  var BASE_INCOME = 78;     // logistics 0% でも入る基礎補給ポイント
+  var LOG_INCOME = 60;      // logistics 100% で加算される補給ポイント
 
   var S = null;
   var els = {};
-  var activeTab = 'dashboard';
-  var editingItemId = null;
+  var activeTab = 'status';
   var busy = false;
   var toastTimer = null;
 
@@ -223,1026 +197,612 @@ status: draft
   function clampN(v, a, b) { return Math.min(b, Math.max(a, v)); }
   function toNum(v, f) { var n = Number(v); return Number.isFinite(n) ? n : f; }
   function toInt(v, f) { var n = Number(v); return Number.isFinite(n) ? Math.floor(n) : f; }
-  function el(tag, cls, text) {
-    var e = document.createElement(tag);
-    if (cls) e.className = cls;
-    if (text !== undefined && text !== null) e.textContent = text;
-    return e;
-  }
-  function genId() {
-    if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
-    return 'x-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9);
-  }
-  function fmtNum(n) {
-    var r = Math.round(n * 100) / 100;
-    return (Math.abs(r - Math.round(r)) < 1e-9) ? String(Math.round(r)) : String(r);
-  }
-  function nowLabel() {
-    var d = new Date();
-    function p(n) { return n < 10 ? '0' + n : String(n); }
-    return (d.getMonth() + 1) + '/' + d.getDate() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
-  }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined && text !== null) e.textContent = text; return e; }
+  function genId() { if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID(); return 'o-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8); }
+  function r0(n) { return Math.round(n); }
 
   function showBanner(msg) { els.banner.textContent = msg; els.banner.hidden = false; }
   function hideBanner() { els.banner.hidden = true; }
-  function showToast(msg) {
-    els.toast.textContent = msg; els.toast.hidden = false;
-    if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { els.toast.hidden = true; }, 2600);
-  }
+  function showToast(msg) { els.toast.textContent = msg; els.toast.hidden = false; if (toastTimer) clearTimeout(toastTimer); toastTimer = setTimeout(function () { els.toast.hidden = true; }, 2800); }
 
   // ---------- state ----------
 
   function freshState() {
-    return {
-      day: 1,
-      forecastDays: 7,
-      items: [],
-      shipments: [],
-      history: [],
-      stats: { stockouts: 0, events: 0 },
-      seed: false
-    };
+    var st = { day: 1, points: 340, transport: BASE_TRANSPORT, over: false, result: null,
+      status: { health: 80, morale: 76, logistics: 74, defense: 76 },
+      res: {}, orders: [], history: [],
+      stats: { ordered: 0, spent: 0, events: 0, shortfallDays: 0 } };
+    RES_DEFS.forEach(function (r) {
+      st.res[r.key] = { stock: r.stock, ful: 1, supplied: r.demand, demand: r.demand };
+    });
+    return st;
   }
 
-  function sampleState() {
-    var s = freshState();
-    s.seed = true;
-    function mkItem(name, cat, stock, unit, use, safety, prio, memo) {
-      return {
-        id: genId(), name: name, category: cat, stock: stock, unit: unit,
-        dailyUse: use, safetyStock: safety, priority: prio, memo: memo || '',
-        createdAt: nowLabel(), updatedAt: nowLabel()
-      };
+  function sanitizeState(p) {
+    var f = freshState();
+    if (!isObj(p)) return f;
+    f.day = clampN(toInt(p.day, 1), 1, GAME_DAYS + 1);
+    f.points = clampN(toNum(p.points, 340), 0, 999999);
+    f.transport = clampN(toNum(p.transport, BASE_TRANSPORT), 0, 999999);
+    f.over = p.over === true;
+    f.result = (p.result === 'win' || p.result === 'lose' || p.result === 'perfect') ? p.result : null;
+    if (isObj(p.status)) {
+      STATUS_DEFS.forEach(function (s) { f.status[s.key] = clampN(toNum(p.status[s.key], 70), 0, 100); });
     }
-    s.items.push(mkItem('携行食', '食料', 42, '食', 6, 18, '高', '前線分隊向け'));
-    s.items.push(mkItem('飲料水', '食料', 30, 'L', 8, 20, '高', ''));
-    s.items.push(mkItem('軽油', '燃料', 120, 'L', 15, 40, '中', '発電機用'));
-    s.items.push(mkItem('包帯', '医療', 24, '箱', 1, 6, '中', ''));
-    s.items.push(mkItem('予備電池', '資材', 16, '本', 0, 8, '低', '在庫のみ管理'));
-    var waterId = s.items[1].id;
-    s.shipments.push({ id: genId(), itemId: waterId, etaDay: 3, quantity: 40, memo: '定期補給', applied: false });
-    var fuelId = s.items[2].id;
-    s.shipments.push({ id: genId(), itemId: fuelId, etaDay: 5, quantity: 100, memo: '', applied: false });
-    return s;
-  }
-
-  function sanitizeItem(raw) {
-    if (!isObj(raw)) return null;
-    if (typeof raw.name !== 'string' || !raw.name.trim()) return null;
-    return {
-      id: typeof raw.id === 'string' && raw.id ? raw.id.slice(0, 60) : genId(),
-      name: raw.name.trim().slice(0, 40),
-      category: CATEGORIES.indexOf(raw.category) !== -1 ? raw.category : CATEGORIES[CATEGORIES.length - 1],
-      stock: clampN(toNum(raw.stock, 0), 0, 9999999),
-      unit: UNITS.indexOf(raw.unit) !== -1 ? raw.unit : UNITS[0],
-      dailyUse: clampN(toNum(raw.dailyUse, 0), 0, 9999999),
-      safetyStock: clampN(toNum(raw.safetyStock, 0), 0, 9999999),
-      priority: PRIORITIES.indexOf(raw.priority) !== -1 ? raw.priority : '中',
-      memo: typeof raw.memo === 'string' ? raw.memo.slice(0, 120) : '',
-      createdAt: typeof raw.createdAt === 'string' ? raw.createdAt.slice(0, 30) : nowLabel(),
-      updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt.slice(0, 30) : nowLabel()
-    };
-  }
-
-  function sanitizeShipment(raw, validIds) {
-    if (!isObj(raw)) return null;
-    if (typeof raw.itemId !== 'string' || validIds.indexOf(raw.itemId) === -1) return null;
-    return {
-      id: typeof raw.id === 'string' && raw.id ? raw.id.slice(0, 60) : genId(),
-      itemId: raw.itemId,
-      etaDay: clampN(toInt(raw.etaDay, 1), 1, DAY_MAX),
-      quantity: clampN(toNum(raw.quantity, 0), 0, 9999999),
-      memo: typeof raw.memo === 'string' ? raw.memo.slice(0, 120) : '',
-      applied: raw.applied === true
-    };
+    if (isObj(p.res)) {
+      RES_DEFS.forEach(function (r) {
+        var raw = p.res[r.key];
+        if (isObj(raw)) {
+          f.res[r.key] = {
+            stock: clampN(toNum(raw.stock, r.stock), 0, r.cap),
+            ful: clampN(toNum(raw.ful, 1), 0, 3),
+            supplied: clampN(toNum(raw.supplied, r.demand), 0, 999999),
+            demand: r.demand
+          };
+        }
+      });
+    }
+    if (Array.isArray(p.orders)) {
+      p.orders.forEach(function (raw) {
+        if (!isObj(raw)) return;
+        if (RES_KEYS.indexOf(raw.resKey) === -1) return;
+        if (METHOD_KEYS.indexOf(raw.method) === -1) return;
+        f.orders.push({
+          id: typeof raw.id === 'string' && raw.id ? raw.id.slice(0, 40) : genId(),
+          resKey: raw.resKey, method: raw.method,
+          qty: clampN(toInt(raw.qty, 0), 0, 999999),
+          effQty: clampN(toInt(raw.effQty, toInt(raw.qty, 0)), 0, 999999),
+          etaDay: clampN(toInt(raw.etaDay, f.day + 1), 1, GAME_DAYS + 30),
+          applied: raw.applied === true,
+          note: typeof raw.note === 'string' ? raw.note.slice(0, 60) : ''
+        });
+      });
+    }
+    if (Array.isArray(p.history)) {
+      p.history.forEach(function (raw) {
+        if (isObj(raw) && typeof raw.text === 'string' && f.history.length < HISTORY_MAX) {
+          f.history.push({ day: clampN(toInt(raw.day, 1), 1, GAME_DAYS + 1), type: typeof raw.type === 'string' ? raw.type.slice(0, 12) : 'info', text: raw.text.slice(0, 160) });
+        }
+      });
+    }
+    if (isObj(p.stats)) {
+      f.stats.ordered = clampN(toInt(p.stats.ordered, 0), 0, 999999);
+      f.stats.spent = clampN(toInt(p.stats.spent, 0), 0, 99999999);
+      f.stats.events = clampN(toInt(p.stats.events, 0), 0, 999999);
+      f.stats.shortfallDays = clampN(toInt(p.stats.shortfallDays, 0), 0, 999999);
+    }
+    return f;
   }
 
   function loadState() {
     var raw;
     try { raw = window.localStorage.getItem(KEY); }
-    catch (e) {
-      showBanner('この端末では保存機能を利用できません。この画面を閉じると記録は失われます。');
-      S = sampleState(); return;
+    catch (e) { showBanner('この端末では保存機能を利用できません。進行は保存されません。'); S = freshState(); return; }
+    if (!raw) {
+      // v1 の在庫管理データがある場合は、ゲーム刷新を案内して新規シナリオで開始
+      var hadOld = false;
+      try { hadOld = !!window.localStorage.getItem(OLD_KEY); } catch (e) { hadOld = false; }
+      if (hadOld) {
+        try { window.localStorage.removeItem(OLD_KEY); } catch (e) { /* 続行 */ }
+        showBanner('v1.1でゲーム内容が「補給バランスゲーム」に刷新されました。以前の在庫データは引き継げないため、新しいシナリオで開始します。');
+      }
+      S = freshState(); return;
     }
-    if (!raw) { S = sampleState(); return; }
     try {
       var p = JSON.parse(raw);
       if (!isObj(p)) throw new Error('shape');
-      var f = freshState();
-      f.day = clampN(toInt(p.day, 1), 1, DAY_MAX);
-      f.forecastDays = clampN(toInt(p.forecastDays, 7), 1, 60);
-      (Array.isArray(p.items) ? p.items : []).forEach(function (r) {
-        var it = sanitizeItem(r);
-        if (it && !f.items.some(function (x) { return x.id === it.id; })) f.items.push(it);
-      });
-      var validIds = f.items.map(function (x) { return x.id; });
-      (Array.isArray(p.shipments) ? p.shipments : []).forEach(function (r) {
-        var sh = sanitizeShipment(r, validIds);
-        if (sh && !f.shipments.some(function (x) { return x.id === sh.id; })) f.shipments.push(sh);
-      });
-      (Array.isArray(p.history) ? p.history : []).forEach(function (r) {
-        if (isObj(r) && typeof r.text === 'string' && f.history.length < HISTORY_MAX) {
-          f.history.push({
-            day: clampN(toInt(r.day, 1), 1, DAY_MAX),
-            type: typeof r.type === 'string' ? r.type.slice(0, 16) : 'info',
-            text: r.text.slice(0, 160),
-            at: typeof r.at === 'string' ? r.at.slice(0, 20) : ''
-          });
-        }
-      });
-      if (isObj(p.stats)) {
-        f.stats.stockouts = clampN(toInt(p.stats.stockouts, 0), 0, 9999999);
-        f.stats.events = clampN(toInt(p.stats.events, 0), 0, 9999999);
-      }
-      f.seed = p.seed === true;
-      S = f;
+      S = sanitizeState(p);
     } catch (e) {
-      showBanner('保存データを読み込めなかったため、初期状態から始めます。');
+      showBanner('保存データを読み込めなかったため、新しいシナリオから始めます。');
       S = freshState();
     }
   }
 
   function persist() {
     try { window.localStorage.setItem(KEY, JSON.stringify(S)); }
-    catch (e) { showBanner('保存できませんでした。この画面を閉じると変更は失われますが、操作は継続できます。'); }
+    catch (e) { showBanner('保存できませんでした。この画面を閉じると進行は失われますが、操作は継続できます。'); }
   }
 
-  // ---------- domain ----------
+  // ---------- game logic ----------
 
   function pushHistory(type, text) {
-    S.history.unshift({ day: S.day, type: type, text: text, at: nowLabel() });
+    S.history.unshift({ day: S.day, type: type, text: text });
     if (S.history.length > HISTORY_MAX) S.history.length = HISTORY_MAX;
   }
 
-  function itemById(id) { return S.items.find(function (x) { return x.id === id; }); }
+  function stateLevel(v) { return v >= 60 ? 'good' : v >= 40 ? 'warn' : v >= 20 ? 'danger' : 'crit'; }
 
-  function pendingShipmentsFor(itemId) {
-    return S.shipments.filter(function (sh) { return sh.itemId === itemId && !sh.applied; });
+  function fulState(ful) {
+    var p = ful * 100;
+    if (p >= 110) return '余裕';
+    if (p >= 100) return '安定';
+    if (p >= 80) return '注意';
+    if (p >= 50) return '危険';
+    if (p >= 1) return '崩壊寸前';
+    return '供給停止';
   }
 
-  // 予測: 現在庫から日次消費を引き、途中の補充予定（未反映・ETA<=day+n）を加味して
-  // 予測期間内に安全在庫割れ／在庫0が起きるかを判定する
-  function forecast(item) {
-    if (item.dailyUse <= 0) {
-      return { risk: 'none', stockoutDay: null, safetyDay: null, endStock: item.stock };
+  function transportCapacity() { return r0(BASE_TRANSPORT * (0.35 + 0.65 * S.status.logistics / 100)); }
+  function dailyIncome() { return r0(BASE_INCOME + LOG_INCOME * S.status.logistics / 100); }
+
+  // 発注: 成否と理由を返す
+  function placeOrder(resKey, qty, method) {
+    if (S.result) return { ok: false, msg: 'ゲームは終了しています。' };
+    var r = RES_BY_KEY[resKey];
+    var m = METHODS[method];
+    if (!r || !m) return { ok: false, msg: '対象または補給方式が不正です。' };
+    if (!Number.isFinite(qty) || qty <= 0) return { ok: false, msg: '数量は1以上で入力してください。' };
+    qty = Math.floor(qty);
+    var cost = r0(qty * r.cost * m.pointMult);
+    if (cost > S.points) return { ok: false, msg: '補給ポイントが不足しています（必要 ' + cost + ' / 残 ' + r0(S.points) + '）。' };
+    if (qty > S.transport) return { ok: false, msg: '本日の輸送枠が不足しています（必要 ' + qty + ' / 残 ' + r0(S.transport) + '）。翌日に持ち越すか数量を減らしてください。' };
+    S.points -= cost;
+    S.transport -= qty;
+    S.stats.ordered++;
+    S.stats.spent += cost;
+    var eta = S.day + m.lead;
+    var effQty = qty;
+    var note = '';
+    if (method === 'risky') {
+      if (Math.random() < 0.28) { var dd = 1 + Math.floor(Math.random() * 2); eta += dd; note = '遅延' + dd + '日'; }
+      if (Math.random() < 0.22) { var lost = Math.round(qty * (0.2 + Math.random() * 0.25)); effQty = Math.max(0, qty - lost); note = (note ? note + '・' : '') + '損耗' + lost; }
     }
-    var n = S.forecastDays;
-    var stock = item.stock;
-    var pend = pendingShipmentsFor(item.id);
-    var risk = 'good', stockoutDay = null, safetyDay = null;
-    for (var d = 1; d <= n; d++) {
-      var arriveDay = S.day + d;
-      pend.forEach(function (sh) {
-        if (sh.etaDay === arriveDay) stock += sh.quantity;
-      });
-      stock -= item.dailyUse;
-      if (stock < 0) stock = 0;
-      if (stock <= 0 && stockoutDay === null) { stockoutDay = d; risk = 'danger'; }
-      if (stock < item.safetyStock && safetyDay === null) { safetyDay = d; if (risk !== 'danger') risk = 'warn'; }
-    }
-    // 現時点で既に安全在庫割れ
-    if (item.stock < item.safetyStock && risk === 'good') { risk = 'warn'; if (safetyDay === null) safetyDay = 0; }
-    if (item.stock <= 0 && risk !== 'danger') { risk = 'danger'; if (stockoutDay === null) stockoutDay = 0; }
-    return { risk: risk, stockoutDay: stockoutDay, safetyDay: safetyDay, endStock: stock };
+    S.orders.push({ id: genId(), resKey: resKey, method: method, qty: qty, effQty: effQty, etaDay: eta, applied: false, note: note });
+    pushHistory('order', '発注: ' + r.name + ' ' + qty + '（' + m.label + '・' + cost + 'pt・' + eta + '日目着' + (note ? '／' + note : '') + '）');
+    persist();
+    return { ok: true, msg: r.name + ' を ' + qty + ' 発注しました（' + eta + '日目着）' };
   }
 
-  function riskRank(r) { return r === 'danger' ? 0 : r === 'warn' ? 1 : r === 'good' ? 2 : 3; }
+  var EVENTS = [
+    function () { // 敵襲: 弾薬消費・防衛力で被害軽減
+      var dmg = r0((14 - S.status.defense * 0.1)); dmg = clampN(dmg, 3, 16);
+      S.status.defense = clampN(S.status.defense - dmg, 0, 100);
+      var a = S.res.ammo; a.stock = Math.max(0, a.stock - r0(20 * (1.4 - S.status.defense / 100)));
+      return '敵襲。防衛力 -' + dmg + '、弾薬を消耗した。';
+    },
+    function () { // 悪路: 輸送力低下
+      var dmg = clampN(r0(6 + Math.random() * 6), 3, 14);
+      S.status.logistics = clampN(S.status.logistics - dmg, 0, 100);
+      return '悪路・車両故障。輸送力 -' + dmg + '。';
+    },
+    function () { // 疫病: 医療在庫と健全度、医療充足で軽減
+      var medFul = S.res.med.ful;
+      var dmg = clampN(r0(12 * (1.3 - medFul)), 2, 16);
+      S.status.health = clampN(S.status.health - dmg, 0, 100);
+      S.res.med.stock = Math.max(0, S.res.med.stock - 12);
+      return '疫病発生。健全度 -' + dmg + '（医療備蓄で被害軽減）。';
+    },
+    function () { // 補給ポイント臨時支給
+      var g = r0(40 + Math.random() * 40); S.points += g;
+      return '後方から臨時補給ポイント +' + g + '。';
+    },
+    function () { // 需要増: ランダム物資の在庫が一時的に減る
+      var r = RES_DEFS[Math.floor(Math.random() * RES_DEFS.length)];
+      var loss = r0(r.demand * (0.3 + Math.random() * 0.3));
+      S.res[r.key].stock = Math.max(0, S.res[r.key].stock - loss);
+      return '需要急増（' + r.name + '）。在庫 -' + loss + '。';
+    }
+  ];
 
-  // ---------- actions ----------
+  // ステータス更新: 影響物資の充足率に応じて 0-100 を増減
+  function updateStatus() {
+    function avgFul(keys) {
+      var s = 0; keys.forEach(function (k) { s += Math.min(1.15, S.res[k].ful); }); return s / keys.length;
+    }
+    var inputs = {
+      morale: avgFul(['food']),
+      logistics: avgFul(['fuel', 'mat']),
+      defense: avgFul(['ammo']),
+      health: (Math.min(1.15, S.res.food.ful) * 0.4 + Math.min(1.15, S.res.med.ful) * 0.4 + Math.min(1.15, S.res.mat.ful) * 0.2)
+    };
+    STATUS_DEFS.forEach(function (s) {
+      var f = inputs[s.key];
+      // 充足0.85を分岐点に、下回れば低下・上回れば回復。低い充足ほど急落。
+      var delta = (f - 0.85) * 30;
+      S.status[s.key] = clampN(S.status[s.key] + delta, 0, 100);
+    });
+  }
 
-  function nextDay() {
-    if (busy) return;
+  function advanceDay() {
+    if (busy || S.result) return;
     busy = true;
     hideBanner();
     S.day++;
-    // 補充予定でETAが到達したものを自動適用せず、日次消費のみ実施（到着分はユーザー操作で反映）
-    var consumed = 0, stockouts = [];
-    S.items.forEach(function (it) {
-      if (it.dailyUse <= 0) return;
-      var before = it.stock;
-      it.stock = Math.max(0, it.stock - it.dailyUse);
-      var used = before - it.stock;
-      consumed += used;
-      if (it.stock <= 0 && before > 0) {
-        stockouts.push(it.name);
-        S.stats.stockouts++;
+
+    // 1) 到着処理
+    var arrivals = [];
+    S.orders.forEach(function (o) {
+      if (!o.applied && o.etaDay === S.day) {
+        var r = RES_BY_KEY[o.resKey];
+        var before = S.res[o.resKey].stock;
+        S.res[o.resKey].stock = Math.min(r.cap, before + o.effQty);
+        var stored = S.res[o.resKey].stock - before;
+        o.applied = true;
+        var over = o.effQty - stored;
+        arrivals.push(r.name + ' +' + stored + (over > 0 ? '（倉庫超過で' + over + '廃棄）' : '') + (o.note ? '［' + o.note + '］' : ''));
       }
-      it.updatedAt = nowLabel();
     });
-    pushHistory('day', S.day + '日目に進行。合計 ' + fmtNum(consumed) + ' 消費' + (stockouts.length ? '。欠品: ' + stockouts.join('、') : ''));
-    stockouts.forEach(function (nm) { pushHistory('stockout', '「' + nm + '」が在庫切れになった'); });
-    var due = S.shipments.filter(function (sh) { return !sh.applied && sh.etaDay <= S.day; }).length;
+    if (arrivals.length) pushHistory('good', '補給到着: ' + arrivals.join(' / '));
+    // 期限切れ（未着で過ぎた）注文の掃除は起きない設計（etaは必ず未来）。適用済みは保持数を抑える
+    if (S.orders.length > 60) S.orders = S.orders.filter(function (o) { return !o.applied; }).concat(S.orders.filter(function (o) { return o.applied; }).slice(-20));
+
+    // 2) 現地供給 + 需要消費 + 充足率
+    var shortfalls = [];
+    RES_DEFS.forEach(function (r) {
+      var st = S.res[r.key];
+      st.stock = Math.min(r.cap, st.stock + r.local);
+      var supplied = Math.min(st.stock, r.demand);
+      st.stock -= supplied;
+      st.supplied = supplied;
+      st.ful = supplied / r.demand;
+      if (st.ful < 0.8) shortfalls.push(r.name + Math.round(st.ful * 100) + '%');
+    });
+    if (shortfalls.length) { S.stats.shortfallDays++; }
+
+    // 3) ステータス更新
+    updateStatus();
+
+    // 4) ランダムイベント
+    if (Math.random() < 0.55) {
+      var ev = EVENTS[Math.floor(Math.random() * EVENTS.length)];
+      var msg = ev();
+      S.stats.events++;
+      pushHistory('event', '突発｜' + msg);
+    }
+
+    // 5) 補給ポイント収入・輸送枠リセット
+    var inc = dailyIncome();
+    S.points += inc;
+    S.transport = transportCapacity();
+
+    // 日次サマリー
+    pushHistory('day', S.day + '日目。' + (shortfalls.length ? '供給不足: ' + shortfalls.join('、') + '。' : '主要物資は概ね充足。') + ' 補給pt+' + inc + '。');
+
+    // 6) 終了判定
+    checkEnd();
+
     persist();
     busy = false;
     render();
-    showToast(S.day + '日目へ進みました' + (due ? '（到着した補充予定が ' + due + ' 件あります）' : ''));
+    if (!S.result) showToast(S.day + '日目へ進みました（補給pt +' + inc + ' / 輸送枠 ' + r0(S.transport) + '）');
   }
 
-  function applyShipment(id) {
-    var sh = S.shipments.find(function (x) { return x.id === id; });
-    if (!sh || sh.applied) return;
-    var it = itemById(sh.itemId);
-    if (!it) { showBanner('対象品目が見つかりません。'); return; }
-    it.stock = clampN(it.stock + sh.quantity, 0, 9999999);
-    it.updatedAt = nowLabel();
-    sh.applied = true;
-    pushHistory('shipment', '補充予定を反映: 「' + it.name + '」に +' + fmtNum(sh.quantity) + fmtUnit(it) + '（在庫 ' + fmtNum(it.stock) + '）');
-    persist();
-    render();
-    showToast('補充予定を在庫へ反映しました');
-  }
-
-  function fmtUnit(it) { return it && it.unit ? it.unit : ''; }
-
-  function manualAdjust(itemId, delta, memo) {
-    var it = itemById(itemId);
-    if (!it) return;
-    var before = it.stock;
-    it.stock = clampN(it.stock + delta, 0, 9999999);
-    var actual = it.stock - before;
-    it.updatedAt = nowLabel();
-    var type = delta < 0 ? 'use' : 'add';
-    var verb = delta < 0 ? '消費' : '補充';
-    pushHistory(type, '手動' + verb + ': 「' + it.name + '」' + (actual >= 0 ? '+' : '') + fmtNum(actual) + fmtUnit(it) + '（在庫 ' + fmtNum(it.stock) + '）' + (memo ? ' / ' + memo : ''));
-    if (delta < 0 && it.stock <= 0 && before > 0) { S.stats.stockouts++; pushHistory('stockout', '「' + it.name + '」が在庫切れになった'); }
-    persist();
-    render();
-  }
-
-  // ---------- events ----------
-
-  var EVENT_DEFS = [
-    { key: 'demand', label: '需要増' },
-    { key: 'damage', label: '破損/廃棄' },
-    { key: 'early', label: '早着' },
-    { key: 'delay', label: '遅延' },
-    { key: 'supply', label: '臨時支給' }
-  ];
-
-  function triggerEvent() {
-    if (busy) return;
-    if (S.items.length === 0) { showBanner('品目が登録されていません。まず品目を追加してください。'); return; }
-    busy = true;
-    hideBanner();
-    var pool = EVENT_DEFS.slice();
-    // 補充予定が無ければ早着/遅延は候補から外す
-    var hasPending = S.shipments.some(function (sh) { return !sh.applied; });
-    if (!hasPending) pool = pool.filter(function (e) { return e.key !== 'early' && e.key !== 'delay'; });
-    var ev = pool[Math.floor(Math.random() * pool.length)];
-    var msg = '';
-    if (ev.key === 'demand') {
-      var cat = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
-      var targets = S.items.filter(function (it) { return it.category === cat && it.dailyUse > 0; });
-      if (targets.length === 0) {
-        targets = S.items.filter(function (it) { return it.dailyUse > 0; });
-        cat = targets.length ? targets[0].category : cat;
-      }
-      if (targets.length === 0) { msg = '需要増の兆候があったが、消費のある品目がなく影響は出なかった'; }
-      else {
-        var extra = 0;
-        targets.forEach(function (it) {
-          var add = Math.max(1, Math.round(it.dailyUse * (0.3 + Math.random() * 0.5)));
-          var before = it.stock;
-          it.stock = Math.max(0, it.stock - add);
-          extra += before - it.stock;
-          it.updatedAt = nowLabel();
-          if (it.stock <= 0 && before > 0) { S.stats.stockouts++; pushHistory('stockout', '「' + it.name + '」が在庫切れになった'); }
-        });
-        msg = '需要増（' + cat + '）: 該当' + targets.length + '品目から計 ' + fmtNum(extra) + ' を追加消費';
-      }
-    } else if (ev.key === 'damage') {
-      var it2 = S.items[Math.floor(Math.random() * S.items.length)];
-      var loss = Math.max(1, Math.round(it2.stock * (0.1 + Math.random() * 0.3)));
-      loss = Math.min(loss, it2.stock);
-      var before2 = it2.stock;
-      it2.stock = Math.max(0, it2.stock - loss);
-      it2.updatedAt = nowLabel();
-      if (it2.stock <= 0 && before2 > 0) { S.stats.stockouts++; pushHistory('stockout', '「' + it2.name + '」が在庫切れになった'); }
-      msg = '破損/廃棄: 「' + it2.name + '」の在庫を ' + fmtNum(loss) + fmtUnit(it2) + ' 失った（在庫 ' + fmtNum(it2.stock) + '）';
-    } else if (ev.key === 'early') {
-      var cand = S.shipments.filter(function (sh) { return !sh.applied; });
-      var sh1 = cand[Math.floor(Math.random() * cand.length)];
-      sh1.etaDay = Math.max(1, sh1.etaDay - 1);
-      var it3 = itemById(sh1.itemId);
-      msg = '早着: 「' + (it3 ? it3.name : '?') + '」の補充予定が1日早まり ' + sh1.etaDay + '日目着に';
-    } else if (ev.key === 'delay') {
-      var cand2 = S.shipments.filter(function (sh) { return !sh.applied; });
-      var sh2 = cand2[Math.floor(Math.random() * cand2.length)];
-      var dd = 1 + Math.floor(Math.random() * 2);
-      sh2.etaDay = clampN(sh2.etaDay + dd, 1, DAY_MAX);
-      var it4 = itemById(sh2.itemId);
-      msg = '遅延: 「' + (it4 ? it4.name : '?') + '」の補充予定が ' + dd + '日遅れ ' + sh2.etaDay + '日目着に';
-    } else {
-      var it5 = S.items[Math.floor(Math.random() * S.items.length)];
-      var gain = Math.max(1, Math.round((it5.safetyStock || 5) * (0.3 + Math.random() * 0.7)));
-      it5.stock = clampN(it5.stock + gain, 0, 9999999);
-      it5.updatedAt = nowLabel();
-      msg = '臨時支給: 「' + it5.name + '」に +' + fmtNum(gain) + fmtUnit(it5) + '（在庫 ' + fmtNum(it5.stock) + '）';
+  function checkEnd() {
+    if (S.status.health <= 0) {
+      S.result = 'lose';
+      pushHistory('bad', '健全度が0に達し、補給線が崩壊した。');
+      return;
     }
-    S.stats.events++;
-    pushHistory('event', '突発イベント｜' + msg);
-    persist();
-    busy = false;
-    render();
-    showToast('突発イベント: ' + ev.label);
-  }
-
-  // ---------- item form ----------
-
-  function readItemForm() {
-    return {
-      name: els.inName.value.trim(),
-      category: CATEGORIES.indexOf(els.inCategory.value) !== -1 ? els.inCategory.value : CATEGORIES[0],
-      stock: els.inStock.value,
-      unit: UNITS.indexOf(els.inUnit.value) !== -1 ? els.inUnit.value : UNITS[0],
-      dailyUse: els.inUse.value,
-      safetyStock: els.inSafety.value,
-      priority: PRIORITIES.indexOf(els.inPriority.value) !== -1 ? els.inPriority.value : '中',
-      memo: els.inMemo.value.slice(0, 120)
-    };
-  }
-
-  function validateNumberField(v) {
-    if (v === '' || v === null || v === undefined) return { ok: true, val: 0 };
-    var n = Number(v);
-    if (!Number.isFinite(n) || n < 0) return { ok: false };
-    return { ok: true, val: n };
-  }
-
-  function submitItem() {
-    hideBanner();
-    var f = readItemForm();
-    if (!f.name) { showFormError('品目名を入力してください。'); return; }
-    var st = validateNumberField(f.stock);
-    var us = validateNumberField(f.dailyUse);
-    var sa = validateNumberField(f.safetyStock);
-    if (!st.ok) { showFormError('現在庫は0以上の数値で入力してください。'); return; }
-    if (!us.ok) { showFormError('1日消費量は0以上の数値で入力してください。'); return; }
-    if (!sa.ok) { showFormError('安全在庫は0以上の数値で入力してください。'); return; }
-    clearFormError();
-    if (editingItemId) {
-      var it = itemById(editingItemId);
-      if (it) {
-        it.name = f.name.slice(0, 40);
-        it.category = f.category;
-        it.stock = clampN(st.val, 0, 9999999);
-        it.unit = f.unit;
-        it.dailyUse = clampN(us.val, 0, 9999999);
-        it.safetyStock = clampN(sa.val, 0, 9999999);
-        it.priority = f.priority;
-        it.memo = f.memo;
-        it.updatedAt = nowLabel();
-        pushHistory('edit', '「' + it.name + '」の内容を編集した');
-      }
-      stopEditItem();
-    } else {
-      S.items.unshift({
-        id: genId(), name: f.name.slice(0, 40), category: f.category,
-        stock: clampN(st.val, 0, 9999999), unit: f.unit,
-        dailyUse: clampN(us.val, 0, 9999999), safetyStock: clampN(sa.val, 0, 9999999),
-        priority: f.priority, memo: f.memo,
-        createdAt: nowLabel(), updatedAt: nowLabel()
-      });
-      pushHistory('add', '品目「' + f.name.slice(0, 40) + '」を登録した');
-      clearItemForm();
-      showToast('品目を登録しました');
-    }
-    persist();
-    render();
-  }
-
-  function showFormError(msg) { els.formError.textContent = msg; els.formError.hidden = false; }
-  function clearFormError() { els.formError.hidden = true; }
-
-  function clearItemForm() {
-    els.inName.value = '';
-    els.inCategory.value = CATEGORIES[0];
-    els.inStock.value = '';
-    els.inUnit.value = UNITS[0];
-    els.inUse.value = '';
-    els.inSafety.value = '';
-    els.inPriority.value = '中';
-    els.inMemo.value = '';
-    clearFormError();
-  }
-
-  function startEditItem(id) {
-    var it = itemById(id);
-    if (!it) return;
-    editingItemId = id;
-    activeTab = 'items';
-    render();
-    els.inName.value = it.name;
-    els.inCategory.value = it.category;
-    els.inStock.value = fmtNum(it.stock);
-    els.inUnit.value = it.unit;
-    els.inUse.value = fmtNum(it.dailyUse);
-    els.inSafety.value = fmtNum(it.safetyStock);
-    els.inPriority.value = it.priority;
-    els.inMemo.value = it.memo;
-    els.formTitle.textContent = '品目を編集';
-    els.editNote.textContent = '編集中: ' + it.name;
-    els.editNote.hidden = false;
-    els.submitItemBtn.textContent = '変更を保存';
-    els.cancelEditBtn.hidden = false;
-    clearFormError();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function stopEditItem() {
-    editingItemId = null;
-    if (els.inName) clearItemForm();
-    if (els.formTitle) {
-      els.formTitle.textContent = '品目を追加';
-      els.editNote.hidden = true;
-      els.submitItemBtn.textContent = '品目を追加';
-      els.cancelEditBtn.hidden = true;
+    if (S.day > GAME_DAYS) {
+      var h = S.status.health;
+      if (h >= 80) { S.result = 'perfect'; pushHistory('good', GAME_DAYS + '日間の補給線維持に成功（優秀）。'); }
+      else if (h >= 50) { S.result = 'win'; pushHistory('good', GAME_DAYS + '日間の補給線維持に成功。'); }
+      else if (h >= 30) { S.result = 'win'; pushHistory('day', GAME_DAYS + '日間を辛くも持ちこたえた（辛勝）。'); }
+      else { S.result = 'lose'; pushHistory('bad', GAME_DAYS + '日終了時点で健全度が低く、補給線は崩壊寸前だった。'); }
     }
   }
 
-  function deleteItem(id) {
-    var idx = S.items.findIndex(function (x) { return x.id === id; });
-    if (idx === -1) return;
-    if (!window.confirm('「' + S.items[idx].name + '」と、その補充予定を削除します。よろしいですか？')) return;
-    var nm = S.items[idx].name;
-    S.items.splice(idx, 1);
-    S.shipments = S.shipments.filter(function (sh) { return sh.itemId !== id; });
-    if (editingItemId === id) stopEditItem();
-    pushHistory('delete', '品目「' + nm + '」を削除した');
-    persist();
-    render();
-  }
-
-  // ---------- shipment form ----------
-
-  function submitShipment() {
-    hideBanner();
-    if (S.items.length === 0) { showShipError('先に品目を登録してください。'); return; }
-    var itemId = els.shipItem.value;
-    if (!itemById(itemId)) { showShipError('対象品目を選択してください。'); return; }
-    var etaRaw = els.shipEta.value;
-    var eta = Number(etaRaw);
-    if (etaRaw === '' || !Number.isFinite(eta) || Math.floor(eta) < 1) { showShipError('到着予定日は1以上の日数で入力してください。'); return; }
-    var qtyRaw = els.shipQty.value;
-    var qty = Number(qtyRaw);
-    if (qtyRaw === '' || !Number.isFinite(qty) || qty < 0) { showShipError('数量は0以上の数値で入力してください。'); return; }
-    clearShipError();
-    var it = itemById(itemId);
-    S.shipments.push({
-      id: genId(), itemId: itemId, etaDay: clampN(Math.floor(eta), 1, DAY_MAX),
-      quantity: clampN(qty, 0, 9999999), memo: els.shipMemo.value.slice(0, 120), applied: false
-    });
-    pushHistory('plan', '補充予定を追加: 「' + it.name + '」 ' + fmtNum(qty) + fmtUnit(it) + ' → ' + Math.floor(eta) + '日目着');
-    els.shipQty.value = '';
-    els.shipMemo.value = '';
-    persist();
-    render();
-    showToast('補充予定を追加しました');
-  }
-
-  function showShipError(msg) { els.shipError.textContent = msg; els.shipError.hidden = false; }
-  function clearShipError() { els.shipError.hidden = true; }
-
-  function deleteShipment(id) {
-    var idx = S.shipments.findIndex(function (x) { return x.id === id; });
-    if (idx === -1) return;
-    var sh = S.shipments[idx];
-    var it = itemById(sh.itemId);
-    S.shipments.splice(idx, 1);
-    pushHistory('plan', '補充予定を削除' + (it ? '（' + it.name + '）' : ''));
-    persist();
-    render();
-  }
-
-  // ---------- reset ----------
-
-  function clearHistory() {
-    if (!window.confirm('履歴をすべて削除します。品目や在庫は残ります。よろしいですか？')) return;
-    S.history = [];
-    persist();
-    render();
-    showToast('履歴を削除しました');
-  }
-
-  function resetAll() {
-    if (!window.confirm('すべての品目・補充予定・履歴・日数を削除して最初からやり直します。よろしいですか？')) return;
+  function resetGame() {
+    if (!window.confirm('現在の進行をすべて破棄して、新しいシナリオを最初から始めます。よろしいですか？')) return;
     try { window.localStorage.removeItem(KEY); } catch (e) { /* 続行 */ }
     S = freshState();
-    stopEditItem();
-    activeTab = 'dashboard';
+    activeTab = 'status';
     persist();
     render();
-    showToast('データをリセットしました');
+    showToast('新しいシナリオを開始しました');
+  }
+
+  // ---------- forecast ----------
+
+  // 到着予定を織り込んで、各物資が何日後に危険域(充足<80%相当=在庫が需要-現地を割る)に入るか等を予測
+  function forecastRes(r) {
+    var st = S.res[r.key];
+    var stock = st.stock;
+    var net = r.demand - r.local; // 1日の正味減少（発注が無い場合）
+    var incoming = S.orders.filter(function (o) { return !o.applied && o.resKey === r.key; })
+      .sort(function (a, b) { return a.etaDay - b.etaDay; });
+    var dangerDay = null, stockoutDay = null;
+    var sim = stock;
+    for (var d = 1; d <= 14; d++) {
+      var day = S.day + d;
+      incoming.forEach(function (o) { if (o.etaDay === day) sim = Math.min(r.cap, sim + o.effQty); });
+      sim = Math.min(r.cap, sim + r.local);
+      var supplied = Math.min(sim, r.demand);
+      sim -= supplied;
+      var ful = supplied / r.demand;
+      if (ful < 0.8 && dangerDay === null) dangerDay = d;
+      if (supplied <= 0 && stockoutDay === null) stockoutDay = d;
+    }
+    // 今注文しないと間に合わないか: 現在庫だけで最短リードタイム(通常3日)先まで危険にならないか
+    var coverDays = net > 0 ? Math.floor(stock / net) : 99;
+    var mustOrder = (dangerDay !== null && dangerDay <= 3 && incoming.length === 0);
+    return { dangerDay: dangerDay, stockoutDay: stockoutDay, coverDays: coverDays, incoming: incoming.length, mustOrder: mustOrder };
   }
 
   // ---------- render ----------
 
-  function riskChip(fc) {
-    var span = el('span', 'chip risk-' + fc.risk, RISK_LABEL[fc.risk]);
-    return span;
-  }
-
-  function forecastText(item, fc) {
-    if (fc.risk === 'none') return '消費設定なし（在庫のみ管理）';
-    if (fc.risk === 'danger') {
-      if (fc.stockoutDay === 0) return '現在すでに在庫切れ';
-      return '約' + fc.stockoutDay + '日後に在庫0の見込み';
-    }
-    if (fc.risk === 'warn') {
-      if (fc.safetyDay === 0) return '現在すでに安全在庫を下回っている';
-      return '約' + fc.safetyDay + '日後に安全在庫を下回る見込み';
-    }
-    return S.forecastDays + '日間は安全在庫を維持（残 ' + fmtNum(fc.endStock) + fmtUnit(item) + '）';
-  }
-
-  function renderDayBar() {
-    els.dayBar.innerHTML = '';
-    var pairs = [['運用日数', S.day + '日目'], ['予測範囲', S.forecastDays + '日'], ['品目', S.items.length + '件']];
-    pairs.forEach(function (p) {
-      var c = el('span', 'day-chip');
-      c.appendChild(document.createTextNode(p[0] + ' '));
-      c.appendChild(el('b', null, String(p[1])));
-      els.dayBar.appendChild(c);
+  function renderTopBar() {
+    els.topBar.innerHTML = '';
+    var items = [['日数', S.day + ' / ' + GAME_DAYS], ['補給pt', r0(S.points)], ['輸送枠', r0(S.transport)]];
+    items.forEach(function (it) {
+      var c = el('span', 'top-chip'); c.appendChild(document.createTextNode(it[0] + ' ')); c.appendChild(el('b', null, String(it[1]))); els.topBar.appendChild(c);
     });
   }
 
-  function computeAll() {
-    var list = S.items.map(function (it) { return { item: it, fc: forecast(it) }; });
-    list.sort(function (a, b) {
-      var r = riskRank(a.fc.risk) - riskRank(b.fc.risk);
-      if (r !== 0) return r;
-      return PRIORITIES.indexOf(a.item.priority) - PRIORITIES.indexOf(b.item.priority);
+  function statusCard() {
+    var card = el('div', 'card');
+    card.appendChild(el('h2', null, '前線ステータス'));
+    var grid = el('div', 'status-grid');
+    STATUS_DEFS.forEach(function (s) {
+      var v = r0(S.status[s.key]);
+      var lv = stateLevel(v);
+      var box = el('div', 'stat-box');
+      box.appendChild(el('div', 'st-name', s.name));
+      box.appendChild(el('div', 'st-val lv-' + lv, v + (s.key === 'health' ? '％' : '')));
+      var bar = el('div', 'bar'); var fill = el('div', 'fill-' + lv); fill.style.width = v + '%'; bar.appendChild(fill); box.appendChild(bar);
+      grid.appendChild(box);
     });
-    return list;
+    card.appendChild(grid);
+    card.appendChild(el('div', 'note', '健全度を30日間 50%以上（理想は80%以上）に保てば維持成功。0%で即崩壊します。'));
+    return card;
   }
 
-  function itemCard(entry, opts) {
-    var it = entry.item, fc = entry.fc;
-    var c = el('div', 'item-card risk-' + fc.risk);
-    var top = el('div', 'item-top');
-    top.appendChild(el('div', 'item-name', it.name));
-    top.appendChild(riskChip(fc));
+  function resCard(r) {
+    var st = S.res[r.key];
+    var ful = st.ful;
+    var stateName = fulState(ful);
+    var c = el('div', 'res-card s-' + stateName);
+    var top = el('div', 'res-top');
+    top.appendChild(el('div', 'res-name', r.name));
+    top.appendChild(el('div', 'res-state st-' + stateName, stateName + ' ' + Math.round(ful * 100) + '%'));
     c.appendChild(top);
-    var chips = el('div', 'chip-row');
-    chips.appendChild(el('span', 'chip', it.category));
-    chips.appendChild(el('span', 'chip prio-' + it.priority, '優先度' + it.priority));
-    c.appendChild(chips);
-    var sl = el('div', 'stock-line');
-    sl.appendChild(document.createTextNode('在庫 '));
-    sl.appendChild(el('b', null, fmtNum(it.stock) + it.unit));
-    sl.appendChild(document.createTextNode('  ・ 日消費 ' + fmtNum(it.dailyUse) + it.unit + ' ・ 安全在庫 ' + fmtNum(it.safetyStock) + it.unit));
-    c.appendChild(sl);
-    c.appendChild(el('div', 'forecast-note', forecastText(it, fc)));
-    var pend = pendingShipmentsFor(it.id);
-    if (pend.length) {
-      var next = pend.slice().sort(function (a, b) { return a.etaDay - b.etaDay; })[0];
-      c.appendChild(el('div', 'forecast-note', '次の補充予定: ' + next.etaDay + '日目に +' + fmtNum(next.quantity) + it.unit + (pend.length > 1 ? '（他' + (pend.length - 1) + '件）' : '')));
-    }
-    if (it.memo) c.appendChild(el('div', 'item-memo', it.memo));
-
-    var row = el('div', 'btn-row');
-    var useBtn = el('button', 'mini-btn use', '消費');
-    useBtn.type = 'button'; useBtn.dataset.action = 'quick-use'; useBtn.dataset.id = it.id;
-    var addBtn = el('button', 'mini-btn add', '補充');
-    addBtn.type = 'button'; addBtn.dataset.action = 'quick-add'; addBtn.dataset.id = it.id;
-    row.appendChild(useBtn); row.appendChild(addBtn);
-    if (opts && opts.manage) {
-      var editBtn = el('button', 'mini-btn', '編集');
-      editBtn.type = 'button'; editBtn.dataset.action = 'edit-item'; editBtn.dataset.id = it.id;
-      var delBtn = el('button', 'mini-btn', '削除');
-      delBtn.type = 'button'; delBtn.dataset.action = 'delete-item'; delBtn.dataset.id = it.id;
-      row.appendChild(editBtn); row.appendChild(delBtn);
-    }
-    c.appendChild(row);
-
-    // インライン手動調整フォーム
-    var form = el('div', 'inline-form');
-    form.dataset.adjustFor = it.id;
-    form.hidden = true;
-    var fr = el('div', 'field-row');
-    var qField = el('div', 'field');
-    qField.appendChild(el('label', null, '数量'));
-    var qInput = el('input');
-    qInput.type = 'number'; qInput.min = '0'; qInput.step = 'any'; qInput.dataset.adjustQty = it.id; qInput.placeholder = '例: 5';
-    qField.appendChild(qInput);
-    var mField = el('div', 'field');
-    mField.appendChild(el('label', null, '理由メモ（任意）'));
-    var mInput = el('input');
-    mInput.type = 'text'; mInput.maxLength = 60; mInput.dataset.adjustMemo = it.id;
-    mField.appendChild(mInput);
-    fr.appendChild(qField); fr.appendChild(mField);
-    form.appendChild(fr);
-    var fRow = el('div', 'btn-row');
-    var okBtn = el('button', 'mini-btn', '確定');
-    okBtn.type = 'button'; okBtn.dataset.action = 'adjust-confirm'; okBtn.dataset.id = it.id;
-    var cancelBtn = el('button', 'mini-btn', '閉じる');
-    cancelBtn.type = 'button'; cancelBtn.dataset.action = 'adjust-cancel'; cancelBtn.dataset.id = it.id;
-    fRow.appendChild(okBtn); fRow.appendChild(cancelBtn);
-    form.appendChild(fRow);
-    c.appendChild(form);
+    var line = el('div', 'res-line');
+    line.appendChild(document.createTextNode('需要 ' + r.demand + ' / 供給 '));
+    line.appendChild(el('b', null, String(r0(st.supplied))));
+    line.appendChild(document.createTextNode('　在庫 ' + r0(st.stock) + '/' + r.cap));
+    c.appendChild(line);
+    var lv = ful >= 1 ? 'good' : ful >= 0.8 ? 'warn' : ful >= 0.5 ? 'danger' : 'crit';
+    var bar = el('div', 'ful-bar'); var fill = el('div', 'fill-' + lv); fill.style.width = clampN(Math.round(ful * 100), 0, 100) + '%'; bar.appendChild(fill); c.appendChild(bar);
+    c.appendChild(el('div', 'res-sub', '現地供給 ' + r.local + '/日（不足分は補給が必要）・影響: ' + r.affects.map(function (a) { return STATUS_DEFS.filter(function (s) { return s.key === a; })[0].name; }).join('・')));
     return c;
   }
 
-  var adjustMode = {}; // itemId -> 'use' | 'add'
+  function renderStatus(root) {
+    if (S.result) { renderResult(root); return; }
+    root.appendChild(statusCard());
 
-  function renderDashboard(root) {
-    var list = computeAll();
-    var danger = list.filter(function (e) { return e.fc.risk === 'danger'; });
-    var warn = list.filter(function (e) { return e.fc.risk === 'warn'; });
+    var adv = el('div', 'card');
+    adv.appendChild(el('h2', null, '進行'));
+    var lastDay = S.day >= GAME_DAYS;
+    var ndBtn = el('button', 'primary-btn', lastDay ? (GAME_DAYS + '日目を終了して結果を見る') : ('1日進める（' + S.day + '→' + (S.day + 1) + '日目）'));
+    ndBtn.type = 'button'; ndBtn.dataset.action = 'next-day';
+    adv.appendChild(ndBtn);
+    adv.appendChild(el('div', 'note', lastDay
+      ? '最終日を終了すると需要消費・補給到着・イベントを処理し、30日間の維持成否を判定します。'
+      : '進めると需要消費・現地供給・補給到着・突発イベント・補給ポイント収入が処理されます。発注は「補給」タブから。'));
+    root.appendChild(adv);
 
-    var sum = el('div', 'card');
-    sum.appendChild(el('h2', null, '状況サマリー'));
-    var grid = el('div', 'summary-grid');
-    var totalStock = S.items.reduce(function (a, it) { return a + it.stock; }, 0);
-    var todayUse = S.items.reduce(function (a, it) { return a + it.dailyUse; }, 0);
-    var boxes = [
-      ['品目数', S.items.length, ''],
-      ['危険', danger.length, danger.length ? 'danger' : ''],
-      ['注意', warn.length, warn.length ? 'warn' : ''],
-      ['総在庫', fmtNum(totalStock), ''],
-      ['日消費計', fmtNum(todayUse), ''],
-      ['累計欠品', S.stats.stockouts, S.stats.stockouts ? 'warn' : '']
-    ];
-    boxes.forEach(function (b) {
-      var box = el('div', 'sum-box' + (b[2] ? ' ' + b[2] : ''));
-      box.appendChild(el('span', null, b[0]));
-      box.appendChild(el('b', null, String(b[1])));
-      grid.appendChild(box);
+    var rc = el('div', 'card');
+    rc.appendChild(el('h2', null, '物資の需要／供給'));
+    RES_DEFS.forEach(function (r) { rc.appendChild(resCard(r)); });
+    root.appendChild(rc);
+
+    // 予測
+    var fc = el('div', 'card');
+    fc.appendChild(el('h2', null, '補給予測'));
+    var any = false;
+    RES_DEFS.forEach(function (r) {
+      var f = forecastRes(r);
+      if (f.dangerDay === null && !f.mustOrder) return;
+      any = true;
+      var item = el('div', 'forecast-item');
+      var head = el('div');
+      head.appendChild(el('b', null, r.name + '：'));
+      if (f.stockoutDay !== null) head.appendChild(el('span', 'fi-danger', ' 約' + f.stockoutDay + '日後に供給停止の見込み'));
+      else if (f.dangerDay !== null) head.appendChild(el('span', 'fi-warn', ' 約' + f.dangerDay + '日後に危険域（充足80%割れ）'));
+      item.appendChild(head);
+      var affects = r.affects.map(function (a) { return STATUS_DEFS.filter(function (s) { return s.key === a; })[0].name; }).join('・');
+      item.appendChild(el('div', 'res-sub', '不足すると ' + affects + ' が低下' + (f.incoming ? '。到着予定 ' + f.incoming + '件あり' : (f.mustOrder ? '。今日中に発注しないと最短補給でも間に合いません' : ''))));
+      fc.appendChild(item);
     });
-    sum.appendChild(grid);
-    var ndBtn = el('button', 'primary-btn', '1日進める');
-    ndBtn.type = 'button'; ndBtn.dataset.action = 'next-day'; ndBtn.style.marginTop = '11px';
-    sum.appendChild(ndBtn);
-    var evBtn = el('button', 'ghost-btn', '突発イベントを発生');
-    evBtn.type = 'button'; evBtn.dataset.action = 'trigger-event';
-    evBtn.style.width = '100%'; evBtn.style.marginTop = '8px';
-    sum.appendChild(evBtn);
-    root.appendChild(sum);
-
-    if (danger.length || warn.length) {
-      var riskCard = el('div', 'card');
-      riskCard.appendChild(el('h2', null, '要対応の品目'));
-      danger.concat(warn).forEach(function (e) { riskCard.appendChild(itemCard(e, { manage: false })); });
-      root.appendChild(riskCard);
-    } else if (S.items.length) {
-      var okCard = el('div', 'card');
-      okCard.appendChild(el('h2', null, '要対応の品目'));
-      okCard.appendChild(el('div', 'empty-note', '予測範囲内で欠品・安全在庫割れの見込みはありません。'));
-      root.appendChild(okCard);
-    }
-
-    var allCard = el('div', 'card');
-    allCard.appendChild(el('h2', null, '全品目の予測'));
-    if (S.items.length === 0) {
-      allCard.appendChild(el('div', 'empty-note', 'まだ品目がありません。「品目」タブから登録してください。'));
-    } else {
-      list.forEach(function (e) { allCard.appendChild(itemCard(e, { manage: false })); });
-    }
-    root.appendChild(allCard);
+    if (!any) fc.appendChild(el('div', 'empty-note', '当面、危険域に入る物資はありません。到着予定と現地供給で概ね保たれています。'));
+    root.appendChild(fc);
   }
 
-  function renderItems(root) {
+  function renderResult(root) {
+    var win = S.result === 'win' || S.result === 'perfect';
+    var hero = el('div', 'result-hero ' + (win ? 'win' : 'lose'));
+    var title = S.result === 'perfect' ? '維持成功（優秀）' : S.result === 'win' ? '維持成功' : '補給線 崩壊';
+    hero.appendChild(el('div', 'rh-title', title));
+    hero.appendChild(el('div', null, (S.day > GAME_DAYS ? GAME_DAYS + '日間の作戦終了' : S.day + '日目で終了') + ' ／ 最終健全度 ' + r0(S.status.health) + '%'));
+    root.appendChild(hero);
+
+    var card = el('div', 'card');
+    card.appendChild(el('h2', null, '最終評価'));
+    var avgFul = 0; RES_DEFS.forEach(function (r) { avgFul += S.res[r.key].ful; }); avgFul = avgFul / RES_DEFS.length;
+    var rows = [
+      ['到達日数', Math.min(S.day, GAME_DAYS + 1) - 1 + '日 / ' + GAME_DAYS + '日'],
+      ['最終健全度', r0(S.status.health) + '%'],
+      ['士気 / 輸送力 / 防衛力', r0(S.status.morale) + ' / ' + r0(S.status.logistics) + ' / ' + r0(S.status.defense)],
+      ['最終平均充足率', Math.round(avgFul * 100) + '%'],
+      ['補給ポイント残', r0(S.points)],
+      ['総発注回数 / 消費pt', S.stats.ordered + '回 / ' + S.stats.spent],
+      ['供給不足が出た日数', S.stats.shortfallDays + '日'],
+      ['突発イベント', S.stats.events + '回']
+    ];
+    rows.forEach(function (r) { var row = el('div', 'agg-row'); row.appendChild(el('span', null, r[0])); row.appendChild(el('b', null, String(r[1]))); card.appendChild(row); });
+    var again = el('button', 'primary-btn', 'もう一度挑戦する'); again.type = 'button'; again.dataset.action = 'reset-game'; again.style.marginTop = '10px';
+    card.appendChild(again);
+    root.appendChild(card);
+  }
+
+  function renderSupply(root) {
+    if (S.result) { root.appendChild(el('div', 'card')).appendChild(el('div', 'empty-note', 'ゲームは終了しています。「状況」タブから新しいシナリオを開始できます。')); return; }
     var form = el('div', 'card');
-    var formTitle = el('h2', null, editingItemId ? '品目を編集' : '品目を追加');
-    form.appendChild(formTitle);
-    els.formTitle = formTitle;
-    var editNote = el('div', 'edit-note'); editNote.hidden = true; els.editNote = editNote;
-    form.appendChild(editNote);
+    form.appendChild(el('h2', null, '補給を発注'));
+    form.appendChild(el('div', 'note', '補給ポイント 残 ' + r0(S.points) + ' ／ 本日の輸送枠 残 ' + r0(S.transport) + '（輸送枠は翌日に補充されます）'));
 
-    els.inName = mkInput(form, 'inName', '品目名（必須）', 'text', { maxLength: 40, placeholder: '例: 携行食' });
-    var row1 = el('div', 'field-row');
-    els.inCategory = mkSelect(row1, 'inCategory', 'カテゴリ', CATEGORIES);
-    els.inUnit = mkSelect(row1, 'inUnit', '単位', UNITS);
-    form.appendChild(row1);
-    var row2 = el('div', 'field-row3');
-    els.inStock = mkInput(row2, 'inStock', '現在庫', 'number', { min: '0', step: 'any', placeholder: '0' });
-    els.inUse = mkInput(row2, 'inUse', '1日消費', 'number', { min: '0', step: 'any', placeholder: '0' });
-    els.inSafety = mkInput(row2, 'inSafety', '安全在庫', 'number', { min: '0', step: 'any', placeholder: '0' });
-    form.appendChild(row2);
-    els.inPriority = mkSelect(form, 'inPriority', '優先度', PRIORITIES, '中');
-    els.inMemo = mkTextarea(form, 'inMemo', 'メモ（任意・120文字まで）', 120);
+    var fRes = el('div', 'field'); fRes.appendChild(el('label', null, '物資'));
+    var selRes = el('select');
+    RES_DEFS.forEach(function (r) { var st = S.res[r.key]; selRes.appendChild(new Option(r.name + '（充足' + Math.round(st.ful * 100) + '%・在庫' + r0(st.stock) + '）', r.key)); });
+    fRes.appendChild(selRes); form.appendChild(fRes); els.selRes = selRes;
 
-    var formError = el('div', 'form-error'); formError.hidden = true; els.formError = formError;
-    form.appendChild(formError);
-    var submitBtn = el('button', 'primary-btn', editingItemId ? '変更を保存' : '品目を追加');
-    submitBtn.type = 'button'; submitBtn.dataset.action = 'submit-item';
-    els.submitItemBtn = submitBtn;
-    form.appendChild(submitBtn);
-    var cancelBtn = el('button', 'ghost-btn', '編集をやめる');
-    cancelBtn.type = 'button'; cancelBtn.dataset.action = 'cancel-edit';
-    cancelBtn.style.width = '100%'; cancelBtn.style.marginTop = '8px';
-    cancelBtn.hidden = !editingItemId; els.cancelEditBtn = cancelBtn;
-    form.appendChild(cancelBtn);
-    root.appendChild(form);
-
-    var listCard = el('div', 'card');
-    listCard.appendChild(el('h2', null, '品目一覧（' + S.items.length + '件）'));
-    if (S.items.length === 0) {
-      listCard.appendChild(el('div', 'empty-note', 'まだ品目がありません。上のフォームから登録してください。'));
-    } else {
-      computeAll().forEach(function (e) { listCard.appendChild(itemCard(e, { manage: true })); });
-    }
-    root.appendChild(listCard);
-
-    if (editingItemId) {
-      var it = itemById(editingItemId);
-      if (it) {
-        els.inName.value = it.name; els.inCategory.value = it.category;
-        els.inStock.value = fmtNum(it.stock); els.inUnit.value = it.unit;
-        els.inUse.value = fmtNum(it.dailyUse); els.inSafety.value = fmtNum(it.safetyStock);
-        els.inPriority.value = it.priority; els.inMemo.value = it.memo;
-        els.formTitle.textContent = '品目を編集';
-        els.editNote.textContent = '編集中: ' + it.name; els.editNote.hidden = false;
-      }
-    }
-  }
-
-  function mkInput(parent, id, label, type, attrs) {
-    var f = el('div', 'field');
-    f.appendChild(el('label', null, label));
-    var inp = el('input');
-    inp.type = type;
-    if (attrs) { Object.keys(attrs).forEach(function (k) { inp[k] = attrs[k]; }); }
-    f.appendChild(inp);
-    parent.appendChild(f);
-    return inp;
-  }
-  function mkSelect(parent, id, label, options, def) {
-    var f = el('div', 'field');
-    f.appendChild(el('label', null, label));
-    var sel = el('select');
-    options.forEach(function (o) { sel.appendChild(new Option(o, o)); });
-    if (def) sel.value = def;
-    f.appendChild(sel);
-    parent.appendChild(f);
-    return sel;
-  }
-  function mkTextarea(parent, id, label, maxLen) {
-    var f = el('div', 'field');
-    f.appendChild(el('label', null, label));
-    var ta = el('textarea');
-    ta.maxLength = maxLen;
-    f.appendChild(ta);
-    parent.appendChild(f);
-    return ta;
-  }
-
-  function renderShips(root) {
-    var form = el('div', 'card');
-    form.appendChild(el('h2', null, '補充予定を追加'));
-    if (S.items.length === 0) {
-      form.appendChild(el('div', 'empty-note', '先に品目を登録してください。'));
-      root.appendChild(form);
-      return;
-    }
-    var fSel = el('div', 'field');
-    fSel.appendChild(el('label', null, '対象品目'));
-    var sel = el('select');
-    S.items.forEach(function (it) { sel.appendChild(new Option(it.name + '（' + it.category + '）', it.id)); });
-    fSel.appendChild(sel); form.appendChild(fSel);
-    els.shipItem = sel;
     var row = el('div', 'field-row');
-    els.shipEta = mkInput(row, 'shipEta', '到着予定日（何日目）', 'number', { min: '1', step: '1', placeholder: '例: ' + (S.day + 3) });
-    els.shipQty = mkInput(row, 'shipQty', '数量', 'number', { min: '0', step: 'any', placeholder: '例: 40' });
+    var fMethod = el('div', 'field'); fMethod.appendChild(el('label', null, '補給方式'));
+    var selMethod = el('select');
+    METHOD_KEYS.forEach(function (k) { selMethod.appendChild(new Option(METHODS[k].label + '（' + METHODS[k].desc + '）', k)); });
+    fMethod.appendChild(selMethod); row.appendChild(fMethod); els.selMethod = selMethod;
+    var fQty = el('div', 'field'); fQty.appendChild(el('label', null, '数量'));
+    var inQty = el('input'); inQty.type = 'number'; inQty.min = '1'; inQty.step = '1'; inQty.placeholder = '例: 40';
+    fQty.appendChild(inQty); row.appendChild(fQty); els.inQty = inQty;
     form.appendChild(row);
-    els.shipMemo = mkInput(form, 'shipMemo', 'メモ（任意）', 'text', { maxLength: 60 });
-    var shipError = el('div', 'form-error'); shipError.hidden = true; els.shipError = shipError;
-    form.appendChild(shipError);
-    form.appendChild(el('div', 'forecast-note', '現在は ' + S.day + '日目です。到着予定日は「何日目に届くか」を入力してください。'));
-    var addBtn = el('button', 'primary-btn', '補充予定を追加');
-    addBtn.type = 'button'; addBtn.dataset.action = 'submit-ship'; addBtn.style.marginTop = '9px';
-    form.appendChild(addBtn);
+
+    var preview = el('div', 'order-preview'); preview.id = 'orderPreview'; els.orderPreview = preview; form.appendChild(preview);
+    var err = el('div', 'form-error'); err.hidden = true; els.orderError = err; form.appendChild(err);
+    var btn = el('button', 'primary-btn', 'この内容で発注'); btn.type = 'button'; btn.dataset.action = 'place-order'; form.appendChild(btn);
     root.appendChild(form);
 
-    var pendingCard = el('div', 'card');
-    pendingCard.appendChild(el('h2', null, '未反映の補充予定'));
-    var pending = S.shipments.filter(function (sh) { return !sh.applied; })
-      .sort(function (a, b) { return a.etaDay - b.etaDay; });
-    if (pending.length === 0) {
-      pendingCard.appendChild(el('div', 'empty-note', '未反映の補充予定はありません。'));
-    } else {
-      pending.forEach(function (sh) {
-        var it = itemById(sh.itemId);
-        var due = sh.etaDay <= S.day;
-        var c = el('div', 'ship-card' + (due ? ' due' : ''));
-        var main = el('div', 'ship-main');
-        main.appendChild(document.createTextNode((it ? it.name : '?') + ' に '));
-        main.appendChild(el('b', null, '+' + fmtNum(sh.quantity) + (it ? it.unit : '')));
-        main.appendChild(document.createTextNode(' / ' + sh.etaDay + '日目着' + (due ? '（到着済み）' : '（あと' + (sh.etaDay - S.day) + '日）')));
-        c.appendChild(main);
-        if (sh.memo) c.appendChild(el('div', 'ship-meta', sh.memo));
-        var row2 = el('div', 'btn-row');
-        var applyBtn = el('button', 'mini-btn add', '在庫へ反映');
-        applyBtn.type = 'button'; applyBtn.dataset.action = 'apply-ship'; applyBtn.dataset.id = sh.id;
-        if (!due) applyBtn.disabled = true;
-        var delBtn = el('button', 'mini-btn', '削除');
-        delBtn.type = 'button'; delBtn.dataset.action = 'delete-ship'; delBtn.dataset.id = sh.id;
-        row2.appendChild(applyBtn); row2.appendChild(delBtn);
-        c.appendChild(row2);
-        if (!due) c.appendChild(el('div', 'ship-meta', '到着予定日になると反映できます。'));
-        pendingCard.appendChild(c);
-      });
-    }
-    root.appendChild(pendingCard);
+    selRes.addEventListener('change', updateOrderPreview);
+    selMethod.addEventListener('change', updateOrderPreview);
+    inQty.addEventListener('input', updateOrderPreview);
+    updateOrderPreview();
 
-    var doneCard = el('div', 'card');
-    doneCard.appendChild(el('h2', null, '反映済みの補充予定'));
-    var done = S.shipments.filter(function (sh) { return sh.applied; });
-    if (done.length === 0) doneCard.appendChild(el('div', 'empty-note', 'まだありません。'));
-    else {
-      done.slice(-10).reverse().forEach(function (sh) {
-        var it = itemById(sh.itemId);
-        var c = el('div', 'ship-card');
-        c.appendChild(el('div', 'ship-main', (it ? it.name : '?') + ' +' + fmtNum(sh.quantity) + (it ? it.unit : '') + '（' + sh.etaDay + '日目着・反映済み）'));
-        doneCard.appendChild(c);
-      });
-    }
-    root.appendChild(doneCard);
+    var pend = el('div', 'card');
+    pend.appendChild(el('h2', null, '輸送中の補給'));
+    var pending = S.orders.filter(function (o) { return !o.applied; }).sort(function (a, b) { return a.etaDay - b.etaDay; });
+    if (pending.length === 0) pend.appendChild(el('div', 'empty-note', '輸送中の補給はありません。'));
+    else pending.forEach(function (o) {
+      var r = RES_BY_KEY[o.resKey]; var m = METHODS[o.method];
+      var c = el('div', 'ship-card' + (o.method === 'risky' ? ' risky' : ''));
+      var main = el('div', 'ship-main');
+      main.appendChild(document.createTextNode(r.name + ' '));
+      main.appendChild(el('b', null, '+' + o.effQty));
+      main.appendChild(document.createTextNode('（' + m.label + '）'));
+      c.appendChild(main);
+      c.appendChild(el('div', 'ship-meta', o.etaDay + '日目着（あと' + (o.etaDay - S.day) + '日）' + (o.note ? '／' + o.note : '')));
+      pend.appendChild(c);
+    });
+    root.appendChild(pend);
   }
 
-  var HIST_TYPE = {
-    day: '', stockout: 't-danger', event: 't-event', shipment: 't-add',
-    use: 't-danger', add: 't-add', plan: '', edit: '', add_item: 't-add', delete: 't-danger'
-  };
+  function updateOrderPreview() {
+    if (!els.orderPreview) return;
+    var r = RES_BY_KEY[els.selRes.value];
+    var m = METHODS[els.selMethod.value];
+    var qty = Math.floor(Number(els.inQty.value));
+    if (!r || !m || !Number.isFinite(qty) || qty <= 0) { els.orderPreview.textContent = '数量を入力すると、必要ポイント・輸送枠・到着日が表示されます。'; return; }
+    var cost = r0(qty * r.cost * m.pointMult);
+    var eta = S.day + m.lead;
+    els.orderPreview.innerHTML = '';
+    els.orderPreview.appendChild(document.createTextNode('必要ポイント '));
+    els.orderPreview.appendChild(el('b', null, String(cost)));
+    els.orderPreview.appendChild(document.createTextNode('（残 ' + r0(S.points) + '）／ 輸送枠 '));
+    els.orderPreview.appendChild(el('b', null, String(qty)));
+    els.orderPreview.appendChild(document.createTextNode('（残 ' + r0(S.transport) + '）／ '));
+    els.orderPreview.appendChild(el('b', null, eta + '日目着'));
+    if (m.lead && els.selMethod.value === 'risky') els.orderPreview.appendChild(document.createTextNode('（遅延・損耗リスクあり）'));
+  }
+
+  function submitOrder() {
+    hideBanner();
+    var res = placeOrder(els.selRes.value, Math.floor(Number(els.inQty.value)), els.selMethod.value);
+    if (!res.ok) { els.orderError.textContent = res.msg; els.orderError.hidden = false; return; }
+    els.orderError.hidden = true;
+    els.inQty.value = '';
+    render();
+    showToast(res.msg);
+  }
+
+  var HIST_CLS = { day: '', good: 't-good', bad: 't-bad', event: 't-event', order: '' };
 
   function renderHistory(root) {
     var card = el('div', 'card');
-    card.appendChild(el('h2', null, '履歴（最新 ' + Math.min(S.history.length, HISTORY_SHOW) + ' / ' + S.history.length + '件）'));
-    if (S.history.length === 0) {
-      card.appendChild(el('div', 'empty-note', 'まだ履歴がありません。'));
-    } else {
+    card.appendChild(el('h2', null, '作戦日誌（最新 ' + Math.min(S.history.length, HISTORY_SHOW) + ' / ' + S.history.length + '）'));
+    if (S.history.length === 0) card.appendChild(el('div', 'empty-note', 'まだ記録がありません。'));
+    else {
       var ul = el('ul', 'log-list');
       S.history.slice(0, HISTORY_SHOW).forEach(function (h) {
-        var li = el('li', HIST_TYPE[h.type] || '');
+        var li = el('li', HIST_CLS[h.type] || '');
         li.appendChild(el('b', null, h.day + '日目 '));
-        li.appendChild(document.createTextNode(h.text + (h.at ? '（' + h.at + '）' : '')));
+        li.appendChild(document.createTextNode(h.text));
         ul.appendChild(li);
       });
       card.appendChild(ul);
-      if (S.history.length > HISTORY_SHOW) {
-        card.appendChild(el('div', 'forecast-note', '直近 ' + HISTORY_SHOW + '件のみ表示しています（保持は最大 ' + HISTORY_MAX + '件）。'));
-      }
+      if (S.history.length > HISTORY_SHOW) card.appendChild(el('div', 'note', '直近 ' + HISTORY_SHOW + '件のみ表示（保持は最大 ' + HISTORY_MAX + '件）。'));
     }
     root.appendChild(card);
   }
 
-  function renderSettings(root) {
-    var fcCard = el('div', 'card');
-    fcCard.appendChild(el('h2', null, '予測設定'));
-    var f = el('div', 'field');
-    f.appendChild(el('label', null, '予測日数（1〜60日）'));
-    var inp = el('input');
-    inp.type = 'number'; inp.min = '1'; inp.max = '60'; inp.step = '1'; inp.value = String(S.forecastDays);
-    inp.dataset.action = 'set-forecast';
-    f.appendChild(inp);
-    fcCard.appendChild(f);
-    fcCard.appendChild(el('div', 'forecast-note', '危険/注意の判定はこの日数の範囲で行われます。'));
-    root.appendChild(fcCard);
+  function renderInfo(root) {
+    var card = el('div', 'card');
+    card.appendChild(el('h2', null, '遊び方'));
+    var ul = el('ul', 'rules');
+    [
+      '目的: 30日間、前線の「健全度」を50%以上（理想は80%以上）に保つ。0%になると即崩壊。',
+      '各物資は毎日 需要を消費し、現地供給だけでは足りない。不足分を補給ポイントと輸送枠を使って発注する。',
+      '充足率が下がると、その物資が影響するステータス（士気・輸送力・防衛力・健全度）が低下する。',
+      '燃料・資材が不足すると輸送力が落ち、補給ポイント収入と輸送枠も減る悪循環になる。',
+      '補給方式: 通常（3日・安い）／速達（1日・高い）／危険輸送（2日・遅延や損耗リスク）。早く欲しいほど高くつく。',
+      '補給ポイントも輸送枠も有限。全物資を大量発注はできないので、どこを優先するか毎日判断する。',
+      '需要を100%満たせなくても即失敗ではない。低い充足を放置すると徐々に崩れる。'
+    ].forEach(function (t) { ul.appendChild(el('li', null, t)); });
+    card.appendChild(ul);
+    root.appendChild(card);
 
-    var aggCard = el('div', 'card');
-    aggCard.appendChild(el('h2', null, '集計'));
-    var list = computeAll();
-    var danger = list.filter(function (e) { return e.fc.risk === 'danger'; }).length;
-    var warn = list.filter(function (e) { return e.fc.risk === 'warn'; }).length;
-    var totalStock = S.items.reduce(function (a, it) { return a + it.stock; }, 0);
-    var todayUse = S.items.reduce(function (a, it) { return a + it.dailyUse; }, 0);
+    var stCard = el('div', 'card');
+    stCard.appendChild(el('h2', null, '集計'));
     var rows = [
-      ['登録品目数', S.items.length, ''],
-      ['危険品目数', danger, danger ? 'danger' : ''],
-      ['注意品目数', warn, warn ? 'warn' : ''],
-      ['総在庫数', fmtNum(totalStock), ''],
-      ['現在日の日消費合計', fmtNum(todayUse), ''],
-      ['累計欠品回数', S.stats.stockouts, S.stats.stockouts ? 'warn' : ''],
-      ['累計イベント回数', S.stats.events, '']
+      ['経過日数', Math.min(S.day, GAME_DAYS) + ' / ' + GAME_DAYS],
+      ['補給ポイント残', r0(S.points)],
+      ['本日の輸送枠', r0(S.transport)],
+      ['総発注回数', S.stats.ordered + '回'],
+      ['累計消費ポイント', S.stats.spent],
+      ['供給不足が出た日数', S.stats.shortfallDays + '日'],
+      ['突発イベント', S.stats.events + '回']
     ];
-    rows.forEach(function (r) {
-      var row = el('div', 'agg-row' + (r[2] ? ' ' + r[2] : ''));
-      row.appendChild(el('span', null, r[0]));
-      row.appendChild(el('b', null, String(r[1])));
-      aggCard.appendChild(row);
-    });
-    root.appendChild(aggCard);
+    rows.forEach(function (r) { var row = el('div', 'agg-row'); row.appendChild(el('span', null, r[0])); row.appendChild(el('b', null, String(r[1]))); stCard.appendChild(row); });
+    root.appendChild(stCard);
 
     var dataCard = el('div', 'card');
-    dataCard.appendChild(el('h2', null, 'データ管理'));
-    dataCard.appendChild(el('div', 'forecast-note', '保存データはこの端末のブラウザ内（localStorage）にのみ保存されます。'));
-    var histBtn = el('button', 'ghost-btn', '履歴のみ削除');
-    histBtn.type = 'button'; histBtn.dataset.action = 'clear-history';
-    histBtn.style.width = '100%'; histBtn.style.marginTop = '10px';
-    dataCard.appendChild(histBtn);
-    var resetBtn = el('button', 'danger-btn', 'すべてのデータをリセット');
-    resetBtn.type = 'button'; resetBtn.dataset.action = 'reset-all';
-    resetBtn.style.marginTop = '8px';
-    dataCard.appendChild(resetBtn);
+    dataCard.appendChild(el('h2', null, 'データ'));
+    dataCard.appendChild(el('div', 'note', '進行はこの端末のブラウザ内（localStorage）にのみ保存されます。'));
+    var reset = el('button', 'danger-btn', '最初からやり直す（リセット）'); reset.type = 'button'; reset.dataset.action = 'reset-game'; reset.style.marginTop = '10px';
+    dataCard.appendChild(reset);
     root.appendChild(dataCard);
   }
 
   function render() {
-    renderDayBar();
+    renderTopBar();
     var tabs = els.tabBar.querySelectorAll('.tab-btn');
     for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('active', tabs[i].dataset.tab === activeTab);
-    var root = els.tabContent;
-    root.innerHTML = '';
-    if (activeTab === 'dashboard') renderDashboard(root);
-    else if (activeTab === 'items') renderItems(root);
-    else if (activeTab === 'ships') renderShips(root);
+    var root = els.tabContent; root.innerHTML = '';
+    if (activeTab === 'status') renderStatus(root);
+    else if (activeTab === 'supply') renderSupply(root);
     else if (activeTab === 'history') renderHistory(root);
-    else if (activeTab === 'settings') renderSettings(root);
-  }
-
-  // ---------- events / actions ----------
-
-  function openAdjust(itemId, mode) {
-    adjustMode[itemId] = mode;
-    var form = els.tabContent.querySelector('[data-adjust-for="' + cssEscape(itemId) + '"]');
-    if (form) {
-      form.hidden = false;
-      var qinput = form.querySelector('[data-adjust-qty]');
-      if (qinput) { qinput.value = ''; qinput.focus(); }
-    }
-  }
-  function cssEscape(s) { return String(s).replace(/["\\]/g, '\\$&'); }
-
-  function confirmAdjust(itemId) {
-    var form = els.tabContent.querySelector('[data-adjust-for="' + cssEscape(itemId) + '"]');
-    if (!form) return;
-    var qInput = form.querySelector('[data-adjust-qty]');
-    var mInput = form.querySelector('[data-adjust-memo]');
-    var raw = qInput ? qInput.value : '';
-    var n = Number(raw);
-    if (raw === '' || !Number.isFinite(n) || n <= 0) { showBanner('数量は0より大きい数値で入力してください。'); return; }
-    var mode = adjustMode[itemId] || 'use';
-    manualAdjust(itemId, mode === 'use' ? -n : n, mInput ? mInput.value.trim().slice(0, 60) : '');
+    else if (activeTab === 'info') renderInfo(root);
   }
 
   function onAction(e) {
     var t = e.target.closest('[data-action]');
     if (!t) return;
-    var id = t.dataset.id;
     switch (t.dataset.action) {
-      case 'next-day': nextDay(); break;
-      case 'trigger-event': triggerEvent(); break;
-      case 'submit-item': submitItem(); break;
-      case 'cancel-edit': stopEditItem(); render(); break;
-      case 'edit-item': startEditItem(id); break;
-      case 'delete-item': deleteItem(id); break;
-      case 'quick-use': openAdjust(id, 'use'); break;
-      case 'quick-add': openAdjust(id, 'add'); break;
-      case 'adjust-confirm': confirmAdjust(id); break;
-      case 'adjust-cancel':
-        var form = els.tabContent.querySelector('[data-adjust-for="' + cssEscape(id) + '"]');
-        if (form) form.hidden = true;
-        break;
-      case 'submit-ship': submitShipment(); break;
-      case 'apply-ship': applyShipment(id); break;
-      case 'delete-ship': deleteShipment(id); break;
-      case 'clear-history': clearHistory(); break;
-      case 'reset-all': resetAll(); break;
+      case 'next-day': advanceDay(); break;
+      case 'place-order': submitOrder(); break;
+      case 'reset-game': resetGame(); break;
     }
   }
-
-  function onInput(e) {
-    var t = e.target;
-    if (t.dataset && t.dataset.action === 'set-forecast') {
-      var n = Number(t.value);
-      if (Number.isFinite(n)) {
-        S.forecastDays = clampN(Math.floor(n), 1, 60);
-        persist();
-        // 予測日数だけ変わっても入力欄フォーカスを維持したいので部分再描画
-        renderDayBar();
-        // ダッシュボード等は次回タブ表示時に反映（設定タブ内の集計は即時反映のため再描画）
-        var root = els.tabContent;
-        // 集計値のみ更新するため設定タブを描き直す
-        var focusVal = t.value;
-        render();
-        var again = els.tabContent.querySelector('[data-action="set-forecast"]');
-        if (again) { again.value = focusVal; }
-      }
-    }
-  }
-
-  // ---------- init ----------
 
   function init() {
     els.banner = document.getElementById('banner');
     els.toast = document.getElementById('toast');
-    els.dayBar = document.getElementById('dayBar');
+    els.topBar = document.getElementById('topBar');
     els.tabBar = document.getElementById('tabBar');
     els.tabContent = document.getElementById('tabContent');
-
     els.tabBar.addEventListener('click', function (e) {
-      var b = e.target.closest('.tab-btn');
-      if (!b) return;
-      if (activeTab === 'items' && editingItemId && b.dataset.tab !== 'items') stopEditItem();
-      activeTab = b.dataset.tab;
-      hideBanner();
-      render();
-      window.scrollTo({ top: 0 });
+      var b = e.target.closest('.tab-btn'); if (!b) return;
+      activeTab = b.dataset.tab; hideBanner(); render(); window.scrollTo({ top: 0 });
     });
     els.tabContent.addEventListener('click', onAction);
-    els.tabContent.addEventListener('change', onInput);
-
     loadState();
     persist();
     render();
