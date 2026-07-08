@@ -11,20 +11,759 @@ status: draft
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>シフトライン司令室</title>
   <style>
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 16px; background: #f6f7f9; color: #20242a; }
-    main { max-width: 960px; margin: 0 auto; }
-    .card { background: #fff; border: 1px solid #dde2ea; border-radius: 14px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0; padding: 16px; background: #f6f7f9; color: #20242a;
+    }
+    main { max-width: 1200px; margin: 0 auto; }
+    .card {
+      background: #fff; border: 1px solid #dde2ea; border-radius: 14px;
+      padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.04); margin-bottom: 16px;
+    }
+    h1 { margin-top: 0; }
+    h2 { font-size: 1.2em; margin: 16px 0 12px; }
+    h3 { font-size: 1em; margin: 12px 0 8px; }
+    button {
+      padding: 12px 16px; font-size: 1em; border: 1px solid #dde2ea;
+      border-radius: 8px; background: #fff; cursor: pointer;
+      transition: all 0.2s; margin-right: 8px; margin-bottom: 8px;
+    }
+    button:hover { background: #f0f1f3; border-color: #20242a; }
+    button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+    button.primary:hover { background: #1d4ed8; }
+    button.danger { background: #dc2626; color: #fff; border-color: #dc2626; }
+    button.danger:hover { background: #b91c1c; }
+    button.success { background: #16a34a; color: #fff; border-color: #16a34a; }
+    button.success:hover { background: #15803d; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .status-bar {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px; margin-bottom: 16px;
+    }
+    .status-item { padding: 12px; background: #f9fafb; border-radius: 8px; }
+    .status-label { font-size: 0.85em; color: #6b7280; margin-bottom: 4px; }
+    .status-value { font-size: 1.5em; font-weight: bold; }
+    .lines-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px; margin-bottom: 16px;
+    }
+    .line-card {
+      border: 2px solid #dde2ea; border-radius: 12px; padding: 16px;
+      background: #fff;
+    }
+    .line-card h3 { margin-top: 0; }
+    .line-stat {
+      display: flex; justify-content: space-between; padding: 8px 0;
+      border-bottom: 1px solid #efefef; font-size: 0.95em;
+    }
+    .line-stat:last-child { border-bottom: none; }
+    .progress-bar {
+      width: 100%; height: 24px; background: #e5e7eb; border-radius: 8px;
+      overflow: hidden; margin: 8px 0;
+    }
+    .progress-fill {
+      height: 100%; background: #3b82f6; transition: width 0.3s;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 0.75em; font-weight: bold;
+    }
+    .risk-low { color: #16a34a; }
+    .risk-medium { color: #f59e0b; }
+    .risk-high { color: #dc2626; }
+    .status-safe { color: #16a34a; }
+    .status-warning { color: #f59e0b; }
+    .status-critical { color: #dc2626; }
+    .allocation-controls {
+      margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .allocation-input {
+      padding: 8px; border: 1px solid #dde2ea; border-radius: 6px;
+      width: 70px; text-align: center;
+    }
+    .event-log {
+      max-height: 400px; overflow-y: auto; background: #f9fafb;
+      border-radius: 8px; padding: 12px; font-size: 0.9em;
+    }
+    .event-item {
+      padding: 8px; border-left: 3px solid #dde2ea; margin-bottom: 8px;
+      padding-left: 12px;
+    }
+    .event-turn { font-weight: bold; margin-bottom: 4px; }
+    .event-text { color: #4b5563; }
+    .result-modal {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: none; align-items: center;
+      justify-content: center; z-index: 1000;
+    }
+    .result-modal.active { display: flex; }
+    .result-content {
+      background: #fff; padding: 32px; border-radius: 16px;
+      max-width: 500px; max-height: 90vh; overflow-y: auto;
+    }
+    .result-score { font-size: 2em; font-weight: bold; margin: 16px 0; }
+    .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+    .result-item { padding: 12px; background: #f9fafb; border-radius: 8px; }
+    .result-item-label { font-size: 0.85em; color: #6b7280; }
+    .result-item-value { font-size: 1.2em; font-weight: bold; margin-top: 4px; }
+    input[type="number"] { padding: 8px; border: 1px solid #dde2ea; border-radius: 6px; }
+    .hidden { display: none; }
+    .event-bad { border-left-color: #dc2626; }
+    .event-good { border-left-color: #16a34a; }
+    @media (max-width: 600px) {
+      .status-bar { grid-template-columns: repeat(2, 1fr); }
+      .lines-grid { grid-template-columns: 1fr; }
+      .result-grid { grid-template-columns: 1fr; }
+      button { padding: 10px 12px; font-size: 0.95em; }
+    }
   </style>
 </head>
 <body>
   <main>
     <section class="card">
       <h1>シフトライン司令室</h1>
-      <p>このHTMLはClaude Codeによる初回実装用の最小雛形です。</p>
+      <p>複数ラインの人員と進捗を管理し、シフト目標達成を目指します。</p>
+
+      <div class="btn-group">
+        <button id="btnStart" class="primary">シフト開始</button>
+        <button id="btnNextTurn" class="success" disabled>次のターン</button>
+        <button id="btnEndShift" class="danger" disabled>シフト終了</button>
+        <button id="btnReset">リセット</button>
+        <button id="btnHistory">履歴</button>
+      </div>
     </section>
+
+    <section id="historyPanel" class="card hidden">
+      <h2>シフト履歴</h2>
+      <div class="status-bar" id="historySummary"></div>
+      <div id="historyList"></div>
+      <div class="btn-group">
+        <button id="btnClearHistory" class="danger">履歴を全削除</button>
+        <button id="btnCloseHistory">閉じる</button>
+      </div>
+    </section>
+
+    <section id="shiftPanel" class="hidden">
+      <section class="card">
+        <h2>シフト情報</h2>
+        <div class="status-bar">
+          <div class="status-item">
+            <div class="status-label">経過時間</div>
+            <div class="status-value" id="currentTime">8:00</div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">総人員</div>
+            <div class="status-value" id="totalStaff">20 人</div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">配置済人員</div>
+            <div class="status-value" id="allocatedStaff">0 人</div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">全体進捗</div>
+            <div class="status-value" id="overallProgress">0%</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>生産ライン</h2>
+        <div class="lines-grid" id="linesContainer"></div>
+      </section>
+
+      <section class="card">
+        <h2>アクション</h2>
+        <button id="btnEvent" class="primary">ランダムイベント発生</button>
+        <button id="btnRest">疲労リセット</button>
+      </section>
+
+      <section class="card">
+        <h2>イベントログ</h2>
+        <div class="event-log" id="eventLog"></div>
+      </section>
+    </section>
+
+    <div id="resultModal" class="result-modal">
+      <div class="result-content">
+        <h2>シフト結果</h2>
+        <div class="result-score" id="resultScore"></div>
+        <div class="result-grid" id="resultDetails"></div>
+        <div class="btn-group">
+          <button class="primary" onclick="closeResult()">閉じる</button>
+        </div>
+      </div>
+    </div>
   </main>
+
   <script>
     'use strict';
+
+    const STORAGE_KEY = 'shiftLineDispatcher_v0.1';
+    const LINES = [
+      { id: 'punch', name: '穿孔ライン', target: 100, baseSpeed: 15, requiredStaff: 8 },
+      { id: 'assembly', name: '組立ライン', target: 80, baseSpeed: 12, requiredStaff: 7 },
+      { id: 'inspect', name: '検査ライン', target: 60, baseSpeed: 18, requiredStaff: 5 }
+    ];
+    const TOTAL_STAFF = 20;
+    const SHIFT_HOURS = 8;
+    const TURNS_PER_SHIFT = 16; // 30分ごと
+    const TURN_DURATION_MIN = 30;
+
+    let state = {
+      shiftActive: false,
+      turn: 0,
+      startTime: 8 * 60,
+      lines: {},
+      staff: {},
+      history: [],
+      shiftResults: [],
+      allocated: 0
+    };
+
+    function initLines() {
+      state.lines = {};
+      state.staff = {};
+      LINES.forEach(line => {
+        state.lines[line.id] = {
+          completed: 0,
+          wip: 0,
+          fatigue: 0,
+          shortage: false
+        };
+        state.staff[line.id] = 0;
+      });
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch(e) {
+        console.error('Save failed:', e);
+      }
+    }
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const loaded = JSON.parse(saved);
+          if (validateState(loaded)) {
+            state = loaded;
+            return true;
+          }
+        }
+      } catch(e) {
+        console.error('Load failed:', e);
+      }
+      return false;
+    }
+
+    function isFiniteNumber(v) {
+      return typeof v === 'number' && Number.isFinite(v);
+    }
+
+    function validateState(obj) {
+      if (!obj || typeof obj !== 'object') return false;
+      if (typeof obj.shiftActive !== 'boolean') return false;
+      if (!isFiniteNumber(obj.turn) || obj.turn < 0) return false;
+      if (!isFiniteNumber(obj.startTime) || obj.startTime < 0) return false;
+      if (!isFiniteNumber(obj.allocated) || obj.allocated < 0) return false;
+
+      if (!obj.lines || typeof obj.lines !== 'object') return false;
+      if (!obj.staff || typeof obj.staff !== 'object') return false;
+
+      for (const line of LINES) {
+        const ls = obj.lines[line.id];
+        if (!ls || typeof ls !== 'object') return false;
+        if (!isFiniteNumber(ls.completed) || ls.completed < 0) return false;
+        if (!isFiniteNumber(ls.wip) || ls.wip < 0) return false;
+        if (!isFiniteNumber(ls.fatigue) || ls.fatigue < 0 || ls.fatigue > 100) return false;
+        if (typeof ls.shortage !== 'boolean') return false;
+
+        const st = obj.staff[line.id];
+        if (!isFiniteNumber(st) || st < 0 || st > TOTAL_STAFF) return false;
+      }
+
+      if (!Array.isArray(obj.history)) return false;
+      for (const h of obj.history) {
+        if (!h || typeof h !== 'object') return false;
+        if (!isFiniteNumber(h.turn) || typeof h.text !== 'string') return false;
+      }
+
+      if (!Array.isArray(obj.shiftResults)) return false;
+      for (const r of obj.shiftResults) {
+        if (!r || typeof r !== 'object') return false;
+        if (!isFiniteNumber(r.achievement) || !isFiniteNumber(r.avgFatigue) || !isFiniteNumber(r.score)) return false;
+      }
+
+      return true;
+    }
+
+    function startShift() {
+      initLines();
+      state.shiftActive = true;
+      state.turn = 0;
+      state.startTime = 8 * 60;
+      state.history = [];
+      state.allocated = 0;
+
+      addLog('シフト開始！ 頑張りましょう。');
+      saveState();
+      render();
+    }
+
+    function nextTurn() {
+      if (!state.shiftActive) return;
+      if (state.turn >= TURNS_PER_SHIFT) return;
+
+      state.turn++;
+
+      // Process each line
+      LINES.forEach(line => {
+        const lineState = state.lines[line.id];
+        const allocated = state.staff[line.id] || 0;
+        const ratio = line.requiredStaff > 0 ? allocated / line.requiredStaff : 0;
+
+        // Calculate production: understaffing hurts progress, overstaffing gives
+        // only a small bonus but drives fatigue up faster.
+        let productivity;
+        if (ratio < 0.5) {
+          productivity = ratio * 0.5;
+        } else if (ratio <= 1) {
+          productivity = ratio;
+        } else {
+          productivity = 1 + Math.min(ratio - 1, 1) * 0.15;
+        }
+
+        let production = Math.floor(line.baseSpeed * productivity);
+
+        // Shortage in progress cripples production until resolved.
+        if (lineState.shortage) {
+          production = Math.floor(production * 0.4);
+          if (Math.random() < 0.3) {
+            lineState.shortage = false;
+            addLog(`${line.name}の欠品が解消されました。`);
+          }
+        } else if (Math.random() < 0.12) {
+          lineState.shortage = true;
+          addLog(`⚠️ ${line.name}で部品欠品が発生！`);
+        }
+
+        lineState.completed += production;
+        lineState.wip = Math.max(0, lineState.wip + allocated - production);
+
+        // Fatigue: overwork increases it fastest, understaffed stress adds a
+        // little, adequate staffing still accrues a small baseline per turn.
+        if (ratio > 1) {
+          lineState.fatigue += Math.round((ratio - 1) * 20);
+        } else if (ratio < 1) {
+          lineState.fatigue += Math.round((1 - ratio) * 5);
+        } else {
+          lineState.fatigue += 1;
+        }
+        lineState.fatigue = Math.max(0, Math.min(100, lineState.fatigue));
+      });
+
+      saveState();
+      render();
+    }
+
+    function endShift() {
+      if (!state.shiftActive) return;
+      state.shiftActive = false;
+
+      const results = calculateResults();
+      state.shiftResults.push(results);
+
+      saveState();
+      showResults(results);
+    }
+
+    function calculateResults() {
+      const results = {
+        achievement: 0,
+        totalTarget: 0,
+        totalCompleted: 0,
+        avgFatigue: 0,
+        riskLabel: '低',
+        shortageCount: 0,
+        score: 0,
+        timestamp: new Date().toISOString()
+      };
+
+      let totalFatigue = 0;
+      LINES.forEach(line => {
+        results.totalTarget += line.target;
+        const completed = Math.min(state.lines[line.id].completed, line.target);
+        results.totalCompleted += completed;
+        totalFatigue += state.lines[line.id].fatigue;
+      });
+
+      results.achievement = Math.round((results.totalCompleted / results.totalTarget) * 100);
+      results.avgFatigue = Math.round(totalFatigue / LINES.length);
+      results.riskLabel = results.avgFatigue > 70 ? '高' : results.avgFatigue > 40 ? '中' : '低';
+      results.shortageCount = state.history.filter(h => h.text.includes('欠品が発生')).length;
+
+      const safetyMargin = Math.max(0, 100 - results.avgFatigue);
+      const shortagePenalty = Math.max(0, 100 - results.shortageCount * 10);
+      results.score = Math.round((results.achievement * 0.5) + (safetyMargin * 0.3) + (shortagePenalty * 0.2));
+
+      return results;
+    }
+
+    function showResults(results) {
+      const modal = document.getElementById('resultModal');
+      const scoreDiv = document.getElementById('resultScore');
+      const detailsDiv = document.getElementById('resultDetails');
+
+      scoreDiv.textContent = `スコア: ${results.score} 点`;
+      detailsDiv.innerHTML = `
+        <div class="result-item">
+          <div class="result-item-label">達成率</div>
+          <div class="result-item-value">${results.achievement}%</div>
+        </div>
+        <div class="result-item">
+          <div class="result-item-label">完了数/目標数</div>
+          <div class="result-item-value">${results.totalCompleted}/${results.totalTarget}</div>
+        </div>
+        <div class="result-item">
+          <div class="result-item-label">平均疲労度</div>
+          <div class="result-item-value">${results.avgFatigue}%</div>
+        </div>
+        <div class="result-item">
+          <div class="result-item-label">事故リスク</div>
+          <div class="result-item-value">${results.riskLabel}</div>
+        </div>
+        <div class="result-item">
+          <div class="result-item-label">欠品発生</div>
+          <div class="result-item-value">${results.shortageCount} 回</div>
+        </div>
+      `;
+
+      modal.classList.add('active');
+    }
+
+    function closeResult() {
+      document.getElementById('resultModal').classList.remove('active');
+    }
+
+    function generateEvent() {
+      const events = [
+        () => {
+          const line = LINES[Math.floor(Math.random() * LINES.length)];
+          const reduction = Math.min(state.staff[line.id] || 0, Math.floor(Math.random() * 3) + 1);
+          state.staff[line.id] -= reduction;
+          state.allocated = Math.max(0, state.allocated - reduction);
+          if (reduction > 0) {
+            addLog(`⚠️ ${line.name}の一部作業者が休職。(-${reduction}人)`);
+          }
+        },
+        () => {
+          const line = LINES[Math.floor(Math.random() * LINES.length)];
+          const support = Math.min(3, TOTAL_STAFF - state.allocated);
+          if (support > 0) {
+            state.staff[line.id] += support;
+            state.allocated += support;
+            addLog(`✨ ${line.name}に応援投入！ +${support}人`);
+          }
+        },
+        () => {
+          const line = LINES[Math.floor(Math.random() * LINES.length)];
+          state.lines[line.id].completed += Math.floor(Math.random() * 10) + 5;
+          addLog(`🎉 ${line.name}で改善提案が活かされた！`);
+        },
+        () => {
+          const line = LINES[Math.floor(Math.random() * LINES.length)];
+          state.lines[line.id].wip = Math.max(0, state.lines[line.id].wip - 10);
+          addLog(`😰 ${line.name}で工具トラブル。進捗が停滞。`);
+        }
+      ];
+
+      events[Math.floor(Math.random() * events.length)]();
+      saveState();
+      render();
+    }
+
+    function allocateStaff() {
+      const values = {};
+      let total = 0;
+
+      for (const line of LINES) {
+        const raw = document.getElementById(`staff_${line.id}`).value.trim();
+
+        if (raw === '') {
+          alert(`${line.name}の人員数を入力してください。`);
+          return;
+        }
+
+        const num = Number(raw);
+
+        if (!Number.isFinite(num)) {
+          alert(`${line.name}の人員数が不正な値です。`);
+          return;
+        }
+        if (!Number.isInteger(num)) {
+          alert(`${line.name}の人員数は整数で入力してください。`);
+          return;
+        }
+        if (num < 0) {
+          alert(`${line.name}の人員数は0以上にしてください。`);
+          return;
+        }
+        if (num > TOTAL_STAFF) {
+          alert(`${line.name}の人員数が総人員(${TOTAL_STAFF}人)を超えています。`);
+          return;
+        }
+
+        values[line.id] = num;
+        total += num;
+      }
+
+      if (total > TOTAL_STAFF) {
+        alert(`配置人員合計(${total}人)が総人員(${TOTAL_STAFF}人)を超えています。`);
+        return;
+      }
+
+      LINES.forEach(line => {
+        state.staff[line.id] = values[line.id];
+      });
+
+      state.allocated = total;
+      addLog(`人員を配置しました。 (合計: ${total}人)`);
+      saveState();
+      render();
+    }
+
+    function resetFatigue() {
+      LINES.forEach(line => {
+        state.lines[line.id].fatigue = 0;
+      });
+      addLog('全ラインの疲労をリセット。');
+      saveState();
+      render();
+    }
+
+    function addLog(text) {
+      state.history.push({
+        turn: state.turn,
+        text: text,
+        timestamp: Date.now()
+      });
+      if (state.history.length > 50) {
+        state.history.shift();
+      }
+    }
+
+    function resetAll() {
+      if (confirm('すべてのデータをリセットしますか？')) {
+        state = {
+          shiftActive: false,
+          turn: 0,
+          startTime: 8 * 60,
+          lines: {},
+          staff: {},
+          history: [],
+          shiftResults: [],
+          allocated: 0
+        };
+        saveState();
+        render();
+      }
+    }
+
+    function formatTime(minutes) {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      return `${hours}:${mins.toString().padStart(2, '0')}`;
+    }
+
+    function render() {
+      const shiftPanel = document.getElementById('shiftPanel');
+      const btnStart = document.getElementById('btnStart');
+      const btnNextTurn = document.getElementById('btnNextTurn');
+      const btnEndShift = document.getElementById('btnEndShift');
+
+      if (state.shiftActive) {
+        shiftPanel.classList.remove('hidden');
+        btnStart.disabled = true;
+        btnNextTurn.disabled = state.turn >= TURNS_PER_SHIFT;
+        btnEndShift.disabled = false;
+
+        document.getElementById('currentTime').textContent = formatTime(state.startTime + (state.turn * TURN_DURATION_MIN));
+        document.getElementById('totalStaff').textContent = `${TOTAL_STAFF} 人`;
+        document.getElementById('allocatedStaff').textContent = `${state.allocated} 人`;
+
+        let totalProgress = 0;
+        let totalTarget = 0;
+        LINES.forEach(line => {
+          totalTarget += line.target;
+          totalProgress += Math.min(state.lines[line.id].completed, line.target);
+        });
+        const progressPct = Math.round((totalProgress / totalTarget) * 100);
+        document.getElementById('overallProgress').textContent = `${progressPct}%`;
+
+        renderLines();
+        renderEventLog();
+      } else {
+        shiftPanel.classList.add('hidden');
+        btnStart.disabled = false;
+        btnNextTurn.disabled = true;
+        btnEndShift.disabled = true;
+      }
+    }
+
+    function renderLines() {
+      const container = document.getElementById('linesContainer');
+      container.innerHTML = '';
+
+      LINES.forEach(line => {
+        const lineState = state.lines[line.id];
+        const progressPct = Math.round((lineState.completed / line.target) * 100);
+        const fatigueClass = lineState.fatigue > 70 ? 'risk-high' : lineState.fatigue > 40 ? 'risk-medium' : 'risk-low';
+        const shortageClass = lineState.shortage ? 'status-critical' : 'status-safe';
+
+        const html = `
+          <div class="line-card">
+            <h3>${line.name}</h3>
+            <div class="line-stat">
+              <span>目標数</span>
+              <span>${line.target}</span>
+            </div>
+            <div class="line-stat">
+              <span>完了数</span>
+              <span>${Math.min(lineState.completed, line.target)}</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: ${Math.min(progressPct, 100)}%">${Math.min(progressPct, 100)}%</div>
+            </div>
+            <div class="line-stat">
+              <span>仕掛品</span>
+              <span>${lineState.wip}</span>
+            </div>
+            <div class="line-stat">
+              <span>必要人員</span>
+              <span>${line.requiredStaff} 人</span>
+            </div>
+            <div class="line-stat">
+              <span>配置人員</span>
+              <span><input type="number" id="staff_${line.id}" class="allocation-input" value="${state.staff[line.id] || 0}" min="0" max="${TOTAL_STAFF}" step="1"></span>
+            </div>
+            <div class="line-stat">
+              <span>疲労度</span>
+              <span class="${fatigueClass}">${lineState.fatigue}%</span>
+            </div>
+            <div class="line-stat">
+              <span>欠品</span>
+              <span class="${shortageClass}">${lineState.shortage ? '発生中' : '正常'}</span>
+            </div>
+          </div>
+        `;
+        container.innerHTML += html;
+      });
+
+      // Add allocation button
+      const allocBtn = document.createElement('div');
+      allocBtn.style.gridColumn = 'span 999';
+      allocBtn.innerHTML = '<button class="primary" onclick="allocateStaff()">人員配置を確定</button>';
+      container.appendChild(allocBtn);
+    }
+
+    function renderEventLog() {
+      const container = document.getElementById('eventLog');
+      const recentLogs = state.history.slice(-15).reverse();
+
+      container.innerHTML = recentLogs.map(log => {
+        const isBad = log.text.includes('⚠️') || log.text.includes('😰');
+        const isGood = log.text.includes('✨') || log.text.includes('🎉');
+        const cls = isBad ? 'event-bad' : isGood ? 'event-good' : '';
+        return `
+          <div class="event-item ${cls}">
+            <div class="event-turn">ターン ${log.turn}</div>
+            <div class="event-text">${log.text}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleHistory() {
+      const panel = document.getElementById('historyPanel');
+      panel.classList.toggle('hidden');
+      if (!panel.classList.contains('hidden')) {
+        renderHistoryPanel();
+      }
+    }
+
+    function renderHistoryPanel() {
+      const summary = document.getElementById('historySummary');
+      const list = document.getElementById('historyList');
+      const results = state.shiftResults;
+      const count = results.length;
+      const avgAchievement = count ? Math.round(results.reduce((sum, r) => sum + r.achievement, 0) / count) : 0;
+      const bestScore = count ? Math.max(...results.map(r => r.score)) : 0;
+
+      summary.innerHTML = `
+        <div class="status-item">
+          <div class="status-label">累計シフト数</div>
+          <div class="status-value">${count}</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">平均達成率</div>
+          <div class="status-value">${avgAchievement}%</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">最高スコア</div>
+          <div class="status-value">${bestScore}</div>
+        </div>
+      `;
+
+      if (count === 0) {
+        list.innerHTML = '<p>シフト履歴がまだありません。</p>';
+        return;
+      }
+
+      list.innerHTML = results.map((r, idx) => {
+        const date = new Date(r.timestamp);
+        const dateLabel = isNaN(date.getTime()) ? '' : date.toLocaleString('ja-JP');
+        return `
+          <div class="event-item">
+            <div class="event-turn">${dateLabel} - スコア ${r.score}点</div>
+            <div class="event-text">達成率 ${r.achievement}% / 疲労 ${r.avgFatigue}% / リスク ${r.riskLabel} / 欠品 ${r.shortageCount}回</div>
+            <button class="danger" onclick="deleteHistoryEntry(${idx})">この記録を削除</button>
+          </div>
+        `;
+      }).reverse().join('');
+    }
+
+    function deleteHistoryEntry(idx) {
+      if (idx < 0 || idx >= state.shiftResults.length) return;
+      if (!confirm('この記録を削除しますか？')) return;
+      state.shiftResults.splice(idx, 1);
+      saveState();
+      renderHistoryPanel();
+    }
+
+    function clearHistory() {
+      if (state.shiftResults.length === 0) return;
+      if (!confirm('シフト履歴をすべて削除しますか？')) return;
+      state.shiftResults = [];
+      saveState();
+      renderHistoryPanel();
+    }
+
+    // Event listeners
+    document.getElementById('btnStart').addEventListener('click', startShift);
+    document.getElementById('btnNextTurn').addEventListener('click', nextTurn);
+    document.getElementById('btnEndShift').addEventListener('click', endShift);
+    document.getElementById('btnReset').addEventListener('click', resetAll);
+    document.getElementById('btnEvent').addEventListener('click', generateEvent);
+    document.getElementById('btnRest').addEventListener('click', resetFatigue);
+    document.getElementById('btnHistory').addEventListener('click', toggleHistory);
+    document.getElementById('btnCloseHistory').addEventListener('click', toggleHistory);
+    document.getElementById('btnClearHistory').addEventListener('click', clearHistory);
+
+    // Initialize
+    loadState();
+    render();
   </script>
 </body>
 </html>
