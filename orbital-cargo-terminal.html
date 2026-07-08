@@ -1,6 +1,6 @@
 <!doctype html>
 <!--
-name: 軌道貨物ターミナル
+name: 星雲カフェ仕込みステーション
 version: 0.1
 type: single-html-app
 status: draft
@@ -8,20 +8,976 @@ status: draft
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>軌道貨物ターミナル</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>星雲カフェ仕込みステーション</title>
   <style>
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 16px; background: #f6f7f9; color: #20242a; }
-    main { max-width: 960px; margin: 0 auto; }
-    .card { background: #fff; border: 1px solid #dde2ea; border-radius: 14px; padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.04); }
+    * { box-sizing: border-box; }
+    html, body { max-width: 100%; overflow-x: hidden; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0; padding: 16px; background: #f6f7f9; color: #20242a;
+      padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+    }
+    main { max-width: 1200px; margin: 0 auto; }
+    .card {
+      background: #fff; border: 1px solid #dde2ea; border-radius: 14px;
+      padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.04); margin-bottom: 16px;
+    }
+    h1 { margin-top: 0; }
+    h2 { font-size: 1.2em; margin: 16px 0 12px; }
+    h3 { font-size: 1em; margin: 12px 0 8px; }
+    button {
+      padding: 12px 16px; font-size: 1em; border: 1px solid #dde2ea;
+      border-radius: 8px; background: #fff; cursor: pointer;
+      transition: all 0.2s; margin-right: 8px; margin-bottom: 8px; min-height: 44px;
+    }
+    button:hover { background: #f0f1f3; border-color: #20242a; }
+    button.primary { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+    button.primary:hover { background: #6d28d9; }
+    button.danger { background: #dc2626; color: #fff; border-color: #dc2626; }
+    button.danger:hover { background: #b91c1c; }
+    button.success { background: #16a34a; color: #fff; border-color: #16a34a; }
+    button.success:hover { background: #15803d; }
+    button.warn { background: #f59e0b; color: #fff; border-color: #f59e0b; }
+    button.warn:hover { background: #d97706; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .status-bar {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+      gap: 12px; margin-bottom: 16px;
+    }
+    .status-item { padding: 12px; background: #f9fafb; border-radius: 8px; min-width: 0; }
+    .status-label {
+      font-size: 0.85em; color: #6b7280; margin-bottom: 4px;
+      white-space: nowrap; word-break: keep-all; overflow: hidden; text-overflow: ellipsis;
+    }
+    .status-value { font-size: 1.4em; font-weight: bold; white-space: nowrap; }
+    .stat-row {
+      display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+      align-items: center; column-gap: 12px; padding: 10px 0;
+      border-bottom: 1px solid #efefef; font-size: 0.95em;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-row > span:first-child { white-space: nowrap; word-break: keep-all; color: #4b5563; }
+    .stat-row > span:last-child { text-align: right; white-space: nowrap; font-weight: 600; min-width: 0; }
+    .capacity-bar {
+      width: 100%; height: 20px; background: #e5e7eb; border-radius: 8px;
+      overflow: hidden; margin: 8px 0; display: flex;
+    }
+    .capacity-seg { height: 100%; }
+    .capacity-seg.ingredients { background: #94a3b8; }
+    .capacity-seg.prepped { background: #3b82f6; }
+    .capacity-seg.spoiled { background: #dc2626; }
+    .buy-form {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px;
+      align-items: center; margin-top: 8px;
+    }
+    .buy-input {
+      padding: 8px 10px; border: 1px solid #dde2ea; border-radius: 6px;
+      width: 100%; min-height: 44px; font-size: 16px;
+    }
+    .menus-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+      gap: 12px;
+    }
+    .menu-card {
+      border: 2px solid #dde2ea; border-radius: 12px; padding: 12px; min-width: 0;
+      background: #fff;
+    }
+    .menu-card.fulfilled { border-color: #16a34a; background: #f0fdf4; }
+    .menu-card.expired { border-color: #dc2626; background: #fef2f2; opacity: 0.7; }
+    .menu-title { font-weight: bold; margin-bottom: 6px; }
+    .event-log {
+      max-height: 400px; overflow-y: auto; background: #f9fafb;
+      border-radius: 8px; padding: 12px; font-size: 0.9em;
+    }
+    .event-item {
+      padding: 8px; border-left: 3px solid #dde2ea; margin-bottom: 8px;
+      padding-left: 12px;
+    }
+    .event-turn { font-weight: bold; margin-bottom: 4px; }
+    .event-text { color: #4b5563; }
+    .event-bad { border-left-color: #dc2626; }
+    .event-good { border-left-color: #16a34a; }
+    .result-modal {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); display: none; align-items: center;
+      justify-content: center; z-index: 1000; padding: 16px;
+    }
+    .result-modal.active { display: flex; }
+    .result-content {
+      background: #fff; padding: 32px; border-radius: 16px;
+      max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto;
+    }
+    .result-score { font-size: 2em; font-weight: bold; margin: 16px 0; }
+    .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+    .result-item { padding: 12px; background: #f9fafb; border-radius: 8px; }
+    .result-item-label { font-size: 0.85em; color: #6b7280; }
+    .result-item-value { font-size: 1.2em; font-weight: bold; margin-top: 4px; }
+    .hidden { display: none; }
+    @media (max-width: 600px) {
+      body { padding: 12px; padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px)); }
+      .status-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .menus-grid { grid-template-columns: minmax(0, 1fr); }
+      .result-grid { grid-template-columns: minmax(0, 1fr); }
+      .buy-form { grid-template-columns: minmax(0, 1fr); }
+    }
   </style>
 </head>
 <body>
   <main>
     <section class="card">
-      <h1>軌道貨物ターミナル</h1>
-      <p>このHTMLはClaude Codeによる初回実装用の最小雛形です。</p>
+      <h1>星雲カフェ仕込みステーション</h1>
+      <p>架空の星雲カフェを1日単位で運営します。食材を仕込み、待っているお客さんに提供し、評判と売上を伸ばしましょう。</p>
+
+      <div class="btn-group">
+        <button id="btnStartDay" class="primary">1日開始</button>
+        <button id="btnNextTurn" class="success" disabled>次のターン</button>
+        <button id="btnEndDay" class="danger" disabled>1日終了</button>
+        <button id="btnResetDay" disabled>現在日のみリセット</button>
+        <button id="btnResetAll">全データリセット</button>
+        <button id="btnHistory">履歴</button>
+      </div>
     </section>
+
+    <section id="historyPanel" class="card hidden">
+      <h2>運営履歴</h2>
+      <div class="status-bar" id="historySummary"></div>
+      <div id="historyList"></div>
+      <div class="btn-group">
+        <button id="btnClearHistory" class="danger">履歴を全削除</button>
+        <button id="btnCloseHistory">閉じる</button>
+      </div>
+    </section>
+
+    <section id="dayPanel" class="hidden">
+      <section class="card">
+        <h2>カフェの状況</h2>
+        <div class="status-bar">
+          <div class="status-item">
+            <div class="status-label">日数 / ターン</div>
+            <div class="status-value" id="dayTurnLabel">1日目 0/8</div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">売上</div>
+            <div class="status-value" id="fundsLabel">0</div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">待ちのお客さん</div>
+            <div class="status-value" id="waitingLabel">0 人</div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">評判</div>
+            <div class="status-value" id="reputationLabel">0</div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">満足度</div>
+            <div class="status-value" id="satisfactionLabel">0%</div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">スタッフ気力</div>
+            <div class="status-value" id="energyLabel">0%</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>保管庫 (<span id="pantryUsed">0</span> / <span id="pantryCapacity">0</span>)</h2>
+        <div class="capacity-bar" id="capacityBar"></div>
+        <div class="stat-row">
+          <span>食材</span>
+          <span id="ingredientsLabel">0</span>
+        </div>
+        <div class="stat-row">
+          <span>仕込み済みメニュー</span>
+          <span id="preppedLabel">0</span>
+        </div>
+        <div class="stat-row">
+          <span>傷んだ食材</span>
+          <span id="spoiledLabel">0</span>
+        </div>
+        <div class="btn-group" style="margin-top: 12px;">
+          <button id="btnPrep" class="primary">仕込みする</button>
+          <button id="btnServe" class="success">提供する</button>
+          <button id="btnDispose" class="warn">傷んだ食材を廃棄</button>
+          <button id="btnRest">スタッフを休憩させる</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>食材の仕入れ</h2>
+        <div class="buy-form">
+          <input type="number" id="ingredientAmount" class="buy-input" placeholder="仕入れる食材量" min="1" step="1">
+          <button id="btnBuyIngredients" class="primary">仕入れる</button>
+        </div>
+        <p style="font-size:0.85em;color:#6b7280;margin-bottom:0;">食材1単位あたり<span id="ingredientPriceLabel">12</span>売上</p>
+        <div class="btn-group" style="margin-top: 12px;">
+          <button id="btnPromote" class="primary">宣伝する (<span id="promotionCostLabel">40</span>売上)</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>特別メニュー</h2>
+        <div class="menus-grid" id="menusContainer"></div>
+      </section>
+
+      <section class="card">
+        <h2>運営ログ</h2>
+        <div class="event-log" id="eventLog"></div>
+      </section>
+    </section>
+
+    <div id="resultModal" class="result-modal">
+      <div class="result-content">
+        <h2>1日の結果</h2>
+        <div class="result-score" id="resultScore"></div>
+        <div class="result-grid" id="resultDetails"></div>
+        <div class="btn-group">
+          <button class="primary" onclick="closeResult()">閉じる</button>
+        </div>
+      </div>
+    </div>
   </main>
+
+  <script>
+    'use strict';
+
+    const STORAGE_KEY = 'nebulaCafePrepStation_v0.1';
+    const TURNS_PER_DAY = 8;
+    const PANTRY_CAPACITY = 30;
+    const STARTING_FUNDS = 300;
+    const STARTING_INGREDIENTS = 8;
+    const STAFF = 3;
+    const INGREDIENT_COST_PER_UNIT = 12;
+    const DISH_PRICE = 60;
+    const REST_ENERGY_RESTORE = 30;
+    const DISPOSAL_COST_PER_UNIT = 4;
+    const PROMOTION_COST = 40;
+    const PROMOTION_BOOST_TURNS = 2;
+    const WAITING_LEAVE_THRESHOLD = 15;
+
+    function freshState() {
+      return {
+        dayActive: false,
+        day: 1,
+        turn: 0,
+        funds: STARTING_FUNDS,
+        staffEnergy: 100,
+        reputation: 60,
+        satisfaction: 70,
+        waitingCustomers: 0,
+        promotionTurnsLeft: 0,
+        pantry: { ingredients: STARTING_INGREDIENTS, prepped: 0, spoiled: 0 },
+        specialMenus: [],
+        history: [],
+        dayResults: [],
+        daySnapshot: null,
+        nextMenuId: 1
+      };
+    }
+
+    let state = freshState();
+
+    function isFiniteNumber(v) {
+      return typeof v === 'number' && Number.isFinite(v);
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.error('Save failed:', e);
+      }
+    }
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const loaded = JSON.parse(saved);
+          if (validateState(loaded)) {
+            state = loaded;
+            return true;
+          }
+        }
+      } catch (e) {
+        console.error('Load failed:', e);
+      }
+      return false;
+    }
+
+    function validatePantry(p) {
+      if (!p || typeof p !== 'object') return false;
+      if (!isFiniteNumber(p.ingredients) || p.ingredients < 0) return false;
+      if (!isFiniteNumber(p.prepped) || p.prepped < 0) return false;
+      if (!isFiniteNumber(p.spoiled) || p.spoiled < 0) return false;
+      return true;
+    }
+
+    function validateMenu(m) {
+      if (!m || typeof m !== 'object') return false;
+      if (!isFiniteNumber(m.id)) return false;
+      if (!isFiniteNumber(m.dishesRequired) || m.dishesRequired <= 0) return false;
+      if (!isFiniteNumber(m.reward) || m.reward < 0) return false;
+      if (!isFiniteNumber(m.deadlineTurn) || m.deadlineTurn < 0) return false;
+      if (typeof m.fulfilled !== 'boolean') return false;
+      if (typeof m.expired !== 'boolean') return false;
+      return true;
+    }
+
+    function validateState(obj) {
+      if (!obj || typeof obj !== 'object') return false;
+      if (typeof obj.dayActive !== 'boolean') return false;
+      if (!isFiniteNumber(obj.day) || obj.day < 1) return false;
+      if (!isFiniteNumber(obj.turn) || obj.turn < 0) return false;
+      if (!isFiniteNumber(obj.funds)) return false;
+      if (!isFiniteNumber(obj.staffEnergy) || obj.staffEnergy < 0 || obj.staffEnergy > 100) return false;
+      if (!isFiniteNumber(obj.reputation) || obj.reputation < 0 || obj.reputation > 100) return false;
+      if (!isFiniteNumber(obj.satisfaction) || obj.satisfaction < 0 || obj.satisfaction > 100) return false;
+      if (!isFiniteNumber(obj.waitingCustomers) || obj.waitingCustomers < 0) return false;
+      if (!isFiniteNumber(obj.promotionTurnsLeft) || obj.promotionTurnsLeft < 0) return false;
+      if (!validatePantry(obj.pantry)) return false;
+      if (!isFiniteNumber(obj.nextMenuId)) return false;
+
+      if (!Array.isArray(obj.specialMenus)) return false;
+      for (const m of obj.specialMenus) {
+        if (!validateMenu(m)) return false;
+      }
+
+      if (!Array.isArray(obj.history)) return false;
+      for (const h of obj.history) {
+        if (!h || typeof h !== 'object') return false;
+        if (!isFiniteNumber(h.turn) || typeof h.text !== 'string') return false;
+      }
+
+      if (!Array.isArray(obj.dayResults)) return false;
+      for (const r of obj.dayResults) {
+        if (!r || typeof r !== 'object') return false;
+        if (!isFiniteNumber(r.day) || !isFiniteNumber(r.score) || !isFiniteNumber(r.fundsDelta)) return false;
+      }
+
+      if (obj.daySnapshot !== null) {
+        if (typeof obj.daySnapshot !== 'object') return false;
+        if (!isFiniteNumber(obj.daySnapshot.funds)) return false;
+        if (!isFiniteNumber(obj.daySnapshot.reputation) || !isFiniteNumber(obj.daySnapshot.satisfaction)) return false;
+        if (!isFiniteNumber(obj.daySnapshot.staffEnergy)) return false;
+        if (!validatePantry(obj.daySnapshot.pantry)) return false;
+      }
+
+      return true;
+    }
+
+    function addLog(text) {
+      state.history.push({ turn: state.turn, text: text, timestamp: Date.now() });
+      if (state.history.length > 60) {
+        state.history.shift();
+      }
+    }
+
+    function pantryTotal() {
+      return state.pantry.ingredients + state.pantry.prepped + state.pantry.spoiled;
+    }
+
+    function pantryFree() {
+      return Math.max(0, PANTRY_CAPACITY - pantryTotal());
+    }
+
+    function makeSpecialMenu(deadlineOffsetMin, deadlineOffsetMax, dishesMin, dishesMax, rewardMultiplier) {
+      const dishesRequired = dishesMin + Math.floor(Math.random() * (dishesMax - dishesMin + 1));
+      const reward = Math.round(dishesRequired * rewardMultiplier) + Math.floor(Math.random() * 15);
+      const deadlineTurn = Math.min(TURNS_PER_DAY, state.turn + deadlineOffsetMin + Math.floor(Math.random() * (deadlineOffsetMax - deadlineOffsetMin + 1)));
+      const menu = {
+        id: state.nextMenuId++,
+        dishesRequired,
+        reward,
+        deadlineTurn,
+        fulfilled: false,
+        expired: false
+      };
+      state.specialMenus.push(menu);
+      return menu;
+    }
+
+    function startDay() {
+      if (state.dayActive) return;
+
+      state.daySnapshot = {
+        funds: state.funds,
+        reputation: state.reputation,
+        satisfaction: state.satisfaction,
+        staffEnergy: state.staffEnergy,
+        pantry: { ...state.pantry }
+      };
+
+      state.turn = 0;
+      state.dayActive = true;
+      state.waitingCustomers = 0;
+      state.promotionTurnsLeft = 0;
+      state.history = [];
+      state.specialMenus = [];
+
+      makeSpecialMenu(4, 6, 4, 9, 25);
+      makeSpecialMenu(5, 8, 5, 10, 27);
+
+      addLog(`${state.day}日目の営業を開始しました。`);
+      saveState();
+      render();
+    }
+
+    function processCustomerArrival() {
+      let arrivals = 3 + Math.floor(Math.random() * 4) + Math.floor(state.reputation / 30);
+      if (state.promotionTurnsLeft > 0) {
+        arrivals += 3;
+      }
+      state.waitingCustomers += arrivals;
+
+      if (state.waitingCustomers > WAITING_LEAVE_THRESHOLD) {
+        const excess = state.waitingCustomers - WAITING_LEAVE_THRESHOLD;
+        state.waitingCustomers = WAITING_LEAVE_THRESHOLD;
+        state.satisfaction = Math.max(0, state.satisfaction - Math.min(20, excess * 2));
+        state.reputation = Math.max(0, state.reputation - 2);
+        addLog(`⚠️ 行列が長くなりすぎて、お客さん${excess}人が帰ってしまいました。`);
+      }
+    }
+
+    function checkMenuDeadlines() {
+      state.specialMenus.forEach(m => {
+        if (!m.fulfilled && !m.expired && state.turn >= m.deadlineTurn) {
+          m.expired = true;
+          state.reputation = Math.max(0, state.reputation - 5);
+          addLog(`⚠️ 特別メニュー(${m.dishesRequired}皿)が期限切れになりました。`);
+        }
+      });
+    }
+
+    function checkSpoilIncident() {
+      if (state.pantry.spoiled <= 0) return;
+      const chance = Math.min(0.5, state.pantry.spoiled * 0.05);
+      if (Math.random() < chance) {
+        const lost = Math.min(state.pantry.spoiled, Math.ceil(state.pantry.spoiled / 2));
+        state.pantry.spoiled -= lost;
+        state.reputation = Math.max(0, state.reputation - 8);
+        state.satisfaction = Math.max(0, state.satisfaction - 10);
+        addLog(`⚠️ 傷んだ食材による品質事故が発生！ 評判と満足度が低下し、食材${lost}を廃棄しました。`);
+      }
+    }
+
+    function triggerRandomEvent() {
+      if (Math.random() >= 0.35) return;
+
+      const events = [
+        () => {
+          const surge = 4 + Math.floor(Math.random() * 6);
+          state.waitingCustomers += surge;
+          addLog(`🌟 急な来客増！ お客さんが${surge}人増えました。`);
+        },
+        () => {
+          const bonus = 1 + Math.floor(Math.random() * 3);
+          state.pantry.prepped = Math.min(PANTRY_CAPACITY, state.pantry.prepped + bonus);
+          state.reputation = Math.min(100, state.reputation + 2);
+          addLog(`✨ 人気メニューが発見され、仕込み済みメニューが${bonus}増えました。`);
+        },
+        () => {
+          if (state.pantry.ingredients <= 0) return;
+          const affected = Math.min(state.pantry.ingredients, 1 + Math.floor(Math.random() * 3));
+          state.pantry.ingredients -= affected;
+          state.pantry.spoiled += affected;
+          addLog(`⚠️ 食材の品質が変化し、${affected}が傷んでしまいました。`);
+        },
+        () => {
+          const bonus = 30 + Math.floor(Math.random() * 30);
+          state.funds += bonus;
+          state.reputation = Math.min(100, state.reputation + 1);
+          addLog(`😊 常連客が来店し、${bonus}売上をいただきました。`);
+        },
+        () => {
+          const swing = Math.floor(Math.random() * 21) - 10;
+          state.staffEnergy = Math.max(0, Math.min(100, state.staffEnergy + swing));
+          addLog(swing >= 0
+            ? `スタッフの気力が${swing}回復しました。`
+            : `😰 スタッフの気力が${Math.abs(swing)}低下しました。`);
+        }
+      ];
+
+      events[Math.floor(Math.random() * events.length)]();
+    }
+
+    function nextTurn() {
+      if (!state.dayActive) return;
+      if (state.turn >= TURNS_PER_DAY) return;
+
+      state.turn++;
+      if (state.promotionTurnsLeft > 0) {
+        state.promotionTurnsLeft--;
+      }
+
+      processCustomerArrival();
+      checkMenuDeadlines();
+      triggerRandomEvent();
+      checkSpoilIncident();
+
+      if (pantryTotal() > 0 || state.waitingCustomers > 0) {
+        state.staffEnergy = Math.max(0, state.staffEnergy - 3);
+      }
+
+      saveState();
+      render();
+    }
+
+    function prepIngredients() {
+      if (!state.dayActive) return;
+      if (state.staffEnergy < 15) {
+        alert('スタッフの気力が不足しています。休憩させてください。');
+        return;
+      }
+      if (state.pantry.ingredients <= 0) {
+        alert('仕込む食材がありません。');
+        return;
+      }
+
+      let rate = 5 + Math.floor(STAFF / 2);
+      if (state.staffEnergy < 40) rate = Math.ceil(rate / 2);
+
+      const batch = Math.min(state.pantry.ingredients, rate);
+      let spoiledCount = 0;
+      let cleanCount = 0;
+      for (let i = 0; i < batch; i++) {
+        if (Math.random() < 0.12) {
+          spoiledCount++;
+        } else {
+          cleanCount++;
+        }
+      }
+
+      state.pantry.ingredients -= batch;
+      state.pantry.prepped += cleanCount;
+      state.pantry.spoiled += spoiledCount;
+      state.staffEnergy = Math.max(0, state.staffEnergy - 4);
+
+      addLog(`仕込みを実施: ${cleanCount}皿が完成、${spoiledCount}が傷んでしまいました。`);
+      saveState();
+      render();
+    }
+
+    function serveCustomers() {
+      if (!state.dayActive) return;
+      if (state.pantry.prepped <= 0) {
+        alert('提供できる仕込み済みメニューがありません。');
+        return;
+      }
+      if (state.waitingCustomers <= 0) {
+        alert('待っているお客さんがいません。');
+        return;
+      }
+
+      const served = Math.min(state.pantry.prepped, state.waitingCustomers);
+      const revenue = served * DISH_PRICE;
+      state.pantry.prepped -= served;
+      state.waitingCustomers -= served;
+      state.funds += revenue;
+      state.staffEnergy = Math.max(0, state.staffEnergy - 2);
+
+      if (state.waitingCustomers === 0) {
+        state.satisfaction = Math.min(100, state.satisfaction + 2);
+      } else {
+        state.satisfaction = Math.max(0, state.satisfaction - 3);
+      }
+
+      addLog(`${served}人のお客さんに提供し、${revenue}売上を得ました。`);
+      saveState();
+      render();
+    }
+
+    function disposeSpoiled() {
+      if (!state.dayActive) return;
+      if (state.pantry.spoiled <= 0) {
+        alert('廃棄する傷んだ食材がありません。');
+        return;
+      }
+
+      const cost = state.pantry.spoiled * DISPOSAL_COST_PER_UNIT;
+      if (state.funds < cost) {
+        alert(`傷んだ食材の廃棄には${cost}売上が必要です。売上が不足しています。`);
+        return;
+      }
+
+      const disposed = state.pantry.spoiled;
+      state.funds -= cost;
+      state.pantry.spoiled = 0;
+      addLog(`傷んだ食材${disposed}を廃棄しました。(廃棄費用${cost}売上)`);
+      saveState();
+      render();
+    }
+
+    function restStaff() {
+      if (!state.dayActive) return;
+      state.staffEnergy = Math.min(100, state.staffEnergy + REST_ENERGY_RESTORE);
+      addLog('スタッフを休憩させ、気力を回復しました。');
+      saveState();
+      render();
+    }
+
+    function buyIngredients() {
+      if (!state.dayActive) return;
+
+      const raw = document.getElementById('ingredientAmount').value.trim();
+      if (raw === '') {
+        alert('仕入れる食材量を入力してください。');
+        return;
+      }
+
+      const amount = Number(raw);
+      if (!Number.isFinite(amount)) {
+        alert('食材量が不正な値です。');
+        return;
+      }
+      if (!Number.isInteger(amount)) {
+        alert('食材量は整数で入力してください。');
+        return;
+      }
+      if (amount <= 0) {
+        alert('食材量は1以上にしてください。');
+        return;
+      }
+      if (amount > pantryFree()) {
+        alert(`保管庫の空き容量が不足しています。(空き: ${pantryFree()})`);
+        return;
+      }
+
+      const cost = amount * INGREDIENT_COST_PER_UNIT;
+      if (state.funds < cost) {
+        alert(`売上が不足しています。(必要: ${cost}売上 / 所持: ${state.funds}売上)`);
+        return;
+      }
+
+      state.funds -= cost;
+      state.pantry.ingredients += amount;
+      addLog(`食材${amount}を${cost}売上で仕入れました。`);
+      document.getElementById('ingredientAmount').value = '';
+      saveState();
+      render();
+    }
+
+    function promote() {
+      if (!state.dayActive) return;
+      if (state.funds < PROMOTION_COST) {
+        alert(`売上が不足しています。(必要: ${PROMOTION_COST}売上 / 所持: ${state.funds}売上)`);
+        return;
+      }
+
+      state.funds -= PROMOTION_COST;
+      state.promotionTurnsLeft = PROMOTION_BOOST_TURNS;
+      state.reputation = Math.min(100, state.reputation + 2);
+      addLog(`宣伝を実施しました。しばらく来客が増えます。`);
+      saveState();
+      render();
+    }
+
+    function fulfillMenu(menuId) {
+      if (!state.dayActive) return;
+
+      const menu = state.specialMenus.find(m => m.id === menuId);
+      if (!menu || menu.fulfilled || menu.expired) return;
+
+      if (state.pantry.prepped < menu.dishesRequired) {
+        alert(`仕込み済みメニューが不足しています。(必要: ${menu.dishesRequired} / 保有: ${state.pantry.prepped})`);
+        return;
+      }
+
+      state.pantry.prepped -= menu.dishesRequired;
+      state.funds += menu.reward;
+      state.reputation = Math.min(100, state.reputation + 4);
+      state.satisfaction = Math.min(100, state.satisfaction + 3);
+      menu.fulfilled = true;
+
+      addLog(`特別メニューを提供完了！ ${menu.dishesRequired}皿を提供し、${menu.reward}売上を獲得しました。`);
+      saveState();
+      render();
+    }
+
+    function calculateResults() {
+      const snapshot = state.daySnapshot || { funds: state.funds, reputation: state.reputation };
+      const fundsDelta = state.funds - snapshot.funds;
+      const reputationDelta = state.reputation - snapshot.reputation;
+      const menusTotal = state.specialMenus.length;
+      const menusFulfilled = state.specialMenus.filter(m => m.fulfilled).length;
+      const achievementRate = menusTotal > 0 ? Math.round((menusFulfilled / menusTotal) * 100) : 100;
+      const incidentCount = state.history.filter(h => h.text.includes('品質事故')).length;
+      const safetyScore = Math.max(0, 100 - incidentCount * 25);
+      const satisfactionScore = Math.max(0, Math.min(100, state.satisfaction));
+      const score = Math.round((achievementRate * 0.3) + (satisfactionScore * 0.4) + (safetyScore * 0.3));
+
+      return {
+        day: state.day,
+        fundsDelta,
+        endFunds: state.funds,
+        menusTotal,
+        menusFulfilled,
+        achievementRate,
+        incidentCount,
+        reputationDelta,
+        reputation: state.reputation,
+        satisfaction: state.satisfaction,
+        score,
+        timestamp: new Date().toISOString()
+      };
+    }
+
+    function endDay() {
+      if (!state.dayActive) return;
+
+      const results = calculateResults();
+      state.dayResults.push(results);
+      state.dayActive = false;
+      state.day++;
+      state.daySnapshot = null;
+
+      saveState();
+      showResults(results);
+    }
+
+    function showResults(results) {
+      const modal = document.getElementById('resultModal');
+      document.getElementById('resultScore').textContent = `スコア: ${results.score} 点`;
+      document.getElementById('resultDetails').innerHTML = `
+        <div class="result-item">
+          <div class="result-item-label">売上増減</div>
+          <div class="result-item-value">${results.fundsDelta >= 0 ? '+' : ''}${results.fundsDelta}</div>
+        </div>
+        <div class="result-item">
+          <div class="result-item-label">特別メニュー達成</div>
+          <div class="result-item-value">${results.menusFulfilled}/${results.menusTotal} (${results.achievementRate}%)</div>
+        </div>
+        <div class="result-item">
+          <div class="result-item-label">品質事故件数</div>
+          <div class="result-item-value">${results.incidentCount} 件</div>
+        </div>
+        <div class="result-item">
+          <div class="result-item-label">満足度 / 評判</div>
+          <div class="result-item-value">${results.satisfaction}% / ${results.reputation} (${results.reputationDelta >= 0 ? '+' : ''}${results.reputationDelta})</div>
+        </div>
+      `;
+      modal.classList.add('active');
+    }
+
+    function closeResult() {
+      document.getElementById('resultModal').classList.remove('active');
+    }
+
+    function resetDay() {
+      if (!state.dayActive || !state.daySnapshot) return;
+      if (!confirm('現在日の進行をリセットしますか？')) return;
+
+      state.funds = state.daySnapshot.funds;
+      state.reputation = state.daySnapshot.reputation;
+      state.satisfaction = state.daySnapshot.satisfaction;
+      state.staffEnergy = state.daySnapshot.staffEnergy;
+      state.pantry = { ...state.daySnapshot.pantry };
+      state.turn = 0;
+      state.waitingCustomers = 0;
+      state.promotionTurnsLeft = 0;
+      state.history = [];
+      state.specialMenus = [];
+
+      makeSpecialMenu(4, 6, 4, 9, 25);
+      makeSpecialMenu(5, 8, 5, 10, 27);
+
+      addLog(`${state.day}日目をやり直します。`);
+      saveState();
+      render();
+    }
+
+    function resetAll() {
+      if (!confirm('すべてのデータをリセットしますか？運営履歴も削除されます。')) return;
+      state = freshState();
+      saveState();
+      render();
+    }
+
+    function toggleHistory() {
+      const panel = document.getElementById('historyPanel');
+      panel.classList.toggle('hidden');
+      if (!panel.classList.contains('hidden')) {
+        renderHistoryPanel();
+      }
+    }
+
+    function renderHistoryPanel() {
+      const summary = document.getElementById('historySummary');
+      const list = document.getElementById('historyList');
+      const results = state.dayResults;
+      const count = results.length;
+      const avgProfit = count ? Math.round(results.reduce((sum, r) => sum + r.fundsDelta, 0) / count) : 0;
+      const bestScore = count ? Math.max(...results.map(r => r.score)) : 0;
+      const avgSatisfaction = count ? Math.round(results.reduce((sum, r) => sum + r.satisfaction, 0) / count) : 0;
+
+      summary.innerHTML = `
+        <div class="status-item">
+          <div class="status-label">累計運営日数</div>
+          <div class="status-value">${count}</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">平均売上増減</div>
+          <div class="status-value">${avgProfit >= 0 ? '+' : ''}${avgProfit}</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">最高スコア</div>
+          <div class="status-value">${bestScore}</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">平均満足度</div>
+          <div class="status-value">${avgSatisfaction}%</div>
+        </div>
+      `;
+
+      if (count === 0) {
+        list.innerHTML = '<p>運営履歴がまだありません。</p>';
+        return;
+      }
+
+      list.innerHTML = results.map((r, idx) => {
+        const date = new Date(r.timestamp);
+        const dateLabel = isNaN(date.getTime()) ? '' : date.toLocaleString('ja-JP');
+        return `
+          <div class="event-item">
+            <div class="event-turn">${r.day}日目 (${dateLabel}) - スコア ${r.score}点</div>
+            <div class="event-text">売上増減 ${r.fundsDelta >= 0 ? '+' : ''}${r.fundsDelta} / 特別メニュー ${r.menusFulfilled}/${r.menusTotal} / 品質事故 ${r.incidentCount}件 / 満足度 ${r.satisfaction}%</div>
+            <button class="danger" onclick="deleteHistoryEntry(${idx})">この記録を削除</button>
+          </div>
+        `;
+      }).reverse().join('');
+    }
+
+    function deleteHistoryEntry(idx) {
+      if (idx < 0 || idx >= state.dayResults.length) return;
+      if (!confirm('この記録を削除しますか？')) return;
+      state.dayResults.splice(idx, 1);
+      saveState();
+      renderHistoryPanel();
+    }
+
+    function clearHistory() {
+      if (state.dayResults.length === 0) return;
+      if (!confirm('運営履歴をすべて削除しますか？')) return;
+      state.dayResults = [];
+      saveState();
+      renderHistoryPanel();
+    }
+
+    function render() {
+      const dayPanel = document.getElementById('dayPanel');
+      const btnStartDay = document.getElementById('btnStartDay');
+      const btnNextTurn = document.getElementById('btnNextTurn');
+      const btnEndDay = document.getElementById('btnEndDay');
+      const btnResetDay = document.getElementById('btnResetDay');
+
+      if (state.dayActive) {
+        dayPanel.classList.remove('hidden');
+        btnStartDay.disabled = true;
+        btnNextTurn.disabled = state.turn >= TURNS_PER_DAY;
+        btnEndDay.disabled = false;
+        btnResetDay.disabled = false;
+
+        document.getElementById('dayTurnLabel').textContent = `${state.day}日目 ${state.turn}/${TURNS_PER_DAY}`;
+        document.getElementById('fundsLabel').textContent = state.funds;
+        document.getElementById('waitingLabel').textContent = `${state.waitingCustomers} 人`;
+        document.getElementById('reputationLabel').textContent = state.reputation;
+        document.getElementById('satisfactionLabel').textContent = `${state.satisfaction}%`;
+        document.getElementById('energyLabel').textContent = `${state.staffEnergy}%`;
+        document.getElementById('ingredientPriceLabel').textContent = INGREDIENT_COST_PER_UNIT;
+        document.getElementById('promotionCostLabel').textContent = PROMOTION_COST;
+
+        document.getElementById('pantryUsed').textContent = pantryTotal();
+        document.getElementById('pantryCapacity').textContent = PANTRY_CAPACITY;
+        document.getElementById('ingredientsLabel').textContent = state.pantry.ingredients;
+        document.getElementById('preppedLabel').textContent = state.pantry.prepped;
+        document.getElementById('spoiledLabel').textContent = state.pantry.spoiled;
+
+        renderCapacityBar();
+        renderMenus();
+        renderEventLog();
+      } else {
+        dayPanel.classList.add('hidden');
+        btnStartDay.disabled = false;
+        btnNextTurn.disabled = true;
+        btnEndDay.disabled = true;
+        btnResetDay.disabled = true;
+      }
+    }
+
+    function renderCapacityBar() {
+      const bar = document.getElementById('capacityBar');
+      const total = PANTRY_CAPACITY;
+      const i = (state.pantry.ingredients / total) * 100;
+      const p = (state.pantry.prepped / total) * 100;
+      const s = (state.pantry.spoiled / total) * 100;
+      bar.innerHTML = `
+        <div class="capacity-seg ingredients" style="width:${i}%"></div>
+        <div class="capacity-seg prepped" style="width:${p}%"></div>
+        <div class="capacity-seg spoiled" style="width:${s}%"></div>
+      `;
+    }
+
+    function renderMenus() {
+      const container = document.getElementById('menusContainer');
+      if (state.specialMenus.length === 0) {
+        container.innerHTML = '<p>現在アクティブな特別メニューはありません。</p>';
+        return;
+      }
+
+      container.innerHTML = state.specialMenus.map(m => {
+        const statusClass = m.fulfilled ? 'fulfilled' : m.expired ? 'expired' : '';
+        const statusText = m.fulfilled ? '達成済み' : m.expired ? '期限切れ' : `期限: ターン${m.deadlineTurn}`;
+        const canFulfill = !m.fulfilled && !m.expired;
+        return `
+          <div class="menu-card ${statusClass}">
+            <div class="menu-title">${m.dishesRequired}皿 → 報酬${m.reward}売上</div>
+            <div class="stat-row">
+              <span>状態</span>
+              <span>${statusText}</span>
+            </div>
+            ${canFulfill ? `<button class="success" onclick="fulfillMenu(${m.id})">提供する</button>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderEventLog() {
+      const container = document.getElementById('eventLog');
+      const recentLogs = state.history.slice(-15).reverse();
+
+      container.innerHTML = recentLogs.map(log => {
+        const isBad = log.text.includes('⚠️') || log.text.includes('😰');
+        const isGood = log.text.includes('🌟') || log.text.includes('✨') || log.text.includes('😊');
+        const cls = isBad ? 'event-bad' : isGood ? 'event-good' : '';
+        return `
+          <div class="event-item ${cls}">
+            <div class="event-turn">ターン ${log.turn}</div>
+            <div class="event-text">${log.text}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Event listeners
+    document.getElementById('btnStartDay').addEventListener('click', startDay);
+    document.getElementById('btnNextTurn').addEventListener('click', nextTurn);
+    document.getElementById('btnEndDay').addEventListener('click', endDay);
+    document.getElementById('btnResetDay').addEventListener('click', resetDay);
+    document.getElementById('btnResetAll').addEventListener('click', resetAll);
+    document.getElementById('btnHistory').addEventListener('click', toggleHistory);
+    document.getElementById('btnCloseHistory').addEventListener('click', toggleHistory);
+    document.getElementById('btnClearHistory').addEventListener('click', clearHistory);
+    document.getElementById('btnPrep').addEventListener('click', prepIngredients);
+    document.getElementById('btnServe').addEventListener('click', serveCustomers);
+    document.getElementById('btnDispose').addEventListener('click', disposeSpoiled);
+    document.getElementById('btnRest').addEventListener('click', restStaff);
+    document.getElementById('btnBuyIngredients').addEventListener('click', buyIngredients);
+    document.getElementById('btnPromote').addEventListener('click', promote);
+
+    // Initialize
+    loadState();
+    render();
+  </script>
 </body>
 </html>
