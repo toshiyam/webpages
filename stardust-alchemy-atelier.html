@@ -246,8 +246,23 @@ status: draft
 
     let state = freshState();
 
+    const MAX_COUNT = 1000000;
+    const MAX_LEVEL = 9999;
+    const MAX_HISTORY_TEXT_LENGTH = 500;
+    const MAX_TIMESTAMP = 8640000000000000; // Date's max representable time
+
     function isFiniteNumber(v) {
       return typeof v === 'number' && Number.isFinite(v);
+    }
+
+    function isBoundedNonNegativeInt(v, max) {
+      return typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= (max === undefined ? MAX_COUNT : max);
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
     }
 
     function saveState() {
@@ -276,43 +291,44 @@ status: draft
 
     function validateState(obj) {
       if (!obj || typeof obj !== 'object') return false;
-      if (!isFiniteNumber(obj.level) || obj.level < 1) return false;
-      if (!isFiniteNumber(obj.exp) || obj.exp < 0) return false;
-      if (!isFiniteNumber(obj.reputation) || obj.reputation < 0) return false;
-      if (!isFiniteNumber(obj.maxReputation) || obj.maxReputation < 0) return false;
-      if (!isFiniteNumber(obj.shards) || obj.shards < 0) return false;
-      if (!isFiniteNumber(obj.nextRequestId)) return false;
+      if (!isBoundedNonNegativeInt(obj.level, MAX_LEVEL) || obj.level < 1) return false;
+      if (!isBoundedNonNegativeInt(obj.exp)) return false;
+      if (!isBoundedNonNegativeInt(obj.reputation)) return false;
+      if (!isBoundedNonNegativeInt(obj.maxReputation)) return false;
+      if (!isBoundedNonNegativeInt(obj.shards)) return false;
+      if (!isBoundedNonNegativeInt(obj.nextRequestId)) return false;
 
       if (!obj.materials || typeof obj.materials !== 'object') return false;
       for (const m of MATERIALS) {
-        if (!isFiniteNumber(obj.materials[m.id]) || obj.materials[m.id] < 0) return false;
+        if (!isBoundedNonNegativeInt(obj.materials[m.id])) return false;
       }
 
       if (!obj.works || typeof obj.works !== 'object') return false;
       for (const r of RECIPES) {
-        if (!isFiniteNumber(obj.works[r.id]) || obj.works[r.id] < 0) return false;
+        if (!isBoundedNonNegativeInt(obj.works[r.id])) return false;
       }
 
       if (!Array.isArray(obj.requests)) return false;
       for (const req of obj.requests) {
         if (!req || typeof req !== 'object') return false;
-        if (!isFiniteNumber(req.id)) return false;
+        if (!isBoundedNonNegativeInt(req.id)) return false;
         if (typeof req.recipeId !== 'string' || !recipeById(req.recipeId)) return false;
-        if (!isFiniteNumber(req.requiredQty) || req.requiredQty <= 0) return false;
-        if (!isFiniteNumber(req.reward) || req.reward < 0) return false;
-        if (!isFiniteNumber(req.reputationGain) || req.reputationGain < 0) return false;
+        if (!isBoundedNonNegativeInt(req.requiredQty) || req.requiredQty <= 0) return false;
+        if (!isBoundedNonNegativeInt(req.reward)) return false;
+        if (!isBoundedNonNegativeInt(req.reputationGain)) return false;
       }
 
       if (!Array.isArray(obj.history)) return false;
       for (const h of obj.history) {
         if (!h || typeof h !== 'object') return false;
-        if (typeof h.text !== 'string' || !isFiniteNumber(h.timestamp)) return false;
+        if (typeof h.text !== 'string' || h.text.length > MAX_HISTORY_TEXT_LENGTH) return false;
+        if (!isFiniteNumber(h.timestamp) || h.timestamp < 0 || h.timestamp > MAX_TIMESTAMP) return false;
       }
 
       if (!obj.stats || typeof obj.stats !== 'object') return false;
-      if (!isFiniteNumber(obj.stats.gatherCount) || obj.stats.gatherCount < 0) return false;
-      if (!isFiniteNumber(obj.stats.craftCount) || obj.stats.craftCount < 0) return false;
-      if (!isFiniteNumber(obj.stats.deliverCount) || obj.stats.deliverCount < 0) return false;
+      if (!isBoundedNonNegativeInt(obj.stats.gatherCount)) return false;
+      if (!isBoundedNonNegativeInt(obj.stats.craftCount)) return false;
+      if (!isBoundedNonNegativeInt(obj.stats.deliverCount)) return false;
 
       return true;
     }
@@ -324,8 +340,13 @@ status: draft
       }
     }
 
+    function unlockedRecipes() {
+      return RECIPES.filter(r => r.requiredLevel <= state.level);
+    }
+
     function generateRequest() {
-      const recipe = RECIPES[Math.floor(Math.random() * RECIPES.length)];
+      const available = unlockedRecipes();
+      const recipe = available[Math.floor(Math.random() * available.length)];
       const requiredQty = 1 + Math.floor(Math.random() * 2);
       const reward = Math.round(recipe.expGain * 3) + Math.floor(Math.random() * 10);
       const reputationGain = 3 + Math.floor(Math.random() * 3);
@@ -575,8 +596,8 @@ status: draft
         const dateLabel = isNaN(date.getTime()) ? '' : date.toLocaleTimeString('ja-JP');
         return `
           <div class="event-item ${cls}">
-            <div class="event-turn">${dateLabel}</div>
-            <div class="event-text">${h.text}</div>
+            <div class="event-turn">${escapeHtml(dateLabel)}</div>
+            <div class="event-text">${escapeHtml(h.text)}</div>
           </div>
         `;
       }).join('');
