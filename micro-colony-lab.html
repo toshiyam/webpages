@@ -8,26 +8,621 @@ status: draft
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>微生物コロニー培養ログ</title>
   <style>
-    :root { color-scheme: light dark; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    body { margin: 0; padding: 16px; line-height: 1.6; }
-    main { max-width: 920px; margin: 0 auto; }
-    .notice { border: 1px solid currentColor; border-radius: 12px; padding: 16px; }
+    * { box-sizing: border-box; }
+    html, body { max-width: 100%; overflow-x: hidden; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f2f7f5;
+      color: #16241f;
+      padding: 16px;
+      padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+    }
+    main { max-width: 1200px; margin: 0 auto; }
+    .card {
+      background: #fff;
+      border: 1px solid #d5e6de;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 6px 20px rgba(20, 60, 45, 0.06);
+      margin-bottom: 16px;
+    }
+    h1 { margin-top: 0; }
+    h2 { font-size: 1.2em; margin: 16px 0 12px; }
+    button {
+      padding: 12px 16px; font-size: 1em; border: 1px solid #d5e6de;
+      border-radius: 8px; background: #fff; cursor: pointer;
+      transition: all 0.2s; margin-right: 8px; margin-bottom: 8px; min-height: 44px;
+    }
+    button:hover { background: #eef7f2; border-color: #10967a; }
+    button.primary { background: #10967a; color: #fff; border-color: #10967a; }
+    button.primary:hover { background: #0c7a63; }
+    button.danger { background: #dc2626; color: #fff; border-color: #dc2626; }
+    button.danger:hover { background: #b91c1c; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .status-bar {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+      gap: 12px; margin-bottom: 16px;
+    }
+    .status-item { padding: 12px; background: #f2f7f5; border-radius: 8px; min-width: 0; }
+    .status-label {
+      font-size: 0.85em; color: #5c6f67; margin-bottom: 4px;
+      white-space: nowrap; word-break: keep-all; overflow: hidden; text-overflow: ellipsis;
+    }
+    .status-value { font-size: 1.4em; font-weight: bold; white-space: nowrap; }
+    .stat-row {
+      display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+      align-items: center; column-gap: 12px; padding: 10px 0;
+      border-bottom: 1px solid #eef4f1; font-size: 0.95em;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-row > span:first-child { white-space: nowrap; word-break: keep-all; color: #5c6f67; }
+    .stat-row > span:last-child { text-align: right; white-space: nowrap; font-weight: 600; min-width: 0; }
+    .level-safe { color: #16a34a; }
+    .level-warn { color: #f59e0b; }
+    .level-danger { color: #dc2626; }
+    .bar-track {
+      width: 100%; height: 10px; background: #e5efe9; border-radius: 6px;
+      overflow: hidden; margin-top: 4px;
+    }
+    .bar-fill { height: 100%; border-radius: 6px; transition: width 0.3s; }
+    .bar-fill.safe { background: #16a34a; }
+    .bar-fill.warn { background: #f59e0b; }
+    .bar-fill.danger { background: #dc2626; }
+    .event-log {
+      max-height: 400px; overflow-y: auto; background: #f2f7f5;
+      border-radius: 8px; padding: 12px; font-size: 0.9em;
+    }
+    .event-item {
+      padding: 8px; border-left: 3px solid #d5e6de; margin-bottom: 8px;
+      padding-left: 12px;
+    }
+    .event-turn { font-weight: bold; margin-bottom: 4px; }
+    .event-text { color: #3d4f47; }
+    .event-bad { border-left-color: #dc2626; }
+    .event-good { border-left-color: #10967a; }
+    .failure-banner {
+      background: #fef2f2; border: 2px solid #dc2626; border-radius: 12px;
+      padding: 16px; margin-bottom: 16px;
+    }
+    .hidden { display: none; }
+    @media (max-width: 600px) {
+      body { padding: 12px; padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px)); }
+      .status-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
   </style>
 </head>
 <body>
   <main>
-    <h1>微生物コロニー培養ログ</h1>
-    <section class="notice">
-      <h2>実装待ち</h2>
-      <p>このHTMLは初期雛形です。IssueとCLAUDE.mdに従って、ターン制の培養シミュレーション兼記録アプリとして実装してください。</p>
+    <section class="card">
+      <h1>微生物コロニー培養ログ</h1>
+      <p>シャーレ上のコロニーを育て、栄養・温度・汚染・ストレスを管理しながら継代を重ねる培養シミュレーションです。</p>
+
+      <div class="btn-group">
+        <button id="btnHistory">履歴・統計</button>
+        <button id="btnResetAll" class="danger">全データリセット</button>
+      </div>
+    </section>
+
+    <div id="failureBanner" class="failure-banner hidden">
+      <strong>培養が失敗しました。</strong>
+      <p style="margin-bottom:0;">これまでの世代・研究点・統計は記録として残ります。新しい培養を始めましょう。</p>
+      <button id="btnNewCulture" class="primary">新しい培養を始める</button>
+    </div>
+
+    <section class="card">
+      <h2>ラボの状況</h2>
+      <div class="status-bar">
+        <div class="status-item">
+          <div class="status-label">経過時間</div>
+          <div class="status-value" id="elapsedLabel">0時間</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">世代</div>
+          <div class="status-value" id="generationLabel">第1世代</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">連続生存時間</div>
+          <div class="status-value" id="streakLabel">0時間</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">研究点</div>
+          <div class="status-value" id="researchLabel">0</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>培養皿の状態</h2>
+      <div class="stat-row">
+        <span>細胞数</span>
+        <span id="cellCountLabel">0</span>
+      </div>
+      <div class="stat-row">
+        <span>栄養</span>
+        <span id="nutrientLabel">0</span>
+      </div>
+      <div id="nutrientBarTrack" class="bar-track"><div id="nutrientBar" class="bar-fill"></div></div>
+      <div class="stat-row">
+        <span>温度</span>
+        <span id="temperatureLabel">0°C</span>
+      </div>
+      <div class="stat-row">
+        <span>汚染度</span>
+        <span id="contaminationLabel">0</span>
+      </div>
+      <div id="contaminationBarTrack" class="bar-track"><div id="contaminationBar" class="bar-fill"></div></div>
+      <div class="stat-row">
+        <span>ストレス</span>
+        <span id="stressLabel">0</span>
+      </div>
+      <div id="stressBarTrack" class="bar-track"><div id="stressBar" class="bar-fill"></div></div>
+    </section>
+
+    <section class="card">
+      <h2>行動</h2>
+      <div class="btn-group">
+        <button id="btnNutrient" class="primary">栄養を追加</button>
+        <button id="btnTempUp">温度を上げる</button>
+        <button id="btnTempDown">温度を下げる</button>
+        <button id="btnCleanse">洗浄する</button>
+        <button id="btnObserve">観察する</button>
+        <button id="btnSubculture" class="primary">継代する</button>
+        <button id="btnIdle">放置して進める</button>
+      </div>
+      <p id="subcultureHint" style="font-size:0.85em;color:#5c6f67;margin-bottom:0;"></p>
+    </section>
+
+    <section id="historyPanel" class="card hidden">
+      <h2>履歴・統計</h2>
+      <div class="status-bar" id="statsSummary"></div>
+      <div class="event-log" id="eventLog"></div>
+      <div class="btn-group" style="margin-top: 12px;">
+        <button id="btnCloseHistory">閉じる</button>
+      </div>
     </section>
   </main>
+
   <script>
     'use strict';
-    // Claude Codeがここにアプリ本体を実装する。
+
+    const STORAGE_KEY = 'microColonyLab_v0.1';
+
+    const SUBCULTURE_THRESHOLD = 150;
+    const NUTRIENT_DECAY_BASE = 8;
+    const CONTAMINATION_GROWTH_BASE = 2;
+    const IDLE_EXTRA_NUTRIENT_DECAY = 5;
+    const IDLE_EXTRA_CONTAMINATION = 3;
+    const RANDOM_EVENT_CHANCE = 0.2;
+    const OPTIMAL_TEMP = 32;
+    const MIN_TEMP = 15;
+    const MAX_TEMP = 40;
+    const MAX_HISTORY = 50;
+
+    const MAX_COUNT = 1000000;
+    const MAX_GENERATION = 9999;
+    const MAX_HISTORY_TEXT_LENGTH = 300;
+    const MAX_TIMESTAMP = 8640000000000000;
+
+    function freshState() {
+      return {
+        generation: 1,
+        cellCount: 20,
+        nutrient: 70,
+        temperature: OPTIMAL_TEMP,
+        contamination: 0,
+        stress: 10,
+        researchPoints: 0,
+        streak: 0,
+        elapsedHours: 0,
+        cultureActive: true,
+        history: [],
+        stats: { totalTurns: 0, successfulPassages: 0, maxCellCount: 20 }
+      };
+    }
+
+    let state = freshState();
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+
+    function isFiniteNumber(v) {
+      return typeof v === 'number' && Number.isFinite(v);
+    }
+
+    function isBoundedInt(v, min, max) {
+      return typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
+    }
+
+    function isBoundedNonNegativeInt(v, max) {
+      return isBoundedInt(v, 0, max === undefined ? MAX_COUNT : max);
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.error('Save failed:', e);
+      }
+    }
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const loaded = JSON.parse(saved);
+          if (validateState(loaded)) {
+            state = loaded;
+            return true;
+          }
+        }
+      } catch (e) {
+        console.error('Load failed:', e);
+      }
+      return false;
+    }
+
+    function validateState(obj) {
+      if (!obj || typeof obj !== 'object') return false;
+      if (!isBoundedInt(obj.generation, 1, MAX_GENERATION)) return false;
+      if (!isBoundedNonNegativeInt(obj.cellCount)) return false;
+      if (!isBoundedInt(obj.nutrient, 0, 100)) return false;
+      if (!isBoundedInt(obj.temperature, MIN_TEMP, MAX_TEMP)) return false;
+      if (!isBoundedInt(obj.contamination, 0, 100)) return false;
+      if (!isBoundedInt(obj.stress, 0, 100)) return false;
+      if (!isBoundedNonNegativeInt(obj.researchPoints)) return false;
+      if (!isBoundedNonNegativeInt(obj.streak)) return false;
+      if (!isBoundedNonNegativeInt(obj.elapsedHours)) return false;
+      if (typeof obj.cultureActive !== 'boolean') return false;
+
+      if (!Array.isArray(obj.history) || obj.history.length > MAX_HISTORY) return false;
+      for (const h of obj.history) {
+        if (!h || typeof h !== 'object') return false;
+        if (typeof h.text !== 'string' || h.text.length > MAX_HISTORY_TEXT_LENGTH) return false;
+        if (!isFiniteNumber(h.timestamp) || h.timestamp < 0 || h.timestamp > MAX_TIMESTAMP) return false;
+      }
+
+      if (!obj.stats || typeof obj.stats !== 'object') return false;
+      if (!isBoundedNonNegativeInt(obj.stats.totalTurns)) return false;
+      if (!isBoundedNonNegativeInt(obj.stats.successfulPassages)) return false;
+      if (!isBoundedNonNegativeInt(obj.stats.maxCellCount)) return false;
+
+      return true;
+    }
+
+    function addLog(text) {
+      state.history.push({ text: text, timestamp: Date.now() });
+      if (state.history.length > MAX_HISTORY) {
+        state.history.shift();
+      }
+    }
+
+    function computeGrowthRate() {
+      let rate = 0;
+
+      if (state.nutrient > 60) rate += 3;
+      else if (state.nutrient > 30) rate += 1;
+      else if (state.nutrient > 10) rate += 0;
+      else rate -= 2;
+
+      const tempDiff = Math.abs(state.temperature - OPTIMAL_TEMP);
+      if (tempDiff <= 2) rate += 2;
+      else if (tempDiff <= 5) rate += 0;
+      else rate -= 3;
+
+      if (state.contamination > 70) rate -= 5;
+      else if (state.contamination > 40) rate -= 2;
+
+      if (state.stress > 70) rate -= 3;
+      else if (state.stress > 40) rate -= 1;
+
+      return rate;
+    }
+
+    function triggerRandomEvent() {
+      const events = [
+        () => {
+          const delta = Math.floor(Math.random() * 7) - 3;
+          state.temperature = clamp(state.temperature + delta, MIN_TEMP, MAX_TEMP);
+          addLog(`🌡️ 温度が急に変動した。(${delta >= 0 ? '+' : ''}${delta}°C)`);
+        },
+        () => {
+          const loss = 5 + Math.floor(Math.random() * 11);
+          state.nutrient = Math.max(0, state.nutrient - loss);
+          addLog(`⚠️ 栄養が劣化した。(-${loss})`);
+        },
+        () => {
+          const gain = 5 + Math.floor(Math.random() * 11);
+          state.contamination = Math.min(100, state.contamination + gain);
+          addLog(`⚠️ 軽微な汚染が発生した。(+${gain})`);
+        },
+        () => {
+          const bonus = 10 + Math.floor(Math.random() * 10);
+          state.researchPoints += bonus;
+          state.cellCount += 8;
+          addLog(`✨ 観察中に突然変異を発見した！ 研究点+${bonus}、細胞数+8`);
+        },
+        () => {
+          const bonus = 10 + Math.floor(Math.random() * 15);
+          state.cellCount += bonus;
+          addLog(`🌱 コロニーの調子が良く急成長した。細胞数+${bonus}`);
+        }
+      ];
+
+      events[Math.floor(Math.random() * events.length)]();
+    }
+
+    function checkFailure() {
+      if (!state.cultureActive) return;
+
+      let reason = null;
+      if (state.cellCount <= 0) reason = '細胞数が0になり、培養が失敗しました。';
+      else if (state.contamination >= 100) reason = '汚染度が限界に達し、培養が失敗しました。';
+      else if (state.stress >= 100) reason = 'ストレスが限界に達し、培養が失敗しました。';
+
+      if (reason) {
+        state.cultureActive = false;
+        state.streak = 0;
+        addLog(`💀 ${reason}`);
+      }
+    }
+
+    function performAction(actionType) {
+      if (!state.cultureActive) return;
+
+      switch (actionType) {
+        case 'nutrient':
+          state.nutrient = Math.min(100, state.nutrient + 30);
+          state.stress = Math.max(0, state.stress - 2);
+          addLog('栄養を追加した。');
+          break;
+        case 'tempUp':
+          state.temperature = Math.min(MAX_TEMP, state.temperature + 2);
+          addLog('温度を上げた。');
+          break;
+        case 'tempDown':
+          state.temperature = Math.max(MIN_TEMP, state.temperature - 2);
+          addLog('温度を下げた。');
+          break;
+        case 'cleanse': {
+          const success = Math.random() < 0.8;
+          if (success) {
+            state.contamination = Math.max(0, state.contamination - 35);
+            state.stress = Math.min(100, state.stress + 3);
+            addLog('洗浄に成功し、汚染度が下がった。');
+          } else {
+            state.contamination = Math.max(0, state.contamination - 10);
+            state.stress = Math.min(100, state.stress + 8);
+            addLog('⚠️ 洗浄がうまくいかず、効果が薄かった。');
+          }
+          break;
+        }
+        case 'observe': {
+          state.researchPoints += 2;
+          state.stress = Math.min(100, state.stress + 1);
+          if (Math.random() < 0.15) {
+            const bonus = 8 + Math.floor(Math.random() * 8);
+            state.researchPoints += bonus;
+            state.cellCount += 5;
+            addLog(`✨ 観察中に突然変異を発見した！ 研究点+${bonus}`);
+          } else {
+            addLog('観察を行った。');
+          }
+          break;
+        }
+        case 'subculture': {
+          if (state.cellCount < SUBCULTURE_THRESHOLD) {
+            alert(`継代には細胞数${SUBCULTURE_THRESHOLD}以上が必要です。(現在: ${state.cellCount})`);
+            return;
+          }
+          const gained = 20 + Math.floor(state.cellCount / 20);
+          state.researchPoints += gained;
+          state.generation = Math.min(MAX_GENERATION, state.generation + 1);
+          state.stats.successfulPassages++;
+          state.cellCount = Math.round(state.cellCount * 0.2);
+          state.contamination = Math.max(0, state.contamination - 50);
+          state.stress = Math.max(0, state.stress - 30);
+          state.nutrient = Math.min(100, state.nutrient + 40);
+          addLog(`🧬 継代に成功し、第${state.generation}世代になった。研究点+${gained}`);
+          break;
+        }
+        case 'idle':
+          state.nutrient = Math.max(0, state.nutrient - IDLE_EXTRA_NUTRIENT_DECAY);
+          state.contamination = Math.min(100, state.contamination + IDLE_EXTRA_CONTAMINATION);
+          addLog('放置して様子を見た。');
+          break;
+        default:
+          return;
+      }
+
+      // Natural per-turn decay from time passing
+      state.nutrient = Math.max(0, state.nutrient - NUTRIENT_DECAY_BASE);
+      state.contamination = Math.min(100, state.contamination + CONTAMINATION_GROWTH_BASE);
+      state.temperature = clamp(state.temperature + (Math.floor(Math.random() * 3) - 1), MIN_TEMP, MAX_TEMP);
+
+      const rate = computeGrowthRate();
+      state.cellCount = Math.max(0, state.cellCount + rate * 5);
+      state.stats.maxCellCount = Math.max(state.stats.maxCellCount, state.cellCount);
+
+      if (Math.random() < RANDOM_EVENT_CHANCE) {
+        triggerRandomEvent();
+      }
+
+      state.elapsedHours = Math.min(MAX_COUNT, state.elapsedHours + 1);
+      state.streak = Math.min(MAX_COUNT, state.streak + 1);
+      state.stats.totalTurns = Math.min(MAX_COUNT, state.stats.totalTurns + 1);
+
+      checkFailure();
+
+      saveState();
+      render();
+    }
+
+    function startNewCulture() {
+      if (state.cultureActive) return;
+      state.cellCount = 20;
+      state.nutrient = 70;
+      state.temperature = OPTIMAL_TEMP;
+      state.contamination = 0;
+      state.stress = 10;
+      state.cultureActive = true;
+      addLog('新しい培養を開始した。');
+      saveState();
+      render();
+    }
+
+    function resetAll() {
+      if (!confirm('すべてのデータをリセットしますか？世代、研究点、履歴、統計もすべて失われます。')) return;
+      state = freshState();
+      addLog('ラボをリセットした。');
+      saveState();
+      render();
+    }
+
+    function toggleHistory() {
+      const panel = document.getElementById('historyPanel');
+      panel.classList.toggle('hidden');
+      if (!panel.classList.contains('hidden')) {
+        renderHistoryPanel();
+      }
+    }
+
+    function renderHistoryPanel() {
+      const summary = document.getElementById('statsSummary');
+      const log = document.getElementById('eventLog');
+
+      summary.innerHTML = `
+        <div class="status-item">
+          <div class="status-label">累計ターン</div>
+          <div class="status-value">${state.stats.totalTurns}</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">成功継代数</div>
+          <div class="status-value">${state.stats.successfulPassages}</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">最高細胞数</div>
+          <div class="status-value">${state.stats.maxCellCount}</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">総研究点</div>
+          <div class="status-value">${state.researchPoints}</div>
+        </div>
+      `;
+
+      const recentLogs = state.history.slice(-15).reverse();
+      if (recentLogs.length === 0) {
+        log.innerHTML = '<p>履歴がまだありません。</p>';
+        return;
+      }
+
+      log.innerHTML = recentLogs.map(h => {
+        const isBad = h.text.includes('⚠️') || h.text.includes('💀');
+        const isGood = h.text.includes('✨') || h.text.includes('🧬') || h.text.includes('🌱');
+        const cls = isBad ? 'event-bad' : isGood ? 'event-good' : '';
+        const date = new Date(h.timestamp);
+        const dateLabel = isNaN(date.getTime()) ? '' : date.toLocaleTimeString('ja-JP');
+        return `
+          <div class="event-item ${cls}">
+            <div class="event-turn">${escapeHtml(dateLabel)}</div>
+            <div class="event-text">${escapeHtml(h.text)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function levelClass(value, warnAt, dangerAt) {
+      if (value >= dangerAt) return 'danger';
+      if (value >= warnAt) return 'warn';
+      return 'safe';
+    }
+
+    function renderBar(trackId, barId, value, max, warnAt, dangerAt) {
+      const bar = document.getElementById(barId);
+      const pct = clamp((value / max) * 100, 0, 100);
+      const cls = levelClass(value, warnAt, dangerAt);
+      bar.style.width = `${pct}%`;
+      bar.className = `bar-fill ${cls}`;
+    }
+
+    function render() {
+      const failureBanner = document.getElementById('failureBanner');
+      const actionButtons = ['btnNutrient', 'btnTempUp', 'btnTempDown', 'btnCleanse', 'btnObserve', 'btnSubculture', 'btnIdle'];
+
+      if (state.cultureActive) {
+        failureBanner.classList.add('hidden');
+        actionButtons.forEach(id => { document.getElementById(id).disabled = false; });
+        document.getElementById('btnSubculture').disabled = state.cellCount < SUBCULTURE_THRESHOLD;
+      } else {
+        failureBanner.classList.remove('hidden');
+        actionButtons.forEach(id => { document.getElementById(id).disabled = true; });
+      }
+
+      document.getElementById('elapsedLabel').textContent = `${state.elapsedHours}時間`;
+      document.getElementById('generationLabel').textContent = `第${state.generation}世代`;
+      document.getElementById('streakLabel').textContent = `${state.streak}時間`;
+      document.getElementById('researchLabel').textContent = state.researchPoints;
+
+      document.getElementById('cellCountLabel').textContent = state.cellCount;
+      document.getElementById('nutrientLabel').textContent = state.nutrient;
+      document.getElementById('temperatureLabel').textContent = `${state.temperature}°C`;
+      document.getElementById('contaminationLabel').textContent = state.contamination;
+      document.getElementById('stressLabel').textContent = state.stress;
+
+      const nutrientCls = state.nutrient <= 15 ? 'danger' : state.nutrient <= 35 ? 'warn' : 'safe';
+      document.getElementById('nutrientLabel').className = `level-${nutrientCls}`;
+      renderBar('nutrientBarTrack', 'nutrientBar', 100 - state.nutrient, 100, 65, 85);
+
+      const contaminationCls = state.contamination >= 70 ? 'danger' : state.contamination >= 40 ? 'warn' : 'safe';
+      document.getElementById('contaminationLabel').className = `level-${contaminationCls}`;
+      renderBar('contaminationBarTrack', 'contaminationBar', state.contamination, 100, 40, 70);
+
+      const stressCls = state.stress >= 70 ? 'danger' : state.stress >= 40 ? 'warn' : 'safe';
+      document.getElementById('stressLabel').className = `level-${stressCls}`;
+      renderBar('stressBarTrack', 'stressBar', state.stress, 100, 40, 70);
+
+      const tempDiff = Math.abs(state.temperature - OPTIMAL_TEMP);
+      const tempCls = tempDiff > 5 ? 'danger' : tempDiff > 2 ? 'warn' : 'safe';
+      document.getElementById('temperatureLabel').className = `level-${tempCls}`;
+
+      document.getElementById('subcultureHint').textContent =
+        state.cellCount >= SUBCULTURE_THRESHOLD
+          ? '継代の準備ができています。'
+          : `継代には細胞数${SUBCULTURE_THRESHOLD}以上が必要です。(現在: ${state.cellCount})`;
+
+      const historyPanel = document.getElementById('historyPanel');
+      if (!historyPanel.classList.contains('hidden')) {
+        renderHistoryPanel();
+      }
+    }
+
+    // Event listeners
+    document.getElementById('btnNutrient').addEventListener('click', () => performAction('nutrient'));
+    document.getElementById('btnTempUp').addEventListener('click', () => performAction('tempUp'));
+    document.getElementById('btnTempDown').addEventListener('click', () => performAction('tempDown'));
+    document.getElementById('btnCleanse').addEventListener('click', () => performAction('cleanse'));
+    document.getElementById('btnObserve').addEventListener('click', () => performAction('observe'));
+    document.getElementById('btnSubculture').addEventListener('click', () => performAction('subculture'));
+    document.getElementById('btnIdle').addEventListener('click', () => performAction('idle'));
+    document.getElementById('btnNewCulture').addEventListener('click', startNewCulture);
+    document.getElementById('btnResetAll').addEventListener('click', resetAll);
+    document.getElementById('btnHistory').addEventListener('click', toggleHistory);
+    document.getElementById('btnCloseHistory').addEventListener('click', toggleHistory);
+
+    // Initialize
+    loadState();
+    render();
   </script>
 </body>
 </html>
