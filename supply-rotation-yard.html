@@ -8,23 +8,807 @@ status: draft
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>素材ポーチローテーション</title>
   <style>
-    :root { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1f2937; background: #f8fafc; }
-    body { margin: 0; padding: 20px; }
-    main { max-width: 920px; margin: 0 auto; }
-    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 16px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06); }
+    * { box-sizing: border-box; }
+    html, body { max-width: 100%; overflow-x: hidden; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #1f2937; background: #f8fafc;
+      padding: 16px;
+      padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+    }
+    main { max-width: 1200px; margin: 0 auto; }
+    .card {
+      background: #fff; border: 1px solid #e5e7eb; border-radius: 16px;
+      padding: 16px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06); margin-bottom: 16px;
+    }
     h1 { font-size: 1.6rem; margin: 0 0 8px; }
+    h2 { font-size: 1.15em; margin: 16px 0 12px; }
     p { line-height: 1.7; }
+    button {
+      padding: 12px 16px; font-size: 1em; border: 1px solid #cbd5e1;
+      border-radius: 8px; background: #fff; cursor: pointer;
+      transition: all 0.2s; margin-right: 8px; margin-bottom: 8px; min-height: 44px;
+    }
+    button:hover { background: #f1f5f9; border-color: #2563eb; }
+    button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+    button.primary:hover { background: #1d4ed8; }
+    button.danger { background: #dc2626; color: #fff; border-color: #dc2626; }
+    button.danger:hover { background: #b91c1c; }
+    button.success { background: #16a34a; color: #fff; border-color: #16a34a; }
+    button.success:hover { background: #15803d; }
+    button.small { padding: 8px 10px; font-size: 0.9em; min-height: 40px; margin: 0; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    input[type="text"], input[type="number"], select, textarea {
+      padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 6px;
+      width: 100%; min-height: 44px; font-size: 16px; font-family: inherit;
+    }
+    textarea { min-height: 60px; }
+    label { display: block; font-size: 0.85em; color: #475569; margin-bottom: 4px; }
+    .form-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr));
+      gap: 10px; margin-bottom: 10px;
+    }
+    .status-bar {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(min(140px, 100%), 1fr));
+      gap: 12px; margin-bottom: 16px;
+    }
+    .status-item { padding: 12px; background: #f8fafc; border-radius: 8px; min-width: 0; }
+    .status-label {
+      font-size: 0.85em; color: #64748b; margin-bottom: 4px;
+      white-space: nowrap; word-break: keep-all; overflow: hidden; text-overflow: ellipsis;
+    }
+    .status-value { font-size: 1.4em; font-weight: bold; white-space: nowrap; }
+    .stat-row {
+      display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+      align-items: center; column-gap: 12px; padding: 8px 0;
+      border-bottom: 1px solid #eef2f7; font-size: 0.92em;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-row > span:first-child { white-space: nowrap; word-break: keep-all; color: #64748b; }
+    .stat-row > span:last-child { text-align: right; white-space: nowrap; font-weight: 600; min-width: 0; }
+    .items-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+      gap: 12px;
+    }
+    .item-card {
+      border: 2px solid #e5e7eb; border-radius: 12px; padding: 12px; min-width: 0;
+      background: #fff;
+    }
+    .item-card.danger-state { border-color: #dc2626; background: #fef2f2; }
+    .item-card.warn-state { border-color: #f59e0b; background: #fffbeb; }
+    .item-title { font-weight: bold; font-size: 1.05em; margin-bottom: 2px; }
+    .item-category { font-size: 0.8em; color: #64748b; margin-bottom: 8px; }
+    .item-flag { font-size: 0.8em; font-weight: bold; padding: 2px 8px; border-radius: 999px; display: inline-block; margin-bottom: 6px; }
+    .item-flag.danger { background: #fee2e2; color: #b91c1c; }
+    .item-flag.warn { background: #fef3c7; color: #b45309; }
+    .qty-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; margin-top: 6px; }
+    .qty-row input { min-height: 40px; }
+    .qty-row button { min-height: 40px; }
+    .item-memo { font-size: 0.85em; color: #475569; margin-top: 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .event-log {
+      max-height: 400px; overflow-y: auto; background: #f8fafc;
+      border-radius: 8px; padding: 12px; font-size: 0.9em;
+    }
+    .event-item {
+      padding: 8px; border-left: 3px solid #e5e7eb; margin-bottom: 8px;
+      padding-left: 12px;
+    }
+    .event-turn { font-weight: bold; margin-bottom: 4px; }
+    .event-text { color: #334155; }
+    .event-bad { border-left-color: #dc2626; }
+    .event-good { border-left-color: #16a34a; }
+    .modal {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.5); display: none; align-items: center;
+      justify-content: center; z-index: 1000; padding: 16px;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: #fff; padding: 24px; border-radius: 16px;
+      max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto;
+    }
+    .hidden { display: none; }
+    .result-msg {
+      padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 0.9em;
+    }
+    .result-msg.success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .result-msg.error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    @media (max-width: 600px) {
+      body { padding: 12px; padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px)); }
+      .status-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .items-grid { grid-template-columns: minmax(0, 1fr); }
+    }
   </style>
 </head>
 <body>
   <main>
     <section class="card">
       <h1>素材ポーチローテーション</h1>
-      <p>このHTMLは初期雛形です。IssueとCLAUDE.mdに従い、個人情報に根差さない架空素材管理アプリとして実装してください。</p>
+      <p>架空の冒険用素材ポーチを管理します。素材を登録し、補充・使用・数量補正を記録しながら、不足リスクと補充候補を確認できます。</p>
+
+      <div id="resultMsg" class="hidden"></div>
+
+      <div class="btn-group">
+        <button id="btnAddItem" class="primary">素材を登録</button>
+        <button id="btnAdvanceDay" class="success">1日進める</button>
+        <button id="btnHistory">履歴</button>
+        <button id="btnResetAll" class="danger">全データリセット</button>
+      </div>
     </section>
+
+    <section class="card">
+      <h2>集計</h2>
+      <div class="status-bar">
+        <div class="status-item">
+          <div class="status-label">経過日数</div>
+          <div class="status-value" id="dayLabel">0日</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">総素材数</div>
+          <div class="status-value" id="totalItemsLabel">0</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">不足中素材数</div>
+          <div class="status-value" id="shortageLabel">0</div>
+        </div>
+        <div class="status-item">
+          <div class="status-label">補充候補数</div>
+          <div class="status-value" id="candidateLabel">0</div>
+        </div>
+      </div>
+      <div id="categoryBreakdown"></div>
+    </section>
+
+    <section class="card">
+      <h2>補充候補</h2>
+      <div id="restockCandidates"></div>
+    </section>
+
+    <section class="card">
+      <h2>検索・絞り込み</h2>
+      <div class="form-grid">
+        <div>
+          <label for="searchText">素材名で検索</label>
+          <input type="text" id="searchText" placeholder="例: 星砂">
+        </div>
+        <div>
+          <label for="filterCategory">カテゴリで絞り込み</label>
+          <select id="filterCategory">
+            <option value="">すべて</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>素材一覧</h2>
+      <div class="items-grid" id="itemsContainer"></div>
+    </section>
+
+    <section id="historyPanel" class="card hidden">
+      <h2>履歴</h2>
+      <div class="event-log" id="eventLog"></div>
+      <div class="btn-group" style="margin-top: 12px;">
+        <button id="btnCloseHistory">閉じる</button>
+      </div>
+    </section>
+
+    <div id="itemModal" class="modal">
+      <div class="modal-content">
+        <h2 id="modalTitle">素材を登録</h2>
+        <div class="form-grid">
+          <div>
+            <label for="formName">素材名</label>
+            <input type="text" id="formName" maxlength="40">
+          </div>
+          <div>
+            <label for="formCategory">カテゴリ</label>
+            <select id="formCategory"></select>
+          </div>
+          <div>
+            <label for="formCurrentQty">現在数</label>
+            <input type="number" id="formCurrentQty" min="0" step="1">
+          </div>
+          <div>
+            <label for="formMinQty">最低確保数</label>
+            <input type="number" id="formMinQty" min="0" step="1">
+          </div>
+          <div>
+            <label for="formSafetyQty">安心在庫</label>
+            <input type="number" id="formSafetyQty" min="0" step="1">
+          </div>
+          <div>
+            <label for="formDailyUse">1日あたり使用目安</label>
+            <input type="number" id="formDailyUse" min="0" step="1">
+          </div>
+          <div>
+            <label for="formRestockUnit">補充単位</label>
+            <input type="number" id="formRestockUnit" min="0" step="1">
+          </div>
+        </div>
+        <label for="formMemo">メモ</label>
+        <textarea id="formMemo" maxlength="200"></textarea>
+        <div class="btn-group" style="margin-top: 12px;">
+          <button id="btnSaveItem" class="primary">保存する</button>
+          <button id="btnCancelItem">キャンセル</button>
+        </div>
+      </div>
+    </div>
   </main>
+
+  <script>
+    'use strict';
+
+    const STORAGE_KEY = 'supplyRotationYard_v0.1';
+    const CATEGORIES = ['薬草', '鉱石', '星砂', '道具', 'その他'];
+    const HISTORY_TYPES = ['補充', '使用', '数量補正', '削除'];
+    const RESTOCK_DAYS_THRESHOLD = 3;
+    const MAX_HISTORY = 200;
+    const MAX_HISTORY_DISPLAY = 30;
+    const MAX_COUNT = 1000000;
+    const MAX_NAME_LENGTH = 40;
+    const MAX_MEMO_LENGTH = 200;
+    const MAX_TIMESTAMP = 8640000000000000;
+    const EMERGENCY_EVENT_CHANCE = 0.15;
+
+    function freshState() {
+      return {
+        items: [],
+        history: [],
+        day: 0,
+        nextItemId: 1,
+        nextHistoryId: 1
+      };
+    }
+
+    let state = freshState();
+    let editingItemId = null;
+
+    function isFiniteNumber(v) {
+      return typeof v === 'number' && Number.isFinite(v);
+    }
+
+    function isBoundedInt(v, min, max) {
+      return typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max;
+    }
+
+    function isBoundedNonNegativeInt(v, max) {
+      return isBoundedInt(v, 0, max === undefined ? MAX_COUNT : max);
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.error('Save failed:', e);
+      }
+    }
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const loaded = JSON.parse(saved);
+          if (validateState(loaded)) {
+            state = loaded;
+            return true;
+          }
+        }
+      } catch (e) {
+        console.error('Load failed:', e);
+      }
+      return false;
+    }
+
+    function validateItem(it) {
+      if (!it || typeof it !== 'object') return false;
+      if (!isBoundedNonNegativeInt(it.id)) return false;
+      if (typeof it.name !== 'string' || it.name.trim() === '' || it.name.length > MAX_NAME_LENGTH) return false;
+      if (typeof it.category !== 'string' || !CATEGORIES.includes(it.category)) return false;
+      if (!isBoundedNonNegativeInt(it.currentQty)) return false;
+      if (!isBoundedNonNegativeInt(it.minQty)) return false;
+      if (!isBoundedNonNegativeInt(it.safetyQty)) return false;
+      if (!isBoundedNonNegativeInt(it.dailyUse)) return false;
+      if (!isBoundedNonNegativeInt(it.restockUnit)) return false;
+      if (typeof it.memo !== 'string' || it.memo.length > MAX_MEMO_LENGTH) return false;
+      if (!isFiniteNumber(it.createdAt) || !isFiniteNumber(it.updatedAt)) return false;
+      return true;
+    }
+
+    function validateHistoryEntry(h) {
+      if (!h || typeof h !== 'object') return false;
+      if (!isBoundedNonNegativeInt(h.id)) return false;
+      if (!isFiniteNumber(h.timestamp) || h.timestamp < 0 || h.timestamp > MAX_TIMESTAMP) return false;
+      if (typeof h.itemName !== 'string' || h.itemName.length > MAX_NAME_LENGTH) return false;
+      if (!HISTORY_TYPES.includes(h.type)) return false;
+      if (!isFiniteNumber(h.delta) || Math.abs(h.delta) > MAX_COUNT) return false;
+      if (typeof h.memo !== 'string' || h.memo.length > MAX_MEMO_LENGTH) return false;
+      return true;
+    }
+
+    function validateState(obj) {
+      if (!obj || typeof obj !== 'object') return false;
+      if (!Array.isArray(obj.items)) return false;
+      for (const it of obj.items) {
+        if (!validateItem(it)) return false;
+      }
+      if (!Array.isArray(obj.history) || obj.history.length > MAX_HISTORY) return false;
+      for (const h of obj.history) {
+        if (!validateHistoryEntry(h)) return false;
+      }
+      if (!isBoundedNonNegativeInt(obj.day)) return false;
+      if (!isBoundedNonNegativeInt(obj.nextItemId)) return false;
+      if (!isBoundedNonNegativeInt(obj.nextHistoryId)) return false;
+      return true;
+    }
+
+    function addHistory(itemName, type, delta, memo) {
+      state.history.push({
+        id: state.nextHistoryId++,
+        timestamp: Date.now(),
+        itemName,
+        type,
+        delta,
+        memo: memo || ''
+      });
+      if (state.history.length > MAX_HISTORY) {
+        state.history.shift();
+      }
+    }
+
+    function showMessage(text, isError) {
+      const el = document.getElementById('resultMsg');
+      el.textContent = text;
+      el.className = `result-msg ${isError ? 'error' : 'success'}`;
+      setTimeout(() => { el.className = 'hidden'; }, 4000);
+    }
+
+    function parseNonNegativeInt(raw, label) {
+      const trimmed = String(raw).trim();
+      if (trimmed === '') { alert(`${label}を入力してください。`); return null; }
+      const num = Number(trimmed);
+      if (!Number.isFinite(num)) { alert(`${label}が不正な値です。`); return null; }
+      if (!Number.isInteger(num)) { alert(`${label}は整数で入力してください。`); return null; }
+      if (num < 0) { alert(`${label}は0以上にしてください。`); return null; }
+      if (num > MAX_COUNT) { alert(`${label}が大きすぎます。`); return null; }
+      return num;
+    }
+
+    function remainingDays(item) {
+      if (item.dailyUse <= 0) return Infinity;
+      return Math.floor(item.currentQty / item.dailyUse);
+    }
+
+    function isShortage(item) {
+      return item.currentQty <= item.minQty;
+    }
+
+    function isSafetyBreach(item) {
+      return item.currentQty <= item.safetyQty;
+    }
+
+    function isRestockCandidate(item) {
+      const rd = remainingDays(item);
+      return isShortage(item) || isSafetyBreach(item) || (Number.isFinite(rd) && rd <= RESTOCK_DAYS_THRESHOLD);
+    }
+
+    function openAddModal() {
+      editingItemId = null;
+      document.getElementById('modalTitle').textContent = '素材を登録';
+      document.getElementById('formName').value = '';
+      document.getElementById('formCategory').value = CATEGORIES[0];
+      document.getElementById('formCurrentQty').value = '0';
+      document.getElementById('formMinQty').value = '0';
+      document.getElementById('formSafetyQty').value = '0';
+      document.getElementById('formDailyUse').value = '0';
+      document.getElementById('formRestockUnit').value = '1';
+      document.getElementById('formMemo').value = '';
+      document.getElementById('itemModal').classList.add('active');
+    }
+
+    function openEditModal(id) {
+      const item = state.items.find(i => i.id === id);
+      if (!item) return;
+      editingItemId = id;
+      document.getElementById('modalTitle').textContent = '素材を編集';
+      document.getElementById('formName').value = item.name;
+      document.getElementById('formCategory').value = item.category;
+      document.getElementById('formCurrentQty').value = String(item.currentQty);
+      document.getElementById('formMinQty').value = String(item.minQty);
+      document.getElementById('formSafetyQty').value = String(item.safetyQty);
+      document.getElementById('formDailyUse').value = String(item.dailyUse);
+      document.getElementById('formRestockUnit').value = String(item.restockUnit);
+      document.getElementById('formMemo').value = item.memo;
+      document.getElementById('itemModal').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('itemModal').classList.remove('active');
+      editingItemId = null;
+    }
+
+    function saveItemForm() {
+      const name = document.getElementById('formName').value.trim();
+      if (name === '') { alert('素材名を入力してください。'); return; }
+      if (name.length > MAX_NAME_LENGTH) { alert(`素材名は${MAX_NAME_LENGTH}文字以内にしてください。`); return; }
+
+      const category = document.getElementById('formCategory').value;
+      if (!CATEGORIES.includes(category)) { alert('カテゴリを選択してください。'); return; }
+
+      const currentQty = parseNonNegativeInt(document.getElementById('formCurrentQty').value, '現在数');
+      if (currentQty === null) return;
+      const minQty = parseNonNegativeInt(document.getElementById('formMinQty').value, '最低確保数');
+      if (minQty === null) return;
+      const safetyQty = parseNonNegativeInt(document.getElementById('formSafetyQty').value, '安心在庫');
+      if (safetyQty === null) return;
+      const dailyUse = parseNonNegativeInt(document.getElementById('formDailyUse').value, '1日あたり使用目安');
+      if (dailyUse === null) return;
+      const restockUnit = parseNonNegativeInt(document.getElementById('formRestockUnit').value, '補充単位');
+      if (restockUnit === null) return;
+
+      const memo = document.getElementById('formMemo').value.trim();
+      if (memo.length > MAX_MEMO_LENGTH) { alert(`メモは${MAX_MEMO_LENGTH}文字以内にしてください。`); return; }
+
+      const now = Date.now();
+
+      if (editingItemId === null) {
+        state.items.push({
+          id: state.nextItemId++,
+          name, category, currentQty, minQty, safetyQty, dailyUse, restockUnit, memo,
+          createdAt: now, updatedAt: now
+        });
+        showMessage(`「${name}」を登録しました。`, false);
+      } else {
+        const item = state.items.find(i => i.id === editingItemId);
+        if (item) {
+          item.name = name;
+          item.category = category;
+          item.currentQty = currentQty;
+          item.minQty = minQty;
+          item.safetyQty = safetyQty;
+          item.dailyUse = dailyUse;
+          item.restockUnit = restockUnit;
+          item.memo = memo;
+          item.updatedAt = now;
+          showMessage(`「${name}」を更新しました。`, false);
+        }
+      }
+
+      closeModal();
+      saveState();
+      render();
+    }
+
+    function deleteItem(id) {
+      const item = state.items.find(i => i.id === id);
+      if (!item) return;
+      if (!confirm(`「${item.name}」を削除しますか？履歴には残ります。`)) return;
+
+      addHistory(item.name, '削除', -item.currentQty, '素材を削除');
+      state.items = state.items.filter(i => i.id !== id);
+      showMessage(`「${item.name}」を削除しました。`, false);
+      saveState();
+      render();
+    }
+
+    function restockItem(id) {
+      const item = state.items.find(i => i.id === id);
+      if (!item) return;
+      const input = document.getElementById(`restockAmount_${id}`);
+      const raw = input.value.trim() === '' ? String(item.restockUnit) : input.value;
+      const amount = parseNonNegativeInt(raw, '補充数量');
+      if (amount === null) return;
+      if (amount === 0) { alert('補充数量は1以上にしてください。'); return; }
+
+      const before = item.currentQty;
+      if (before >= MAX_COUNT) {
+        alert(`「${item.name}」は上限(${MAX_COUNT})に達しているため、これ以上補充できません。`);
+        return;
+      }
+
+      const newQty = Math.min(MAX_COUNT, before + amount);
+      const actualAdded = newQty - before;
+      item.currentQty = newQty;
+      item.updatedAt = Date.now();
+      addHistory(item.name, '補充', actualAdded, actualAdded < amount ? `上限のため${actualAdded}のみ反映(入力: ${amount})` : '');
+      input.value = '';
+      showMessage(
+        actualAdded < amount
+          ? `「${item.name}」は上限のため${actualAdded}のみ補充しました。(入力: ${amount})`
+          : `「${item.name}」を${actualAdded}補充しました。`,
+        actualAdded < amount
+      );
+      saveState();
+      render();
+    }
+
+    function useItem(id) {
+      const item = state.items.find(i => i.id === id);
+      if (!item) return;
+      const input = document.getElementById(`useAmount_${id}`);
+      const raw = input.value.trim() === '' ? '1' : input.value;
+      const amount = parseNonNegativeInt(raw, '使用数量');
+      if (amount === null) return;
+      if (amount === 0) { alert('使用数量は1以上にしてください。'); return; }
+
+      if (amount > item.currentQty) {
+        alert(`現在数(${item.currentQty})を超える使用はできません。`);
+        return;
+      }
+
+      item.currentQty -= amount;
+      item.updatedAt = Date.now();
+      addHistory(item.name, '使用', -amount, '');
+      input.value = '';
+      showMessage(`「${item.name}」を${amount}使用しました。`, false);
+      saveState();
+      render();
+    }
+
+    function adjustItem(id) {
+      const item = state.items.find(i => i.id === id);
+      if (!item) return;
+      const input = document.getElementById(`adjustAmount_${id}`);
+      const raw = input.value.trim();
+      if (raw === '') { alert('補正数量を入力してください。'); return; }
+      const delta = Number(raw);
+      if (!Number.isFinite(delta)) { alert('補正数量が不正な値です。'); return; }
+      if (!Number.isInteger(delta)) { alert('補正数量は整数で入力してください。'); return; }
+      if (delta === 0) { alert('補正数量は0以外にしてください。'); return; }
+
+      const newQty = item.currentQty + delta;
+      if (newQty < 0) {
+        alert(`補正後の現在数が0未満になります。(現在: ${item.currentQty}, 補正: ${delta})`);
+        return;
+      }
+      if (newQty > MAX_COUNT) { alert('補正後の数量が大きすぎます。'); return; }
+
+      item.currentQty = newQty;
+      item.updatedAt = Date.now();
+      addHistory(item.name, '数量補正', delta, '');
+      input.value = '';
+      showMessage(`「${item.name}」を${delta >= 0 ? '+' : ''}${delta}補正しました。`, false);
+      saveState();
+      render();
+    }
+
+    function advanceDay() {
+      state.day = Math.min(MAX_COUNT, state.day + 1);
+      let shortageEvents = 0;
+
+      state.items.forEach(item => {
+        if (item.dailyUse <= 0) return;
+        const before = item.currentQty;
+        const used = Math.min(item.currentQty, item.dailyUse);
+        item.currentQty -= used;
+        item.updatedAt = Date.now();
+        if (used > 0) {
+          addHistory(item.name, '使用', -used, '1日進行による自動消費');
+        }
+        if (before > item.minQty && item.currentQty <= item.minQty) {
+          addHistory(item.name, '使用', 0, `⚠️ 最低確保数を下回りました(現在: ${item.currentQty})`);
+          shortageEvents++;
+        } else if (before > item.safetyQty && item.currentQty <= item.safetyQty) {
+          addHistory(item.name, '使用', 0, `⚠️ 安心在庫を下回りました(現在: ${item.currentQty})`);
+          shortageEvents++;
+        }
+      });
+
+      if (state.items.length > 0 && Math.random() < EMERGENCY_EVENT_CHANCE) {
+        const candidates = state.items.filter(i => i.currentQty > 0);
+        if (candidates.length > 0) {
+          const target = candidates[Math.floor(Math.random() * candidates.length)];
+          const extra = Math.min(target.currentQty, 1 + Math.floor(Math.random() * 2));
+          target.currentQty -= extra;
+          target.updatedAt = Date.now();
+          addHistory(target.name, '使用', -extra, '臨時使用イベント');
+        }
+      }
+
+      showMessage(`${state.day}日目に進みました。${shortageEvents > 0 ? `(不足警告: ${shortageEvents}件)` : ''}`, shortageEvents > 0);
+      saveState();
+      render();
+    }
+
+    function resetAll() {
+      if (!confirm('すべてのデータをリセットしますか？素材、履歴、経過日数もすべて失われます。')) return;
+      state = freshState();
+      showMessage('すべてのデータをリセットしました。', false);
+      saveState();
+      render();
+    }
+
+    function toggleHistory() {
+      const panel = document.getElementById('historyPanel');
+      panel.classList.toggle('hidden');
+      if (!panel.classList.contains('hidden')) {
+        renderHistory();
+      }
+    }
+
+    function renderHistory() {
+      const log = document.getElementById('eventLog');
+      const recent = state.history.slice(-MAX_HISTORY_DISPLAY).reverse();
+      if (recent.length === 0) {
+        log.innerHTML = '<p>履歴がまだありません。</p>';
+        return;
+      }
+      log.innerHTML = recent.map(h => {
+        const isBad = h.type === '削除' || h.delta < 0 || h.memo.includes('⚠️');
+        const isGood = h.type === '補充';
+        const cls = isBad && h.memo.includes('⚠️') ? 'event-bad' : isGood ? 'event-good' : '';
+        const date = new Date(h.timestamp);
+        const dateLabel = isNaN(date.getTime()) ? '' : date.toLocaleString('ja-JP');
+        const deltaLabel = h.delta === 0 ? '' : ` (${h.delta >= 0 ? '+' : ''}${h.delta})`;
+        return `
+          <div class="event-item ${cls}">
+            <div class="event-turn">${escapeHtml(dateLabel)} - ${escapeHtml(h.itemName)} / ${escapeHtml(h.type)}${escapeHtml(deltaLabel)}</div>
+            <div class="event-text">${escapeHtml(h.memo)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function populateCategorySelects() {
+      const formSelect = document.getElementById('formCategory');
+      const filterSelect = document.getElementById('filterCategory');
+      formSelect.innerHTML = CATEGORIES.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+      const currentFilter = filterSelect.value;
+      filterSelect.innerHTML = '<option value="">すべて</option>' +
+        CATEGORIES.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+      filterSelect.value = currentFilter;
+    }
+
+    function getFilteredItems() {
+      const search = document.getElementById('searchText').value.trim().toLowerCase();
+      const category = document.getElementById('filterCategory').value;
+      return state.items.filter(item => {
+        if (category && item.category !== category) return false;
+        if (search && !item.name.toLowerCase().includes(search)) return false;
+        return true;
+      });
+    }
+
+    function render() {
+      document.getElementById('dayLabel').textContent = `${state.day}日`;
+      document.getElementById('totalItemsLabel').textContent = state.items.length;
+      document.getElementById('shortageLabel').textContent = state.items.filter(isShortage).length;
+      document.getElementById('candidateLabel').textContent = state.items.filter(isRestockCandidate).length;
+      document.getElementById('btnAdvanceDay').disabled = state.items.length === 0;
+
+      renderCategoryBreakdown();
+      renderRestockCandidates();
+      renderItems();
+
+      const historyPanel = document.getElementById('historyPanel');
+      if (!historyPanel.classList.contains('hidden')) {
+        renderHistory();
+      }
+    }
+
+    function renderCategoryBreakdown() {
+      const container = document.getElementById('categoryBreakdown');
+      const counts = {};
+      CATEGORIES.forEach(c => { counts[c] = 0; });
+      state.items.forEach(item => { counts[item.category] = (counts[item.category] || 0) + 1; });
+
+      container.innerHTML = CATEGORIES.map(c => `
+        <div class="stat-row">
+          <span>${escapeHtml(c)}</span>
+          <span>${counts[c]}</span>
+        </div>
+      `).join('');
+    }
+
+    function renderRestockCandidates() {
+      const container = document.getElementById('restockCandidates');
+      const candidates = state.items.filter(isRestockCandidate);
+
+      if (candidates.length === 0) {
+        container.innerHTML = '<p>現在、補充候補の素材はありません。</p>';
+        return;
+      }
+
+      container.innerHTML = candidates.map(item => {
+        const rd = remainingDays(item);
+        const rdLabel = Number.isFinite(rd) ? `${rd}日` : '算出不可';
+        const reasons = [];
+        if (isShortage(item)) reasons.push('最低確保数以下');
+        if (isSafetyBreach(item)) reasons.push('安心在庫割れ');
+        if (Number.isFinite(rd) && rd <= RESTOCK_DAYS_THRESHOLD) reasons.push(`残り${rdLabel}`);
+        return `
+          <div class="stat-row">
+            <span>${escapeHtml(item.name)}(${escapeHtml(item.category)})</span>
+            <span>${escapeHtml(reasons.join(' / '))} - 現在${item.currentQty}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderItems() {
+      const container = document.getElementById('itemsContainer');
+      const filtered = getFilteredItems();
+
+      if (state.items.length === 0) {
+        container.innerHTML = '<p>登録された素材がありません。「素材を登録」から追加してください。</p>';
+        return;
+      }
+      if (filtered.length === 0) {
+        container.innerHTML = '<p>条件に一致する素材がありません。</p>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(item => {
+        const rd = remainingDays(item);
+        const rdLabel = Number.isFinite(rd) ? `${rd}日` : '-';
+        const stateCls = isShortage(item) ? 'danger-state' : isSafetyBreach(item) ? 'warn-state' : '';
+        const flag = isShortage(item)
+          ? '<span class="item-flag danger">不足中</span>'
+          : isSafetyBreach(item)
+            ? '<span class="item-flag warn">安心在庫割れ</span>'
+            : '';
+
+        return `
+          <div class="item-card ${stateCls}">
+            ${flag}
+            <div class="item-title">${escapeHtml(item.name)}</div>
+            <div class="item-category">${escapeHtml(item.category)}</div>
+            <div class="stat-row"><span>現在数</span><span>${item.currentQty}</span></div>
+            <div class="stat-row"><span>最低確保数</span><span>${item.minQty}</span></div>
+            <div class="stat-row"><span>安心在庫</span><span>${item.safetyQty}</span></div>
+            <div class="stat-row"><span>1日あたり使用目安</span><span>${item.dailyUse}</span></div>
+            <div class="stat-row"><span>残り日数</span><span>${rdLabel}</span></div>
+            ${item.memo ? `<div class="item-memo">${escapeHtml(item.memo)}</div>` : ''}
+
+            <div class="qty-row">
+              <input type="number" id="restockAmount_${item.id}" placeholder="補充数量(既定:${item.restockUnit})" min="1" step="1">
+              <button class="small success" onclick="restockItem(${item.id})">補充</button>
+            </div>
+            <div class="qty-row">
+              <input type="number" id="useAmount_${item.id}" placeholder="使用数量(既定:1)" min="1" step="1">
+              <button class="small" onclick="useItem(${item.id})">使用</button>
+            </div>
+            <div class="qty-row">
+              <input type="number" id="adjustAmount_${item.id}" placeholder="補正数量(±)" step="1">
+              <button class="small" onclick="adjustItem(${item.id})">数量補正</button>
+            </div>
+
+            <div class="btn-group" style="margin-top: 8px;">
+              <button class="small" onclick="openEditModal(${item.id})">編集</button>
+              <button class="small danger" onclick="deleteItem(${item.id})">削除</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Event listeners
+    document.getElementById('btnAddItem').addEventListener('click', openAddModal);
+    document.getElementById('btnSaveItem').addEventListener('click', saveItemForm);
+    document.getElementById('btnCancelItem').addEventListener('click', closeModal);
+    document.getElementById('btnAdvanceDay').addEventListener('click', advanceDay);
+    document.getElementById('btnHistory').addEventListener('click', toggleHistory);
+    document.getElementById('btnCloseHistory').addEventListener('click', toggleHistory);
+    document.getElementById('btnResetAll').addEventListener('click', resetAll);
+    document.getElementById('searchText').addEventListener('input', renderItems);
+    document.getElementById('filterCategory').addEventListener('change', renderItems);
+
+    // Initialize
+    populateCategorySelects();
+    loadState();
+    populateCategorySelects();
+    render();
+  </script>
 </body>
 </html>
