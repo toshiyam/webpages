@@ -1,0 +1,1504 @@
+<!doctype html>
+<!--
+name: 星霧迷宮
+version: 1.0
+type: single-html-app
+status: stable
+-->
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>星霧迷宮</title>
+  <style>
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; min-height: 100%; background: #0f1020; color: #f5f3ff; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow-x: hidden; max-width: 100%; }
+    body { padding: 16px; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+    main { width: min(100%, 640px); margin: 0 auto; }
+    .card { background: #191b33; border: 1px solid #34385f; border-radius: 16px; padding: 16px; box-shadow: 0 12px 32px rgba(0,0,0,.28); margin-bottom: 14px; }
+    h1 { margin: 0 0 8px; font-size: 1.5em; }
+    h2 { font-size: 1.05em; margin: 0 0 10px; }
+    p { line-height: 1.7; color: #cbc9e8; margin: 0 0 8px; }
+    details.rules summary { cursor: pointer; font-weight: bold; padding: 4px 0; }
+    details.rules p { font-size: 0.88em; }
+
+    .hud-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100px,100%),1fr)); gap: 8px; margin-bottom: 10px; }
+    .hud-item { background: #12142a; border: 1px solid #2c2f52; border-radius: 8px; padding: 8px 10px; min-width: 0; }
+    .hud-label { font-size: 0.72em; color: #8d89b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hud-value { font-size: 1.05em; font-weight: bold; white-space: nowrap; }
+    .hp-track { width: 100%; height: 10px; background: #2c2f52; border-radius: 6px; overflow: hidden; margin-top: 4px; }
+    .hp-fill { height: 100%; background: linear-gradient(90deg,#4ade80,#22c55e); transition: width .2s; }
+    .hp-fill.warn { background: linear-gradient(90deg,#fbbf24,#f59e0b); }
+    .hp-fill.danger { background: linear-gradient(90deg,#f87171,#dc2626); }
+
+    .canvas-wrap { position: relative; width: 100%; aspect-ratio: 1/1; max-width: 480px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 1px solid #34385f; background: #05060d; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    .canvas-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 16px; background: rgba(6,7,16,.86); }
+    .canvas-overlay.hidden { display: none; }
+    .overlay-box { max-width: 320px; }
+    .overlay-box h3 { margin: 0 0 8px; font-size: 1.2em; }
+    .overlay-box p { font-size: 0.9em; }
+
+    .controls { margin-top: 14px; }
+    .pad-row { display: flex; justify-content: center; gap: 8px; }
+    .action-row { display: flex; justify-content: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+    .pad-btn, .act-btn {
+      min-width: 52px; min-height: 52px; border-radius: 12px; border: 1px solid #3a3e6a;
+      background: #22254a; color: #f5f3ff; font-size: 1.1em; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; user-select: none;
+      touch-action: none;
+    }
+    .pad-btn:active, .act-btn:active, .pad-btn.pressed { background: #3d4180; }
+    .act-btn { min-width: 76px; padding: 0 14px; font-size: 0.95em; }
+    .act-btn.attack { background: #7c2d3c; border-color: #a13a4d; }
+    .act-btn.potion { background: #1f6f4f; border-color: #29906a; }
+    .act-btn.retreat { background: #6b4a1f; border-color: #8f6329; }
+    button.plain {
+      padding: 10px 14px; font-size: 0.95em; border: 1px solid #3a3e6a; border-radius: 8px;
+      background: #22254a; color: #f5f3ff; cursor: pointer; min-height: 44px; margin: 0 8px 8px 0;
+    }
+    button.plain:hover { background: #2c2f5c; }
+    button.plain.danger { background: #7c2d2d; border-color: #a13a3a; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    .event-log { max-height: 160px; overflow-y: auto; background: #12142a; border-radius: 8px; padding: 10px; font-size: 0.82em; margin-top: 10px; }
+    .log-item { padding: 4px 0; border-bottom: 1px solid #22254a; color: #cbc9e8; }
+    .log-item:last-child { border-bottom: none; }
+    .log-item.bad { color: #f7a1a1; }
+    .log-item.good { color: #a8e6b8; }
+
+    .menu-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(120px,100%),1fr)); gap: 8px; margin-bottom: 12px; }
+    .upgrade-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px,100%),1fr)); gap: 10px; }
+    .upgrade-card { background: #12142a; border: 1px solid #2c2f52; border-radius: 10px; padding: 10px; min-width: 0; }
+    .upgrade-card .u-title { font-weight: bold; margin-bottom: 4px; font-size: 0.92em; }
+    .upgrade-card .u-cost { font-size: 0.8em; color: #8d89b8; margin-bottom: 6px; }
+
+    .hidden { display: none !important; }
+    .note { font-size: 0.78em; color: #8d89b8; margin-top: 6px; }
+
+    @media (max-width: 480px) {
+      .pad-btn, .act-btn { min-width: 48px; min-height: 48px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="card">
+      <h1>星霧迷宮</h1>
+      <p>毎回生成される迷宮を探索し、精霊や怪物と戦い、宝箱を開けて星片を集め、拠点へ持ち帰って永続強化する短時間ローグライトです。</p>
+      <details class="rules">
+        <summary>遊び方</summary>
+        <p>矢印キー/WASDまたは仮想パッドで移動し、攻撃ボタンで近くの敵を攻撃します。宝箱・回復地点は上を歩くだけで作用します。出口へ乗ると次の階層へ進み、いつでも「帰還」を押すと今の持ち帰り星片を確定して拠点へ戻れます。HPが0になると星片をすべて失って冒険は終わります。現在のランはページを再読み込みすると失われますが、永続強化・記録は保存されます。</p>
+      </details>
+      <div class="btn-group">
+        <button class="plain" id="btnHistory">履歴</button>
+        <button class="plain danger" id="btnResetAll">全データリセット</button>
+      </div>
+    </section>
+
+    <section id="hudPanel" class="card hidden">
+      <div class="hud-bar">
+        <div class="hud-item">
+          <div class="hud-label">HP</div>
+          <div class="hud-value" id="hudHp">0 / 0</div>
+          <div class="hp-track"><div id="hpFill" class="hp-fill"></div></div>
+        </div>
+        <div class="hud-item">
+          <div class="hud-label">階層</div>
+          <div class="hud-value" id="hudFloor">1</div>
+        </div>
+        <div class="hud-item">
+          <div class="hud-label">星片</div>
+          <div class="hud-value" id="hudShards">0</div>
+        </div>
+        <div class="hud-item">
+          <div class="hud-label">ポーション</div>
+          <div class="hud-value" id="hudPotions">0</div>
+        </div>
+        <div class="hud-item">
+          <div class="hud-label">経過時間</div>
+          <div class="hud-value" id="hudTime">0:00</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="gameCanvas" aria-label="星霧迷宮のゲーム画面"></canvas>
+
+        <div id="menuOverlay" class="canvas-overlay">
+          <div class="overlay-box">
+            <h3>星霧迷宮へようこそ</h3>
+            <div class="menu-stats" id="menuStats"></div>
+            <button class="plain" id="btnStartRun" style="background:#7c2d3c;border-color:#a13a4d;">冒険を始める</button>
+            <button class="plain" id="btnOpenUpgrade">永続強化を見る</button>
+          </div>
+        </div>
+
+        <div id="gameOverOverlay" class="canvas-overlay hidden">
+          <div class="overlay-box">
+            <h3>力尽きた…</h3>
+            <p id="gameOverText"></p>
+            <button class="plain" id="btnBackFromGameOver">拠点へ戻る</button>
+          </div>
+        </div>
+
+        <div id="resultOverlay" class="canvas-overlay hidden">
+          <div class="overlay-box">
+            <h3 id="resultTitle">帰還成功</h3>
+            <p id="resultText"></p>
+            <button class="plain" id="btnBackFromResult">拠点へ戻る</button>
+          </div>
+        </div>
+
+        <div id="pauseOverlay" class="canvas-overlay hidden">
+          <div class="overlay-box">
+            <h3>一時停止</h3>
+            <button class="plain" id="btnResume">再開する</button>
+            <button class="plain" id="btnRetreatFromPause">帰還する</button>
+          </div>
+        </div>
+
+        <div id="errorOverlay" class="canvas-overlay hidden">
+          <div class="overlay-box">
+            <h3>描画エラー</h3>
+            <p>お使いの環境ではCanvas描画を利用できませんでした。ブラウザを更新するか、別のブラウザでお試しください。</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls" id="controlsPanel">
+        <div class="pad-row">
+          <button class="pad-btn" id="padUp">▲</button>
+        </div>
+        <div class="pad-row" style="margin-top:6px;">
+          <button class="pad-btn" id="padLeft">◀</button>
+          <button class="pad-btn" id="padDown">▼</button>
+          <button class="pad-btn" id="padRight">▶</button>
+        </div>
+        <div class="action-row">
+          <button class="act-btn attack" id="btnAttack">攻撃</button>
+          <button class="act-btn potion" id="btnPotion">ポーション</button>
+          <button class="act-btn retreat" id="btnRetreat">帰還</button>
+          <button class="act-btn" id="btnPause">一時停止</button>
+        </div>
+        <p class="note">PC: 矢印キー/WASDで移動、スペースキーで攻撃、Eキーでポーション、Rキーで帰還。</p>
+      </div>
+
+      <div class="event-log" id="eventLog"></div>
+    </section>
+
+    <section id="upgradePanel" class="card hidden">
+      <h2>永続強化</h2>
+      <div class="menu-stats" id="upgradeStatsSummary"></div>
+      <div class="upgrade-grid" id="upgradeGrid"></div>
+      <button class="plain" id="btnCloseUpgrade" style="margin-top:10px;">閉じる</button>
+    </section>
+
+    <section id="historyPanel" class="card hidden">
+      <h2>記録</h2>
+      <div class="menu-stats" id="historyStats"></div>
+      <div class="event-log" id="historyLog"></div>
+      <button class="plain" id="btnCloseHistory" style="margin-top:10px;">閉じる</button>
+    </section>
+  </main>
+
+  <script>
+    'use strict';
+
+    /* ===================== Constants ===================== */
+    const META_KEY = 'astralLabyrinth_meta_v1';
+    const WALL = 0, FLOOR = 1, DOOR = 2, EXIT = 3;
+
+    const MAX_FLOORS = 4;
+    const VIEW_TILES = 11;
+    const VISION_RADIUS = 4.6;
+    const MAX_PARTICLES = 120;
+    const MAX_DAMAGE_NUMBERS = 30;
+    const MAX_LOG = 30;
+    const MAX_RUN_HISTORY = 20;
+    const MAX_ENEMIES = 10;
+    const MAX_COUNT = 1000000;
+
+    const BASE_PLAYER = {
+      maxHp: 30, attack: 5, potionHeal: 15, potionCount: 2,
+      moveSpeed: 3.1, attackCooldown: 430, attackRange: 1.15,
+      attackArc: Math.PI * 0.75, radius: 0.32
+    };
+
+    const UPGRADE_DEFS = [
+      { key: 'maxHp', name: '最大HP強化', step: 10, costBase: 20, costStep: 14, max: 5 },
+      { key: 'attack', name: '攻撃力強化', step: 2, costBase: 20, costStep: 14, max: 5 },
+      { key: 'potion', name: 'ポーション強化', step: 1, costBase: 25, costStep: 18, max: 5 },
+      { key: 'haste', name: '攻撃間隔強化', step: 1, costBase: 20, costStep: 16, max: 5 }
+    ];
+
+    const ENEMY_DEFS = {
+      chaser: { name: '徘徊霊', hp: 14, attack: 4, speed: 1.7, detection: 5.5, radius: 0.32, color: '#d97a7a', contactRange: 0.72, contactCooldown: 750 },
+      shooter: { name: '遠見の目', hp: 9, attack: 3, speed: 1.0, detection: 7, radius: 0.3, color: '#7a9cd9', fireCooldown: 1500, fireRange: 6.5, projSpeed: 4.3, preferredDist: 3.4 }
+    };
+
+    const FIXED_MAP_ROWS = [
+      '11111111111111',
+      '10000000000001',
+      '10111111111101',
+      '10100000000101',
+      '10101111110101',
+      '10101000010101',
+      '10101011010101',
+      '10101010010101',
+      '10101010111101',
+      '10101000000001',
+      '10111111111101',
+      '10000000000031',
+      '11111111111111'
+    ];
+
+    /* ===================== Persistent meta state ===================== */
+    function freshMeta() {
+      return {
+        shards: 0,
+        upgrades: { maxHp: 0, attack: 0, potion: 0, haste: 0 },
+        bestFloor: 0,
+        bestShardsCarried: 0,
+        totalKills: 0,
+        totalRuns: 0,
+        log: []
+      };
+    }
+
+    let meta = freshMeta();
+
+    function isFiniteNumber(v) { return typeof v === 'number' && Number.isFinite(v); }
+    function isBoundedInt(v, min, max) { return typeof v === 'number' && Number.isInteger(v) && v >= min && v <= max; }
+    function isBoundedNonNegativeInt(v, max) { return isBoundedInt(v, 0, max === undefined ? MAX_COUNT : max); }
+    function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+    function safeNum(v, fallback) { return isFiniteNumber(v) ? v : fallback; }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    function validateUpgrades(u) {
+      if (!u || typeof u !== 'object') return false;
+      for (const def of UPGRADE_DEFS) {
+        if (!isBoundedInt(u[def.key], 0, def.max)) return false;
+      }
+      return true;
+    }
+
+    function validateMeta(obj) {
+      if (!obj || typeof obj !== 'object') return false;
+      if (!isBoundedNonNegativeInt(obj.shards)) return false;
+      if (!validateUpgrades(obj.upgrades)) return false;
+      if (!isBoundedNonNegativeInt(obj.bestFloor, MAX_FLOORS)) return false;
+      if (!isBoundedNonNegativeInt(obj.bestShardsCarried)) return false;
+      if (!isBoundedNonNegativeInt(obj.totalKills)) return false;
+      if (!isBoundedNonNegativeInt(obj.totalRuns)) return false;
+      if (!Array.isArray(obj.log) || obj.log.length > MAX_RUN_HISTORY) return false;
+      for (const entry of obj.log) {
+        if (!entry || typeof entry !== 'object') return false;
+        if (!isFiniteNumber(entry.timestamp)) return false;
+        if (!isBoundedNonNegativeInt(entry.floor, MAX_FLOORS)) return false;
+        if (!isBoundedNonNegativeInt(entry.shards)) return false;
+        if (typeof entry.result !== 'string' || entry.result.length > 20) return false;
+      }
+      return true;
+    }
+
+    function saveMeta() {
+      try {
+        localStorage.setItem(META_KEY, JSON.stringify(meta));
+      } catch (e) {
+        console.error('Save failed:', e);
+      }
+    }
+
+    function loadMeta() {
+      try {
+        const saved = localStorage.getItem(META_KEY);
+        if (saved) {
+          const loaded = JSON.parse(saved);
+          if (validateMeta(loaded)) {
+            meta = loaded;
+            return true;
+          }
+        }
+      } catch (e) {
+        console.error('Load failed:', e);
+      }
+      return false;
+    }
+
+    function upgradeCost(def, level) {
+      return def.costBase + level * def.costStep;
+    }
+
+    function playerStatsFromMeta() {
+      const u = meta.upgrades;
+      return {
+        maxHp: BASE_PLAYER.maxHp + u.maxHp * UPGRADE_DEFS[0].step,
+        attack: BASE_PLAYER.attack + u.attack * UPGRADE_DEFS[1].step,
+        potionCount: BASE_PLAYER.potionCount + u.potion * UPGRADE_DEFS[2].step,
+        potionHeal: BASE_PLAYER.potionHeal + u.potion * 4,
+        attackCooldown: Math.round(BASE_PLAYER.attackCooldown * Math.pow(0.92, u.haste)),
+        moveSpeed: BASE_PLAYER.moveSpeed + u.haste * 0.08
+      };
+    }
+
+    /* ===================== Map generation ===================== */
+    function makeGrid(w, h, value) {
+      const g = [];
+      for (let y = 0; y < h; y++) {
+        g.push(new Array(w).fill(value));
+      }
+      return g;
+    }
+
+    function roomsOverlap(a, b, pad) {
+      return !(a.x + a.w + pad <= b.x || b.x + b.w + pad <= a.x || a.y + a.h + pad <= b.y || b.y + b.h + pad <= a.y);
+    }
+
+    function isInsideAnyRoom(rooms, x, y) {
+      for (const r of rooms) {
+        if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return true;
+      }
+      return false;
+    }
+
+    function carveRoom(tiles, room) {
+      for (let y = room.y; y < room.y + room.h; y++) {
+        for (let x = room.x; x < room.x + room.w; x++) {
+          tiles[y][x] = FLOOR;
+        }
+      }
+    }
+
+    function carveCorridor(tiles, rooms, x1, y1, x2, y2) {
+      let x = x1, y = y1;
+      let wasInside = isInsideAnyRoom(rooms, x, y);
+      const stepX = x2 > x1 ? 1 : (x2 < x1 ? -1 : 0);
+      while (x !== x2) {
+        x += stepX;
+        const inside = isInsideAnyRoom(rooms, x, y);
+        if (tiles[y][x] === WALL) tiles[y][x] = (inside !== wasInside) ? DOOR : FLOOR;
+        wasInside = inside;
+      }
+      const stepY = y2 > y1 ? 1 : (y2 < y1 ? -1 : 0);
+      while (y !== y2) {
+        y += stepY;
+        const inside = isInsideAnyRoom(rooms, x, y);
+        if (tiles[y][x] === WALL) tiles[y][x] = (inside !== wasInside) ? DOOR : FLOOR;
+        wasInside = inside;
+      }
+    }
+
+    function bfsReachable(tiles, w, h, sx, sy, tx, ty) {
+      if (tiles[sy][sx] === WALL || tiles[ty][tx] === WALL) return false;
+      const visited = makeGrid(w, h, false);
+      const queue = [[sx, sy]];
+      visited[sy][sx] = true;
+      let head = 0;
+      while (head < queue.length) {
+        const [cx, cy] = queue[head++];
+        if (cx === tx && cy === ty) return true;
+        const neighbors = [[cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]];
+        for (const [nx, ny] of neighbors) {
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          if (visited[ny][nx] || tiles[ny][nx] === WALL) continue;
+          visited[ny][nx] = true;
+          queue.push([nx, ny]);
+        }
+      }
+      return false;
+    }
+
+    function tryGenerateMap(floorIndex) {
+      const w = 20 + Math.min(8, floorIndex * 2);
+      const h = w;
+      const tiles = makeGrid(w, h, WALL);
+      const rooms = [];
+      const targetRooms = 7 + Math.floor(Math.random() * 3);
+      let attempts = 0;
+
+      while (rooms.length < targetRooms && attempts < 120) {
+        attempts++;
+        const rw = 3 + Math.floor(Math.random() * 4);
+        const rh = 3 + Math.floor(Math.random() * 4);
+        const rx = 1 + Math.floor(Math.random() * (w - rw - 2));
+        const ry = 1 + Math.floor(Math.random() * (h - rh - 2));
+        const candidate = { x: rx, y: ry, w: rw, h: rh };
+        let overlaps = false;
+        for (const r of rooms) {
+          if (roomsOverlap(candidate, r, 1)) { overlaps = true; break; }
+        }
+        if (!overlaps) rooms.push(candidate);
+      }
+
+      if (rooms.length < 4) return null;
+
+      rooms.forEach(r => carveRoom(tiles, r));
+      for (let i = 1; i < rooms.length; i++) {
+        const prev = rooms[i - 1];
+        const cur = rooms[i];
+        const px = Math.floor(prev.x + prev.w / 2), py = Math.floor(prev.y + prev.h / 2);
+        const cx = Math.floor(cur.x + cur.w / 2), cy = Math.floor(cur.y + cur.h / 2);
+        carveCorridor(tiles, rooms, px, py, cx, cy);
+      }
+
+      const start = { x: Math.floor(rooms[0].x + rooms[0].w / 2), y: Math.floor(rooms[0].y + rooms[0].h / 2) };
+      const exitRoom = rooms[rooms.length - 1];
+      const exit = { x: Math.floor(exitRoom.x + exitRoom.w / 2), y: Math.floor(exitRoom.y + exitRoom.h / 2) };
+      tiles[exit.y][exit.x] = EXIT;
+
+      if (!bfsReachable(tiles, w, h, start.x, start.y, exit.x, exit.y)) return null;
+
+      return { w, h, tiles, rooms, start, exit };
+    }
+
+    function buildFixedMap() {
+      const rows = FIXED_MAP_ROWS;
+      const h = rows.length, w = rows[0].length;
+      const tiles = makeGrid(w, h, WALL);
+      let start = { x: 1, y: 1 }, exit = { x: w - 3, y: h - 2 };
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const ch = rows[y][x];
+          if (ch === '0') tiles[y][x] = FLOOR;
+          else if (ch === '3') { tiles[y][x] = EXIT; exit = { x, y }; }
+          else tiles[y][x] = WALL;
+        }
+      }
+      const rooms = [{ x: 1, y: 1, w: w - 2, h: h - 2 }];
+      return { w, h, tiles, rooms, start, exit };
+    }
+
+    function generateMap(floorIndex) {
+      for (let i = 0; i < 8; i++) {
+        const map = tryGenerateMap(floorIndex);
+        if (map) return map;
+      }
+      return buildFixedMap();
+    }
+
+    function tileKey(x, y) { return x + ',' + y; }
+
+    function collectFloorTiles(map) {
+      const tiles = [];
+      for (let y = 0; y < map.h; y++) {
+        for (let x = 0; x < map.w; x++) {
+          const t = map.tiles[y][x];
+          if (t === FLOOR || t === DOOR) tiles.push({ x, y });
+        }
+      }
+      return tiles;
+    }
+
+    function pickSpawnTile(floorTiles, occupied, start, minDist) {
+      const candidates = [];
+      for (const t of floorTiles) {
+        if (occupied.has(tileKey(t.x, t.y))) continue;
+        const dx = t.x - start.x, dy = t.y - start.y;
+        if (Math.hypot(dx, dy) < minDist) continue;
+        candidates.push(t);
+      }
+      if (candidates.length === 0) return null;
+      return candidates[Math.floor(Math.random() * candidates.length)];
+    }
+
+    /* ===================== Run state ===================== */
+    let run = null;
+    let screen = 'menu'; // 'menu' | 'playing' | 'paused' | 'gameover' | 'result'
+
+    function spawnFloorContent(map, floorIndex) {
+      const floorTiles = collectFloorTiles(map);
+      const occupied = new Set();
+      occupied.add(tileKey(map.start.x, map.start.y));
+      occupied.add(tileKey(map.exit.x, map.exit.y));
+
+      function claim(minDist) {
+        return pickSpawnTile(floorTiles, occupied, map.start, minDist) || pickSpawnTile(floorTiles, occupied, map.start, 0);
+      }
+
+      const enemyCount = Math.min(MAX_ENEMIES, 3 + floorIndex);
+      const enemies = [];
+      for (let i = 0; i < enemyCount; i++) {
+        const pos = claim(4);
+        if (!pos) break;
+        occupied.add(tileKey(pos.x, pos.y));
+        const type = Math.random() < 0.6 ? 'chaser' : 'shooter';
+        const def = ENEMY_DEFS[type];
+        const scale = 1 + (floorIndex - 1) * 0.22;
+        enemies.push({
+          type, x: pos.x + 0.5, y: pos.y + 0.5, radius: def.radius,
+          hp: Math.round(def.hp * scale), maxHp: Math.round(def.hp * scale),
+          attack: Math.round(def.attack * scale),
+          contactTimer: 0, fireTimer: Math.random() * 800,
+          flashTimer: 0, facing: { x: 1, y: 0 }, stuckTimer: 0, animPhase: Math.random() * Math.PI * 2
+        });
+      }
+
+      const chests = [];
+      const numChests = 1 + Math.floor(Math.random() * 2);
+      for (let i = 0; i < numChests; i++) {
+        const pos = claim(3);
+        if (!pos) break;
+        occupied.add(tileKey(pos.x, pos.y));
+        chests.push({ x: pos.x + 0.5, y: pos.y + 0.5, opened: false, special: false, animPhase: 0 });
+      }
+      if (Math.random() < 0.5) {
+        const pos = claim(5);
+        if (pos) {
+          occupied.add(tileKey(pos.x, pos.y));
+          chests.push({ x: pos.x + 0.5, y: pos.y + 0.5, opened: false, special: true, animPhase: 0 });
+        }
+      }
+
+      const healSpots = [];
+      const healPos = claim(3);
+      if (healPos) {
+        occupied.add(tileKey(healPos.x, healPos.y));
+        healSpots.push({ x: healPos.x + 0.5, y: healPos.y + 0.5, used: false });
+      }
+
+      return { enemies, chests, healSpots };
+    }
+
+    function currentOccupiedSet() {
+      const occ = new Set();
+      occ.add(tileKey(run.map.start.x, run.map.start.y));
+      occ.add(tileKey(run.map.exit.x, run.map.exit.y));
+      for (const e of run.enemies) occ.add(tileKey(Math.floor(e.x), Math.floor(e.y)));
+      for (const c of run.chests) occ.add(tileKey(Math.floor(c.x), Math.floor(c.y)));
+      for (const h of run.healSpots) occ.add(tileKey(Math.floor(h.x), Math.floor(h.y)));
+      return occ;
+    }
+
+    function applyFloorEvent() {
+      if (Math.random() >= 0.4) return;
+      const events = [
+        () => {
+          const heal = Math.round(run.player.maxHp * 0.2);
+          run.player.hp = Math.min(run.player.maxHp, run.player.hp + heal);
+          addLog(`✨ 精霊の祝福を受けた。HP+${heal}`, 'good');
+        },
+        () => {
+          const dmg = Math.min(run.player.hp - 1, 8);
+          if (dmg > 0) {
+            run.player.hp -= dmg;
+            addLog(`⚠️ 呪われた祭壇に触れてしまった。HP-${dmg}`, 'bad');
+          }
+        },
+        () => {
+          const floorTiles = collectFloorTiles(run.map);
+          const occupied = currentOccupiedSet();
+          const pos = pickSpawnTile(floorTiles, occupied, run.map.start, 3) || pickSpawnTile(floorTiles, occupied, run.map.start, 0);
+          if (pos) {
+            run.chests.push({ x: pos.x + 0.5, y: pos.y + 0.5, opened: false, special: false, animPhase: 0 });
+            addLog('✨ 隠し部屋を見つけた。宝箱が追加された。', 'good');
+          }
+        },
+        () => {
+          const bonus = 5 + Math.floor(Math.random() * 6);
+          run.shardsCarried = Math.min(MAX_COUNT, run.shardsCarried + bonus);
+          addLog(`✨ 流星雨が降り注いだ。星片+${bonus}`, 'good');
+        }
+      ];
+      events[Math.floor(Math.random() * events.length)]();
+    }
+
+    function startFloor(floorIndex) {
+      const map = generateMap(floorIndex);
+      const content = spawnFloorContent(map, floorIndex);
+      run.map = map;
+      run.floor = floorIndex;
+      run.visible = makeGrid(map.w, map.h, false);
+      run.explored = makeGrid(map.w, map.h, false);
+      run.enemies = content.enemies;
+      run.chests = content.chests;
+      run.healSpots = content.healSpots;
+      run.projectiles = [];
+      run.player.x = map.start.x + 0.5;
+      run.player.y = map.start.y + 0.5;
+      addLog(`第${floorIndex}階層へ入った。`, '');
+      applyFloorEvent();
+    }
+
+    function startRun() {
+      const stats = playerStatsFromMeta();
+      run = {
+        floor: 1, map: null, visible: null, explored: null,
+        player: {
+          x: 0, y: 0, hp: stats.maxHp, maxHp: stats.maxHp, attack: stats.attack,
+          potionHeal: stats.potionHeal, potions: stats.potionCount,
+          attackCooldown: stats.attackCooldown, attackTimer: 0, moveSpeed: stats.moveSpeed,
+          attackRange: BASE_PLAYER.attackRange, attackArc: BASE_PLAYER.attackArc, radius: BASE_PLAYER.radius,
+          invincibleTimer: 0, facing: { x: 0, y: 1 }, animPhase: 0, attackEffectTimer: 0, flashTimer: 0
+        },
+        enemies: [], chests: [], healSpots: [], projectiles: [],
+        shardsCarried: 0, kills: 0, elapsed: 0,
+        particles: [], damageNumbers: [], log: [],
+        shakeTime: 0, shakeMag: 0,
+        transition: null // {phase:'out'|'in', t, nextFloor}
+      };
+      startFloor(1);
+      meta.totalRuns = Math.min(MAX_COUNT, meta.totalRuns + 1);
+      saveMeta();
+      screen = 'playing';
+      updateOverlays();
+    }
+
+    function addLog(text, cls) {
+      if (!run) return;
+      run.log.push({ text, cls: cls || '', timestamp: Date.now() });
+      if (run.log.length > MAX_LOG) run.log.shift();
+      renderEventLog();
+    }
+
+    function addMetaHistory(result, floor, shards) {
+      meta.log.push({ timestamp: Date.now(), result, floor, shards });
+      if (meta.log.length > MAX_RUN_HISTORY) meta.log.shift();
+    }
+
+    function endRun(success, bonusRatio) {
+      if (!run) return;
+      let gained = 0;
+      if (success) {
+        gained = Math.round(run.shardsCarried * (bonusRatio || 1));
+        meta.shards = Math.min(MAX_COUNT, meta.shards + gained);
+        meta.bestShardsCarried = Math.max(meta.bestShardsCarried, gained);
+        addMetaHistory('帰還成功', run.floor, gained);
+      } else {
+        addMetaHistory('全滅', run.floor, 0);
+      }
+      meta.bestFloor = Math.max(meta.bestFloor, run.floor);
+      meta.totalKills = Math.min(MAX_COUNT, meta.totalKills + run.kills);
+      saveMeta();
+
+      const summaryFloor = run.floor;
+      const summaryKills = run.kills;
+
+      if (success) {
+        document.getElementById('resultTitle').textContent = '帰還成功';
+        document.getElementById('resultText').textContent =
+          `第${summaryFloor}階層まで到達し、星片${gained}を持ち帰った。撃破数: ${summaryKills}`;
+        screen = 'result';
+      } else {
+        document.getElementById('gameOverText').textContent =
+          `第${summaryFloor}階層で力尽きた。持ち帰るはずだった星片はすべて失われた。撃破数: ${summaryKills}`;
+        screen = 'gameover';
+      }
+      updateOverlays();
+    }
+
+    function retreat() {
+      if (!run || (screen !== 'playing' && screen !== 'paused')) return;
+      endRun(true, 1);
+    }
+
+    function gameOver() {
+      if (!run) return;
+      endRun(false, 0);
+    }
+
+    function tryEnterExit() {
+      if (run.floor >= MAX_FLOORS) {
+        endRun(true, 1.2);
+        return;
+      }
+      beginFloorTransition(run.floor + 1);
+    }
+
+    function beginFloorTransition(nextFloor) {
+      run.transition = { phase: 'out', t: 0, nextFloor };
+    }
+
+    /* ===================== Combat & interaction ===================== */
+    function isWallAt(map, px, py, radius) {
+      const points = [
+        [px - radius, py - radius], [px + radius, py - radius],
+        [px - radius, py + radius], [px + radius, py + radius]
+      ];
+      for (const [x, y] of points) {
+        const tx = Math.floor(x), ty = Math.floor(y);
+        if (tx < 0 || ty < 0 || tx >= map.w || ty >= map.h) return true;
+        if (map.tiles[ty][tx] === WALL) return true;
+      }
+      return false;
+    }
+
+    function tryMoveEntity(map, entity, dx, dy) {
+      if (dx !== 0) {
+        const nx = entity.x + dx;
+        if (!isWallAt(map, nx, entity.y, entity.radius)) entity.x = nx;
+      }
+      if (dy !== 0) {
+        const ny = entity.y + dy;
+        if (!isWallAt(map, entity.x, ny, entity.radius)) entity.y = ny;
+      }
+    }
+
+    function spawnParticles(x, y, color, count) {
+      for (let i = 0; i < count; i++) {
+        if (run.particles.length >= MAX_PARTICLES) run.particles.shift();
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 1.2 + Math.random() * 1.8;
+        run.particles.push({
+          x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+          life: 0.4 + Math.random() * 0.3, maxLife: 0.7, color, size: 2 + Math.random() * 2
+        });
+      }
+    }
+
+    function spawnDamageNumber(x, y, text, color) {
+      if (run.damageNumbers.length >= MAX_DAMAGE_NUMBERS) run.damageNumbers.shift();
+      run.damageNumbers.push({ x, y, text, color: color || '#fff', life: 0.8, vy: 0.9 });
+    }
+
+    function shake(mag) {
+      run.shakeTime = 0.22;
+      run.shakeMag = Math.max(run.shakeMag, mag);
+    }
+
+    function playerAttack() {
+      if (!run || screen !== 'playing') return;
+      const p = run.player;
+      if (p.attackTimer > 0) return;
+      p.attackTimer = p.attackCooldown;
+      p.attackEffectTimer = 160;
+
+      let hitAny = false;
+      for (const e of run.enemies) {
+        const dx = e.x - p.x, dy = e.y - p.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > p.attackRange + e.radius) continue;
+        const angleToEnemy = Math.atan2(dy, dx);
+        const facingAngle = Math.atan2(p.facing.y, p.facing.x);
+        let diff = Math.abs(angleToEnemy - facingAngle);
+        if (diff > Math.PI) diff = Math.PI * 2 - diff;
+        if (diff > p.attackArc / 2) continue;
+
+        const dmg = Math.max(1, Math.round(p.attack * (0.85 + Math.random() * 0.3)));
+        e.hp -= dmg;
+        e.flashTimer = 140;
+        hitAny = true;
+        spawnDamageNumber(e.x, e.y - 0.3, String(dmg), '#ffe27a');
+
+        if (e.hp <= 0) {
+          killEnemy(e);
+        }
+      }
+      if (hitAny) shake(2.5);
+      run.enemies = run.enemies.filter(e => e.hp > 0);
+    }
+
+    function killEnemy(e) {
+      run.kills = Math.min(MAX_COUNT, run.kills + 1);
+      spawnParticles(e.x, e.y, ENEMY_DEFS[e.type] ? ENEMY_DEFS[e.type].color : '#fff', 14);
+      const dropShards = 1 + Math.floor(Math.random() * 3);
+      run.shardsCarried = Math.min(MAX_COUNT, run.shardsCarried + dropShards);
+      if (Math.random() < 0.18) {
+        run.player.hp = Math.min(run.player.maxHp, run.player.hp + 3);
+        addLog(`${(ENEMY_DEFS[e.type] || {}).name || '敵'}を倒した。星片+${dropShards}、微回復。`, 'good');
+      } else {
+        addLog(`${(ENEMY_DEFS[e.type] || {}).name || '敵'}を倒した。星片+${dropShards}`, 'good');
+      }
+    }
+
+    function damagePlayer(amount, sourceX, sourceY) {
+      const p = run.player;
+      if (p.invincibleTimer > 0) return;
+      const dmg = Math.max(1, Math.round(amount));
+      p.hp = Math.max(0, p.hp - dmg);
+      p.invincibleTimer = 700;
+      p.flashTimer = 220;
+      spawnDamageNumber(p.x, p.y - 0.3, `-${dmg}`, '#ff8787');
+      shake(4);
+      if (p.hp <= 0) {
+        gameOver();
+      }
+    }
+
+    function usePotion() {
+      if (!run || screen !== 'playing') return;
+      const p = run.player;
+      if (p.potions <= 0) { addLog('ポーションを持っていない。', 'bad'); return; }
+      if (p.hp >= p.maxHp) { addLog('HPは満タンだ。', ''); return; }
+      p.potions--;
+      p.hp = Math.min(p.maxHp, p.hp + p.potionHeal);
+      spawnDamageNumber(p.x, p.y - 0.3, `+${p.potionHeal}`, '#8ef0a8');
+      addLog(`ポーションを使用した。HP+${p.potionHeal}`, 'good');
+    }
+
+    function checkPickups() {
+      const p = run.player;
+      for (const c of run.chests) {
+        if (c.opened) continue;
+        if (Math.hypot(c.x - p.x, c.y - p.y) > 0.6) continue;
+        if (c.special && run.kills < 2) {
+          continue;
+        }
+        c.opened = true;
+        spawnParticles(c.x, c.y, '#ffd76b', 16);
+        const reward = c.special ? 8 + Math.floor(Math.random() * 8) : 3 + Math.floor(Math.random() * 5);
+        run.shardsCarried = Math.min(MAX_COUNT, run.shardsCarried + reward);
+        if (Math.random() < 0.35) {
+          run.player.potions++;
+          addLog(`${c.special ? '特別な' : ''}宝箱を開けた。星片+${reward}、ポーション+1`, 'good');
+        } else {
+          addLog(`${c.special ? '特別な' : ''}宝箱を開けた。星片+${reward}`, 'good');
+        }
+      }
+      for (const h of run.healSpots) {
+        if (h.used) continue;
+        if (Math.hypot(h.x - p.x, h.y - p.y) > 0.6) continue;
+        if (p.hp >= p.maxHp) continue;
+        h.used = true;
+        const heal = Math.round(p.maxHp * 0.5);
+        p.hp = Math.min(p.maxHp, p.hp + heal);
+        spawnDamageNumber(p.x, p.y - 0.3, `+${heal}`, '#8ef0a8');
+        addLog(`回復地点を使った。HP+${heal}`, 'good');
+      }
+      const map = run.map;
+      const tx = Math.floor(p.x), ty = Math.floor(p.y);
+      if (map.tiles[ty] && map.tiles[ty][tx] === EXIT) {
+        tryEnterExit();
+      }
+    }
+
+    /* ===================== Enemy AI ===================== */
+    function updateEnemies(dt) {
+      const p = run.player;
+      for (const e of run.enemies) {
+        e.animPhase += dt * 6;
+        if (e.flashTimer > 0) e.flashTimer -= dt * 1000;
+        const def = ENEMY_DEFS[e.type];
+        if (!def) continue;
+
+        const dx = p.x - e.x, dy = p.y - e.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist <= def.detection) {
+          if (e.type === 'chaser') {
+            if (dist > def.contactRange * 0.8) {
+              const dirX = dx / (dist || 1), dirY = dy / (dist || 1);
+              const before = { x: e.x, y: e.y };
+              tryMoveEntity(run.map, e, dirX * def.speed * dt, dirY * def.speed * dt);
+              if (Math.hypot(e.x - before.x, e.y - before.y) < 0.001) {
+                e.stuckTimer += dt;
+                if (e.stuckTimer > 0.4) {
+                  const perp = { x: -dirY, y: dirX };
+                  tryMoveEntity(run.map, e, perp.x * def.speed * dt, perp.y * def.speed * dt);
+                }
+              } else {
+                e.stuckTimer = 0;
+              }
+              e.facing = { x: dirX, y: dirY };
+            }
+            e.contactTimer -= dt * 1000;
+            if (dist <= def.contactRange && e.contactTimer <= 0) {
+              e.contactTimer = def.contactCooldown;
+              damagePlayer(e.attack, e.x, e.y);
+            }
+          } else if (e.type === 'shooter') {
+            if (dist < def.preferredDist - 0.5) {
+              const dirX = -dx / (dist || 1), dirY = -dy / (dist || 1);
+              tryMoveEntity(run.map, e, dirX * def.speed * dt, dirY * def.speed * dt);
+            } else if (dist > def.preferredDist + 0.5) {
+              const dirX = dx / (dist || 1), dirY = dy / (dist || 1);
+              tryMoveEntity(run.map, e, dirX * def.speed * dt, dirY * def.speed * dt);
+            }
+            e.facing = { x: dx / (dist || 1), y: dy / (dist || 1) };
+            e.fireTimer -= dt * 1000;
+            if (dist <= def.fireRange && e.fireTimer <= 0 && hasLineOfSight(e.x, e.y, p.x, p.y)) {
+              e.fireTimer = def.fireCooldown;
+              const dirX = dx / (dist || 1), dirY = dy / (dist || 1);
+              run.projectiles.push({
+                x: e.x, y: e.y, vx: dirX * def.projSpeed, vy: dirY * def.projSpeed,
+                attack: e.attack, life: 3
+              });
+            }
+          }
+        }
+      }
+    }
+
+    function hasLineOfSight(x1, y1, x2, y2) {
+      const steps = Math.ceil(Math.hypot(x2 - x1, y2 - y1) * 3);
+      for (let i = 1; i < steps; i++) {
+        const t = i / steps;
+        const x = Math.floor(x1 + (x2 - x1) * t);
+        const y = Math.floor(y1 + (y2 - y1) * t);
+        if (run.map.tiles[y] && run.map.tiles[y][x] === WALL) return false;
+      }
+      return true;
+    }
+
+    function updateProjectiles(dt) {
+      const p = run.player;
+      run.projectiles = run.projectiles.filter(proj => {
+        proj.x += proj.vx * dt;
+        proj.y += proj.vy * dt;
+        proj.life -= dt;
+        if (proj.life <= 0) return false;
+        const tx = Math.floor(proj.x), ty = Math.floor(proj.y);
+        if (!run.map.tiles[ty] || run.map.tiles[ty][tx] === WALL) return false;
+        if (Math.hypot(proj.x - p.x, proj.y - p.y) < p.radius + 0.15) {
+          damagePlayer(proj.attack, proj.x, proj.y);
+          return false;
+        }
+        return true;
+      });
+    }
+
+    /* ===================== Player update ===================== */
+    let keys = new Set();
+    let pad = { up: false, down: false, left: false, right: false };
+
+    function getMoveVector() {
+      let x = 0, y = 0;
+      if (keys.has('arrowup') || keys.has('w') || pad.up) y -= 1;
+      if (keys.has('arrowdown') || keys.has('s') || pad.down) y += 1;
+      if (keys.has('arrowleft') || keys.has('a') || pad.left) x -= 1;
+      if (keys.has('arrowright') || keys.has('d') || pad.right) x += 1;
+      if (x !== 0 && y !== 0) { x *= Math.SQRT1_2; y *= Math.SQRT1_2; }
+      return { x, y };
+    }
+
+    function updatePlayer(dt) {
+      const p = run.player;
+      if (p.attackTimer > 0) p.attackTimer -= dt * 1000;
+      if (p.attackEffectTimer > 0) p.attackEffectTimer -= dt * 1000;
+      if (p.invincibleTimer > 0) p.invincibleTimer -= dt * 1000;
+      if (p.flashTimer > 0) p.flashTimer -= dt * 1000;
+
+      const mv = getMoveVector();
+      if (mv.x !== 0 || mv.y !== 0) {
+        p.facing = { x: mv.x, y: mv.y };
+        tryMoveEntity(run.map, p, mv.x * p.moveSpeed * dt, mv.y * p.moveSpeed * dt);
+        p.animPhase += dt * 9;
+      }
+
+      p.x = clamp(p.x, 0.5, run.map.w - 0.5);
+      p.y = clamp(p.y, 0.5, run.map.h - 0.5);
+    }
+
+    function updateVisibility() {
+      const map = run.map;
+      const p = run.player;
+      for (let y = 0; y < map.h; y++) {
+        for (let x = 0; x < map.w; x++) run.visible[y][x] = false;
+      }
+      const minX = Math.max(0, Math.floor(p.x - VISION_RADIUS));
+      const maxX = Math.min(map.w - 1, Math.ceil(p.x + VISION_RADIUS));
+      const minY = Math.max(0, Math.floor(p.y - VISION_RADIUS));
+      const maxY = Math.min(map.h - 1, Math.ceil(p.y + VISION_RADIUS));
+      for (let y = minY; y <= maxY; y++) {
+        for (let x = minX; x <= maxX; x++) {
+          const dist = Math.hypot(x + 0.5 - p.x, y + 0.5 - p.y);
+          if (dist > VISION_RADIUS) continue;
+          if (hasLineOfSight(p.x, p.y, x + 0.5, y + 0.5)) {
+            run.visible[y][x] = true;
+            run.explored[y][x] = true;
+          }
+        }
+      }
+    }
+
+    /* ===================== Main update ===================== */
+    function updateEffects(dt) {
+      run.particles = run.particles.filter(pt => {
+        pt.x += pt.vx * dt; pt.y += pt.vy * dt;
+        pt.vx *= 0.9; pt.vy *= 0.9;
+        pt.life -= dt;
+        return pt.life > 0;
+      });
+      run.damageNumbers = run.damageNumbers.filter(d => {
+        d.y -= d.vy * dt;
+        d.life -= dt;
+        return d.life > 0;
+      });
+      if (run.shakeTime > 0) {
+        run.shakeTime -= dt;
+        if (run.shakeTime <= 0) run.shakeMag = 0;
+      }
+    }
+
+    function updateTransition(dt) {
+      const tr = run.transition;
+      if (!tr) return;
+      tr.t += dt;
+      if (tr.phase === 'out' && tr.t >= 0.3) {
+        startFloor(tr.nextFloor);
+        tr.phase = 'in';
+        tr.t = 0;
+      } else if (tr.phase === 'in' && tr.t >= 0.3) {
+        run.transition = null;
+      }
+    }
+
+    function update(dt) {
+      run.elapsed = Math.min(MAX_COUNT, run.elapsed + dt);
+
+      if (run.transition) {
+        updateTransition(dt);
+        updateEffects(dt);
+        return;
+      }
+
+      updatePlayer(dt);
+      updateEnemies(dt);
+      updateProjectiles(dt);
+      updateVisibility();
+      checkPickups();
+      updateEffects(dt);
+
+      run.player.hp = clamp(safeNum(run.player.hp, 0), 0, run.player.maxHp);
+      run.shardsCarried = clamp(safeNum(run.shardsCarried, 0), 0, MAX_COUNT);
+      run.player.potions = clamp(Math.round(safeNum(run.player.potions, 0)), 0, MAX_COUNT);
+    }
+
+    /* ===================== Rendering ===================== */
+    const canvas = document.getElementById('gameCanvas');
+    let ctx = null;
+    try {
+      ctx = canvas.getContext('2d');
+    } catch (e) {
+      ctx = null;
+    }
+    if (!ctx) {
+      document.getElementById('errorOverlay').classList.remove('hidden');
+    }
+
+    let cssSize = 400;
+    let tilePx = cssSize / VIEW_TILES;
+
+    function resizeCanvas() {
+      const wrap = document.getElementById('canvasWrap');
+      const size = Math.max(240, Math.min(wrap.clientWidth, 480));
+      cssSize = size;
+      tilePx = cssSize / VIEW_TILES;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      canvas.width = Math.round(cssSize * dpr);
+      canvas.height = Math.round(cssSize * dpr);
+      canvas.style.width = cssSize + 'px';
+      canvas.style.height = cssSize + 'px';
+      if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    let resizeTimer = null;
+    window.addEventListener('resize', () => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(resizeCanvas, 120);
+    });
+
+    function tileColor(t, visible, explored) {
+      if (!explored) return null;
+      if (t === WALL) return visible ? '#4c5290' : '#2a2d52';
+      if (t === DOOR) return visible ? '#a5793f' : '#4a3a24';
+      if (t === EXIT) return visible ? '#f2d466' : '#7a6a35';
+      return visible ? '#1c1e3c' : '#101128';
+    }
+
+    function renderMap() {
+      const map = run.map;
+      const p = run.player;
+      const camX = p.x - VIEW_TILES / 2;
+      const camY = p.y - VIEW_TILES / 2;
+
+      ctx.fillStyle = '#05060d';
+      ctx.fillRect(0, 0, cssSize, cssSize);
+
+      const minTx = Math.max(0, Math.floor(camX) - 1);
+      const maxTx = Math.min(map.w - 1, Math.ceil(camX + VIEW_TILES) + 1);
+      const minTy = Math.max(0, Math.floor(camY) - 1);
+      const maxTy = Math.min(map.h - 1, Math.ceil(camY + VIEW_TILES) + 1);
+
+      for (let y = minTy; y <= maxTy; y++) {
+        for (let x = minTx; x <= maxTx; x++) {
+          const explored = run.explored[y][x];
+          if (!explored) continue;
+          const visible = run.visible[y][x];
+          const color = tileColor(map.tiles[y][x], visible, explored);
+          if (!color) continue;
+          const sx = (x - camX) * tilePx, sy = (y - camY) * tilePx;
+          ctx.fillStyle = color;
+          ctx.fillRect(sx, sy, tilePx + 0.5, tilePx + 0.5);
+          if (map.tiles[y][x] === EXIT && visible) {
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            const pulse = (Math.sin(performance.now() / 220) + 1) / 2;
+            ctx.beginPath();
+            ctx.arc(sx + tilePx / 2, sy + tilePx / 2, tilePx * (0.2 + pulse * 0.12), 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+      return { camX, camY };
+    }
+
+    function worldToScreen(camX, camY, x, y) {
+      return { sx: (x - camX) * tilePx, sy: (y - camY) * tilePx };
+    }
+
+    function renderEntities(cam) {
+      const p = run.player;
+
+      for (const c of run.chests) {
+        if (c.x < cam.camX - 1 || c.x > cam.camX + VIEW_TILES + 1) continue;
+        const tx = Math.floor(c.x), ty = Math.floor(c.y);
+        if (!run.explored[ty] || !run.explored[ty][tx]) continue;
+        const { sx, sy } = worldToScreen(cam.camX, cam.camY, c.x, c.y);
+        ctx.fillStyle = c.opened ? '#5a4a2a' : (c.special ? '#c76bd6' : '#c9973a');
+        const size = tilePx * 0.36;
+        ctx.fillRect(sx - size / 2, sy - size / 2, size, size);
+        if (!c.opened) {
+          ctx.strokeStyle = '#fff2c4';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(sx - size / 2, sy - size / 2, size, size);
+        }
+      }
+
+      for (const h of run.healSpots) {
+        const tx = Math.floor(h.x), ty = Math.floor(h.y);
+        if (!run.explored[ty] || !run.explored[ty][tx]) continue;
+        const { sx, sy } = worldToScreen(cam.camX, cam.camY, h.x, h.y);
+        const pulse = (Math.sin(performance.now() / 260) + 1) / 2;
+        ctx.fillStyle = h.used ? 'rgba(120,200,150,0.25)' : `rgba(120,230,160,${0.45 + pulse * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, tilePx * (0.28 + pulse * 0.05), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (const e of run.enemies) {
+        const tx = Math.floor(e.x), ty = Math.floor(e.y);
+        if (!run.visible[ty] || !run.visible[ty][tx]) continue;
+        const { sx, sy } = worldToScreen(cam.camX, cam.camY, e.x, e.y);
+        const bob = Math.sin(e.animPhase) * 2;
+        const def = ENEMY_DEFS[e.type];
+        ctx.fillStyle = e.flashTimer > 0 ? '#ffffff' : (def ? def.color : '#aaa');
+        ctx.beginPath();
+        ctx.arc(sx, sy + bob, tilePx * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        const hpRatio = clamp(e.hp / e.maxHp, 0, 1);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(sx - tilePx * 0.32, sy - tilePx * 0.55, tilePx * 0.64, 4);
+        ctx.fillStyle = hpRatio > 0.4 ? '#7ee08a' : '#e07e7e';
+        ctx.fillRect(sx - tilePx * 0.32, sy - tilePx * 0.55, tilePx * 0.64 * hpRatio, 4);
+      }
+
+      for (const proj of run.projectiles) {
+        const { sx, sy } = worldToScreen(cam.camX, cam.camY, proj.x, proj.y);
+        ctx.fillStyle = '#a9c6ff';
+        ctx.beginPath();
+        ctx.arc(sx, sy, tilePx * 0.12, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const { sx, sy } = worldToScreen(cam.camX, cam.camY, p.x, p.y);
+      const bob = Math.sin(p.animPhase) * 2;
+      if (p.invincibleTimer > 0 && Math.floor(performance.now() / 80) % 2 === 0) {
+        ctx.globalAlpha = 0.4;
+      }
+      ctx.fillStyle = p.flashTimer > 0 ? '#ffffff' : '#9ad6ff';
+      ctx.beginPath();
+      ctx.arc(sx, sy + bob, tilePx * 0.32, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#e8f6ff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy + bob);
+      ctx.lineTo(sx + p.facing.x * tilePx * 0.45, sy + bob + p.facing.y * tilePx * 0.45);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+
+      if (p.attackEffectTimer > 0) {
+        const facingAngle = Math.atan2(p.facing.y, p.facing.x);
+        const alpha = p.attackEffectTimer / 160;
+        ctx.strokeStyle = `rgba(255,220,140,${alpha})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(sx, sy + bob, tilePx * p.attackRange, facingAngle - p.attackArc / 2, facingAngle + p.attackArc / 2);
+        ctx.stroke();
+      }
+    }
+
+    function renderEffects(cam) {
+      for (const pt of run.particles) {
+        const { sx, sy } = worldToScreen(cam.camX, cam.camY, pt.x, pt.y);
+        ctx.globalAlpha = clamp(pt.life / pt.maxLife, 0, 1);
+        ctx.fillStyle = pt.color;
+        ctx.beginPath();
+        ctx.arc(sx, sy, pt.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      for (const d of run.damageNumbers) {
+        const { sx, sy } = worldToScreen(cam.camX, cam.camY, d.x, d.y);
+        ctx.globalAlpha = clamp(d.life / 0.8, 0, 1);
+        ctx.fillStyle = d.color;
+        ctx.font = 'bold 13px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(d.text, sx, sy);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function renderLowHpWarning() {
+      const p = run.player;
+      if (p.hp / p.maxHp > 0.25) return;
+      const pulse = (Math.sin(performance.now() / 180) + 1) / 2;
+      const grad = ctx.createRadialGradient(cssSize / 2, cssSize / 2, cssSize * 0.25, cssSize / 2, cssSize / 2, cssSize * 0.7);
+      grad.addColorStop(0, 'rgba(220,38,38,0)');
+      grad.addColorStop(1, `rgba(220,38,38,${0.25 + pulse * 0.25})`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, cssSize, cssSize);
+    }
+
+    function renderTransitionFade() {
+      const tr = run.transition;
+      if (!tr) return;
+      const alpha = tr.phase === 'out' ? clamp(tr.t / 0.3, 0, 1) : clamp(1 - tr.t / 0.3, 0, 1);
+      ctx.fillStyle = `rgba(5,6,13,${alpha})`;
+      ctx.fillRect(0, 0, cssSize, cssSize);
+      if (alpha > 0.5) {
+        ctx.fillStyle = '#f5f3ff';
+        ctx.font = 'bold 16px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`第${tr.nextFloor}階層へ…`, cssSize / 2, cssSize / 2);
+      }
+    }
+
+    function render() {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, cssSize, cssSize);
+
+      if (screen !== 'playing' && screen !== 'paused') {
+        ctx.fillStyle = '#05060d';
+        ctx.fillRect(0, 0, cssSize, cssSize);
+        return;
+      }
+      if (!run || !run.map) return;
+
+      ctx.save();
+      if (run.shakeTime > 0) {
+        const mag = run.shakeMag * (run.shakeTime / 0.22);
+        ctx.translate((Math.random() - 0.5) * mag, (Math.random() - 0.5) * mag);
+      }
+      const cam = renderMap();
+      renderEntities(cam);
+      renderEffects(cam);
+      renderLowHpWarning();
+      renderTransitionFade();
+      ctx.restore();
+    }
+
+    /* ===================== HUD & overlays ===================== */
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${String(s).padStart(2, '0')}`;
+    }
+
+    function renderHud() {
+      if (!run) return;
+      const p = run.player;
+      document.getElementById('hudHp').textContent = `${Math.round(p.hp)} / ${p.maxHp}`;
+      const ratio = clamp(p.hp / p.maxHp, 0, 1);
+      const fill = document.getElementById('hpFill');
+      fill.style.width = `${ratio * 100}%`;
+      fill.className = 'hp-fill' + (ratio <= 0.25 ? ' danger' : ratio <= 0.5 ? ' warn' : '');
+      document.getElementById('hudFloor').textContent = `第${run.floor}階層`;
+      document.getElementById('hudShards').textContent = run.shardsCarried;
+      document.getElementById('hudPotions').textContent = p.potions;
+      document.getElementById('hudTime').textContent = formatTime(run.elapsed);
+    }
+
+    function renderEventLog() {
+      const log = document.getElementById('eventLog');
+      if (!run) { log.innerHTML = ''; return; }
+      const recent = run.log.slice(-15).reverse();
+      log.innerHTML = recent.map(item =>
+        `<div class="log-item ${item.cls === 'bad' ? 'bad' : item.cls === 'good' ? 'good' : ''}">${escapeHtml(item.text)}</div>`
+      ).join('');
+    }
+
+    function renderMenuStats() {
+      const container = document.getElementById('menuStats');
+      container.innerHTML = `
+        <div class="hud-item"><div class="hud-label">星片</div><div class="hud-value">${meta.shards}</div></div>
+        <div class="hud-item"><div class="hud-label">ベスト階層</div><div class="hud-value">第${meta.bestFloor}層</div></div>
+        <div class="hud-item"><div class="hud-label">累計撃破</div><div class="hud-value">${meta.totalKills}</div></div>
+        <div class="hud-item"><div class="hud-label">累計挑戦</div><div class="hud-value">${meta.totalRuns}</div></div>
+      `;
+    }
+
+    function renderUpgradePanel() {
+      document.getElementById('upgradeStatsSummary').innerHTML = `
+        <div class="hud-item"><div class="hud-label">所持星片</div><div class="hud-value">${meta.shards}</div></div>
+        <div class="hud-item"><div class="hud-label">最高持ち帰り</div><div class="hud-value">${meta.bestShardsCarried}</div></div>
+      `;
+      const grid = document.getElementById('upgradeGrid');
+      grid.innerHTML = UPGRADE_DEFS.map(def => {
+        const level = meta.upgrades[def.key];
+        const maxed = level >= def.max;
+        const cost = upgradeCost(def, level);
+        const affordable = meta.shards >= cost;
+        return `
+          <div class="upgrade-card">
+            <div class="u-title">${escapeHtml(def.name)} (Lv.${level}/${def.max})</div>
+            <div class="u-cost">${maxed ? '最大レベル' : `コスト: 星片${cost}`}</div>
+            <button class="plain" ${maxed || !affordable ? 'disabled' : ''} onclick="purchaseUpgrade('${def.key}')">
+              ${maxed ? '強化済み' : affordable ? '強化する' : '星片が不足'}
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function purchaseUpgrade(key) {
+      const def = UPGRADE_DEFS.find(d => d.key === key);
+      if (!def) return;
+      const level = meta.upgrades[key];
+      if (level >= def.max) { alert('これ以上強化できません。(最大レベル)'); return; }
+      const cost = upgradeCost(def, level);
+      if (meta.shards < cost) { alert(`星片が不足しています。(必要: ${cost} / 所持: ${meta.shards})`); return; }
+      meta.shards -= cost;
+      meta.upgrades[key]++;
+      saveMeta();
+      renderUpgradePanel();
+      renderMenuStats();
+    }
+
+    function renderHistoryPanel() {
+      document.getElementById('historyStats').innerHTML = `
+        <div class="hud-item"><div class="hud-label">累計挑戦</div><div class="hud-value">${meta.totalRuns}</div></div>
+        <div class="hud-item"><div class="hud-label">累計撃破</div><div class="hud-value">${meta.totalKills}</div></div>
+        <div class="hud-item"><div class="hud-label">ベスト階層</div><div class="hud-value">第${meta.bestFloor}層</div></div>
+        <div class="hud-item"><div class="hud-label">最高持ち帰り星片</div><div class="hud-value">${meta.bestShardsCarried}</div></div>
+      `;
+      const log = document.getElementById('historyLog');
+      const recent = meta.log.slice().reverse();
+      if (recent.length === 0) {
+        log.innerHTML = '<p>まだ記録がありません。</p>';
+        return;
+      }
+      log.innerHTML = recent.map(entry => {
+        const date = new Date(entry.timestamp);
+        const dateLabel = isNaN(date.getTime()) ? '' : date.toLocaleString('ja-JP');
+        return `<div class="log-item ${entry.result === '帰還成功' ? 'good' : 'bad'}">${escapeHtml(dateLabel)} - 第${entry.floor}階層 / ${escapeHtml(entry.result)} / 星片+${entry.shards}</div>`;
+      }).join('');
+    }
+
+    function updateOverlays() {
+      document.getElementById('menuOverlay').classList.toggle('hidden', screen !== 'menu');
+      document.getElementById('gameOverOverlay').classList.toggle('hidden', screen !== 'gameover');
+      document.getElementById('resultOverlay').classList.toggle('hidden', screen !== 'result');
+      document.getElementById('pauseOverlay').classList.toggle('hidden', screen !== 'paused');
+      document.getElementById('hudPanel').classList.toggle('hidden', !(screen === 'playing' || screen === 'paused'));
+      document.getElementById('controlsPanel').classList.toggle('hidden', !(screen === 'playing' || screen === 'paused'));
+      if (screen === 'menu') renderMenuStats();
+    }
+
+    /* ===================== Input wiring ===================== */
+    window.addEventListener('keydown', (e) => {
+      const k = e.key.toLowerCase();
+      keys.add(k);
+      if (k === ' ') { e.preventDefault(); playerAttack(); }
+      if (k === 'e') usePotion();
+      if (k === 'r') retreat();
+      if (k === 'escape') togglePause();
+    });
+    window.addEventListener('keyup', (e) => { keys.delete(e.key.toLowerCase()); });
+
+    function wirePadButton(id, onPress, onRelease) {
+      const el = document.getElementById(id);
+      const start = (ev) => { ev.preventDefault(); el.classList.add('pressed'); onPress(); };
+      const end = (ev) => { if (ev) ev.preventDefault(); el.classList.remove('pressed'); if (onRelease) onRelease(); };
+      el.addEventListener('pointerdown', start);
+      el.addEventListener('pointerup', end);
+      el.addEventListener('pointercancel', end);
+      el.addEventListener('pointerleave', end);
+    }
+
+    wirePadButton('padUp', () => { pad.up = true; }, () => { pad.up = false; });
+    wirePadButton('padDown', () => { pad.down = true; }, () => { pad.down = false; });
+    wirePadButton('padLeft', () => { pad.left = true; }, () => { pad.left = false; });
+    wirePadButton('padRight', () => { pad.right = true; }, () => { pad.right = false; });
+    wirePadButton('btnAttack', () => { playerAttack(); });
+    wirePadButton('btnPotion', () => { usePotion(); });
+    wirePadButton('btnRetreat', () => { retreat(); });
+
+    function togglePause() {
+      if (screen === 'playing') { screen = 'paused'; updateOverlays(); }
+      else if (screen === 'paused') { screen = 'playing'; updateOverlays(); }
+    }
+
+    document.getElementById('btnPause').addEventListener('click', togglePause);
+    document.getElementById('btnResume').addEventListener('click', togglePause);
+    document.getElementById('btnRetreatFromPause').addEventListener('click', retreat);
+    document.getElementById('btnStartRun').addEventListener('click', startRun);
+    document.getElementById('btnBackFromGameOver').addEventListener('click', () => { screen = 'menu'; run = null; updateOverlays(); });
+    document.getElementById('btnBackFromResult').addEventListener('click', () => { screen = 'menu'; run = null; updateOverlays(); });
+
+    document.getElementById('btnOpenUpgrade').addEventListener('click', () => {
+      document.getElementById('upgradePanel').classList.remove('hidden');
+      renderUpgradePanel();
+    });
+    document.getElementById('btnCloseUpgrade').addEventListener('click', () => {
+      document.getElementById('upgradePanel').classList.add('hidden');
+    });
+
+    document.getElementById('btnHistory').addEventListener('click', () => {
+      document.getElementById('historyPanel').classList.remove('hidden');
+      renderHistoryPanel();
+    });
+    document.getElementById('btnCloseHistory').addEventListener('click', () => {
+      document.getElementById('historyPanel').classList.add('hidden');
+    });
+
+    document.getElementById('btnResetAll').addEventListener('click', () => {
+      if (!confirm('すべてのデータをリセットしますか？永続強化、記録もすべて失われます。')) return;
+      meta = freshMeta();
+      saveMeta();
+      screen = 'menu';
+      run = null;
+      updateOverlays();
+      renderMenuStats();
+    });
+
+    /* ===================== Main loop ===================== */
+    let rafId = null;
+    let lastTime = null;
+
+    function loop(timestamp) {
+      if (lastTime === null) lastTime = timestamp;
+      let dt = (timestamp - lastTime) / 1000;
+      dt = Math.min(dt, 0.05);
+      lastTime = timestamp;
+
+      if (run && screen === 'playing') {
+        update(dt);
+        renderHud();
+      }
+      render();
+
+      rafId = requestAnimationFrame(loop);
+    }
+
+    function startLoop() {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      lastTime = null;
+      rafId = requestAnimationFrame(loop);
+    }
+
+    /* ===================== Initialize ===================== */
+    loadMeta();
+    resizeCanvas();
+    updateOverlays();
+    startLoop();
+  </script>
+</body>
+</html>
