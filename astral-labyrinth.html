@@ -1,37 +1,45 @@
 <!doctype html>
 <!--
 name: 星霧迷宮
-version: 1.0
+version: 1.0.1
 type: single-html-app
 status: stable
 -->
 <html lang="ja">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <title>星霧迷宮</title>
   <style>
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html, body { margin: 0; min-height: 100%; background: #0f1020; color: #f5f3ff; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; overflow-x: hidden; max-width: 100%; }
-    body { padding: 16px; padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
+    html, body {
+      margin: 0; min-height: 100%; background: #0f1020; color: #f5f3ff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow-x: hidden; max-width: 100%;
+      overscroll-behavior: none;
+      -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    }
+    body {
+      padding: 16px;
+      padding-top: calc(16px + env(safe-area-inset-top, 0px));
+      padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    }
+    body.game-active { padding: 8px; padding-top: calc(8px + env(safe-area-inset-top, 0px)); padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
     main { width: min(100%, 640px); margin: 0 auto; }
     .card { background: #191b33; border: 1px solid #34385f; border-radius: 16px; padding: 16px; box-shadow: 0 12px 32px rgba(0,0,0,.28); margin-bottom: 14px; }
+    body.game-active #introCard { display: none; }
+    body.game-active #gameCard { padding: 8px; margin-bottom: 0; }
     h1 { margin: 0 0 8px; font-size: 1.5em; }
     h2 { font-size: 1.05em; margin: 0 0 10px; }
     p { line-height: 1.7; color: #cbc9e8; margin: 0 0 8px; }
     details.rules summary { cursor: pointer; font-weight: bold; padding: 4px 0; }
     details.rules p { font-size: 0.88em; }
 
-    .hud-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100px,100%),1fr)); gap: 8px; margin-bottom: 10px; }
-    .hud-item { background: #12142a; border: 1px solid #2c2f52; border-radius: 8px; padding: 8px 10px; min-width: 0; }
-    .hud-label { font-size: 0.72em; color: #8d89b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .hud-value { font-size: 1.05em; font-weight: bold; white-space: nowrap; }
-    .hp-track { width: 100%; height: 10px; background: #2c2f52; border-radius: 6px; overflow: hidden; margin-top: 4px; }
-    .hp-fill { height: 100%; background: linear-gradient(90deg,#4ade80,#22c55e); transition: width .2s; }
-    .hp-fill.warn { background: linear-gradient(90deg,#fbbf24,#f59e0b); }
-    .hp-fill.danger { background: linear-gradient(90deg,#f87171,#dc2626); }
-
-    .canvas-wrap { position: relative; width: 100%; aspect-ratio: 1/1; max-width: 480px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 1px solid #34385f; background: #05060d; }
+    .canvas-wrap {
+      position: relative; width: 100%; aspect-ratio: 1/1; max-width: 480px; margin: 0 auto;
+      border-radius: 12px; overflow: hidden; border: 1px solid #34385f; background: #05060d;
+      touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    }
     canvas { display: block; width: 100%; height: 100%; touch-action: none; }
     .canvas-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 16px; background: rgba(6,7,16,.86); }
     .canvas-overlay.hidden { display: none; }
@@ -39,51 +47,94 @@ status: stable
     .overlay-box h3 { margin: 0 0 8px; font-size: 1.2em; }
     .overlay-box p { font-size: 0.9em; }
 
-    .controls { margin-top: 14px; }
-    .pad-row { display: flex; justify-content: center; gap: 8px; }
-    .action-row { display: flex; justify-content: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+    .hud-overlay {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 3;
+      display: flex; flex-wrap: wrap; gap: 4px; padding: 6px;
+      background: linear-gradient(180deg, rgba(6,7,16,.85), rgba(6,7,16,0));
+      pointer-events: none;
+    }
+    .hud-chip {
+      background: rgba(18,20,42,.78); border: 1px solid rgba(58,62,106,.7); border-radius: 6px;
+      padding: 3px 6px; min-width: 0; line-height: 1.25;
+    }
+    .hud-chip .hud-label { font-size: 0.62em; color: #a9a6d6; white-space: nowrap; margin-right: 3px; }
+    .hud-chip .hud-value { font-size: 0.78em; font-weight: bold; white-space: nowrap; }
+    .hud-chip-hp { min-width: 88px; }
+    .hud-chip-hp .hp-track { width: 100%; height: 5px; margin-top: 2px; }
+
+    .hp-track { background: #2c2f52; border-radius: 6px; overflow: hidden; }
+    .hp-fill { height: 100%; background: linear-gradient(90deg,#4ade80,#22c55e); transition: width .2s; }
+    .hp-fill.warn { background: linear-gradient(90deg,#fbbf24,#f59e0b); }
+    .hp-fill.danger { background: linear-gradient(90deg,#f87171,#dc2626); }
+
+    .top-toolbar { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 8px; }
+    .mini-btn {
+      min-height: 44px; min-width: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid #3a3e6a;
+      background: #22254a; color: #f5f3ff; font-size: 0.85em; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none;
+    }
+    .mini-btn:active, .mini-btn.pressed { background: #3d4180; }
+    .mini-btn.retreat { background: #6b4a1f; border-color: #8f6329; }
+
+    .controls { margin-top: 10px; }
+    .control-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 10px; }
+    .dpad {
+      display: grid; grid-template-columns: repeat(3, minmax(44px, 56px)); grid-template-rows: repeat(2, minmax(44px, 56px));
+      gap: 6px; flex: 0 0 auto;
+    }
+    #padUp { grid-column: 2; grid-row: 1; }
+    #padLeft { grid-column: 1; grid-row: 2; }
+    #padDown { grid-column: 2; grid-row: 2; }
+    #padRight { grid-column: 3; grid-row: 2; }
+    .action-cluster { display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
     .pad-btn, .act-btn {
-      min-width: 52px; min-height: 52px; border-radius: 12px; border: 1px solid #3a3e6a;
+      min-width: 44px; min-height: 44px; border-radius: 12px; border: 1px solid #3a3e6a;
       background: #22254a; color: #f5f3ff; font-size: 1.1em; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; user-select: none;
+      display: flex; align-items: center; justify-content: center;
+      user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
       touch-action: none;
     }
-    .pad-btn:active, .act-btn:active, .pad-btn.pressed { background: #3d4180; }
+    .pad-btn:active, .act-btn:active, .pad-btn.pressed, .act-btn.pressed { background: #3d4180; }
     .act-btn { min-width: 76px; padding: 0 14px; font-size: 0.95em; }
     .act-btn.attack { background: #7c2d3c; border-color: #a13a4d; }
     .act-btn.potion { background: #1f6f4f; border-color: #29906a; }
-    .act-btn.retreat { background: #6b4a1f; border-color: #8f6329; }
     button.plain {
       padding: 10px 14px; font-size: 0.95em; border: 1px solid #3a3e6a; border-radius: 8px;
       background: #22254a; color: #f5f3ff; cursor: pointer; min-height: 44px; margin: 0 8px 8px 0;
+      touch-action: manipulation;
     }
     button.plain:hover { background: #2c2f5c; }
     button.plain.danger { background: #7c2d2d; border-color: #a13a3a; }
     button:disabled { opacity: 0.45; cursor: not-allowed; }
 
-    .event-log { max-height: 160px; overflow-y: auto; background: #12142a; border-radius: 8px; padding: 10px; font-size: 0.82em; margin-top: 10px; }
+    .event-log { max-height: 160px; overflow-y: auto; background: #12142a; border-radius: 8px; padding: 10px; font-size: 0.82em; margin-top: 10px; -webkit-user-select: text; user-select: text; }
+    body.game-active .event-log { max-height: 84px; margin-top: 6px; }
     .log-item { padding: 4px 0; border-bottom: 1px solid #22254a; color: #cbc9e8; }
     .log-item:last-child { border-bottom: none; }
     .log-item.bad { color: #f7a1a1; }
     .log-item.good { color: #a8e6b8; }
 
     .menu-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(120px,100%),1fr)); gap: 8px; margin-bottom: 12px; }
+    .hud-item { background: #12142a; border: 1px solid #2c2f52; border-radius: 8px; padding: 8px 10px; min-width: 0; }
+    .hud-item .hud-label { font-size: 0.72em; color: #8d89b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+    .hud-item .hud-value { font-size: 1.05em; font-weight: bold; white-space: nowrap; display: block; }
     .upgrade-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px,100%),1fr)); gap: 10px; }
     .upgrade-card { background: #12142a; border: 1px solid #2c2f52; border-radius: 10px; padding: 10px; min-width: 0; }
     .upgrade-card .u-title { font-weight: bold; margin-bottom: 4px; font-size: 0.92em; }
     .upgrade-card .u-cost { font-size: 0.8em; color: #8d89b8; margin-bottom: 6px; }
 
     .hidden { display: none !important; }
-    .note { font-size: 0.78em; color: #8d89b8; margin-top: 6px; }
+    .note { font-size: 0.78em; color: #8d89b8; margin-top: 6px; -webkit-user-select: text; user-select: text; }
 
     @media (max-width: 480px) {
-      .pad-btn, .act-btn { min-width: 48px; min-height: 48px; }
+      .pad-btn, .act-btn { min-width: 44px; min-height: 44px; }
     }
   </style>
 </head>
 <body>
   <main>
-    <section class="card">
+    <section class="card" id="introCard">
       <h1>星霧迷宮</h1>
       <p>毎回生成される迷宮を探索し、精霊や怪物と戦い、宝箱を開けて星片を集め、拠点へ持ち帰って永続強化する短時間ローグライトです。</p>
       <details class="rules">
@@ -96,35 +147,25 @@ status: stable
       </div>
     </section>
 
-    <section id="hudPanel" class="card hidden">
-      <div class="hud-bar">
-        <div class="hud-item">
-          <div class="hud-label">HP</div>
-          <div class="hud-value" id="hudHp">0 / 0</div>
-          <div class="hp-track"><div id="hpFill" class="hp-fill"></div></div>
-        </div>
-        <div class="hud-item">
-          <div class="hud-label">階層</div>
-          <div class="hud-value" id="hudFloor">1</div>
-        </div>
-        <div class="hud-item">
-          <div class="hud-label">星片</div>
-          <div class="hud-value" id="hudShards">0</div>
-        </div>
-        <div class="hud-item">
-          <div class="hud-label">ポーション</div>
-          <div class="hud-value" id="hudPotions">0</div>
-        </div>
-        <div class="hud-item">
-          <div class="hud-label">経過時間</div>
-          <div class="hud-value" id="hudTime">0:00</div>
-        </div>
+    <section class="card" id="gameCard">
+      <div class="top-toolbar hidden" id="topToolbar">
+        <button class="mini-btn" id="btnPause" aria-label="一時停止">⏸ 一時停止</button>
+        <button class="mini-btn retreat" id="btnRetreat" aria-label="帰還する">帰還</button>
       </div>
-    </section>
 
-    <section class="card">
       <div class="canvas-wrap" id="canvasWrap">
         <canvas id="gameCanvas" aria-label="星霧迷宮のゲーム画面"></canvas>
+
+        <div class="hud-overlay hidden" id="hudOverlay">
+          <div class="hud-chip hud-chip-hp">
+            <span class="hud-label">HP</span><span class="hud-value" id="hudHp">0/0</span>
+            <div class="hp-track"><div id="hpFill" class="hp-fill"></div></div>
+          </div>
+          <div class="hud-chip"><span class="hud-label">階層</span><span class="hud-value" id="hudFloor">1</span></div>
+          <div class="hud-chip"><span class="hud-label">星片</span><span class="hud-value" id="hudShards">0</span></div>
+          <div class="hud-chip"><span class="hud-label" title="ポーション">P</span><span class="hud-value" id="hudPotions">0</span></div>
+          <div class="hud-chip"><span class="hud-label">時間</span><span class="hud-value" id="hudTime">0:00</span></div>
+        </div>
 
         <div id="menuOverlay" class="canvas-overlay">
           <div class="overlay-box">
@@ -167,22 +208,20 @@ status: stable
         </div>
       </div>
 
-      <div class="controls" id="controlsPanel">
-        <div class="pad-row">
-          <button class="pad-btn" id="padUp">▲</button>
+      <div class="controls hidden" id="controlsPanel">
+        <div class="control-row">
+          <div class="dpad">
+            <button class="pad-btn" id="padUp" aria-label="上へ移動">▲</button>
+            <button class="pad-btn" id="padLeft" aria-label="左へ移動">◀</button>
+            <button class="pad-btn" id="padDown" aria-label="下へ移動">▼</button>
+            <button class="pad-btn" id="padRight" aria-label="右へ移動">▶</button>
+          </div>
+          <div class="action-cluster">
+            <button class="act-btn potion" id="btnPotion">ポーション</button>
+            <button class="act-btn attack" id="btnAttack">攻撃</button>
+          </div>
         </div>
-        <div class="pad-row" style="margin-top:6px;">
-          <button class="pad-btn" id="padLeft">◀</button>
-          <button class="pad-btn" id="padDown">▼</button>
-          <button class="pad-btn" id="padRight">▶</button>
-        </div>
-        <div class="action-row">
-          <button class="act-btn attack" id="btnAttack">攻撃</button>
-          <button class="act-btn potion" id="btnPotion">ポーション</button>
-          <button class="act-btn retreat" id="btnRetreat">帰還</button>
-          <button class="act-btn" id="btnPause">一時停止</button>
-        </div>
-        <p class="note">PC: 矢印キー/WASDで移動、スペースキーで攻撃、Eキーでポーション、Rキーで帰還。</p>
+        <p class="note">PC: 矢印キー/WASDで移動、スペースキーで攻撃、Eキーでポーション、Rキーで帰還、Escで一時停止。</p>
       </div>
 
       <div class="event-log" id="eventLog"></div>
@@ -1075,10 +1114,38 @@ status: stable
     let cssSize = 400;
     let tilePx = cssSize / VIEW_TILES;
 
+    function computeAvailableCanvasHeight(card, wrap) {
+      let used = 0;
+      const cardStyle = getComputedStyle(card);
+      used += parseFloat(cardStyle.paddingTop) || 0;
+      used += parseFloat(cardStyle.paddingBottom) || 0;
+      for (const child of card.children) {
+        if (child === wrap) continue;
+        const cs = getComputedStyle(child);
+        if (cs.display === 'none') continue;
+        const rect = child.getBoundingClientRect();
+        used += rect.height + (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0);
+      }
+      const bodyStyle = getComputedStyle(document.body);
+      used += parseFloat(bodyStyle.paddingTop) || 0;
+      used += parseFloat(bodyStyle.paddingBottom) || 0;
+      return window.innerHeight - used - 8;
+    }
+
     function resizeCanvas() {
       const wrap = document.getElementById('canvasWrap');
-      const size = Math.max(240, Math.min(wrap.clientWidth, 480));
+      const card = document.getElementById('gameCard');
+      const availW = wrap.clientWidth || card.clientWidth;
+      let size;
+      if (screen === 'playing' || screen === 'paused') {
+        const availH = computeAvailableCanvasHeight(card, wrap);
+        size = Math.max(200, Math.min(availW, availH, 480));
+      } else {
+        size = Math.max(240, Math.min(availW, 480));
+      }
       cssSize = size;
+      wrap.style.width = cssSize + 'px';
+      wrap.style.height = cssSize + 'px';
       tilePx = cssSize / VIEW_TILES;
       const dpr = Math.min(2, window.devicePixelRatio || 1);
       canvas.width = Math.round(cssSize * dpr);
@@ -1093,6 +1160,16 @@ status: stable
       if (resizeTimer) clearTimeout(resizeTimer);
       resizeTimer = setTimeout(resizeCanvas, 120);
     });
+
+    /* Suppress browser gestures that interfere with real-time touch play */
+    const gameCardEl = document.getElementById('gameCard');
+    gameCardEl.addEventListener('contextmenu', (e) => { e.preventDefault(); });
+    gameCardEl.addEventListener('dblclick', (e) => { e.preventDefault(); });
+    document.addEventListener('gesturestart', (e) => { e.preventDefault(); });
+    document.addEventListener('gesturechange', (e) => { e.preventDefault(); });
+    document.getElementById('canvasWrap').addEventListener('touchmove', (e) => {
+      if (e.touches && e.touches.length > 1) e.preventDefault();
+    }, { passive: false });
 
     function tileColor(t, visible, explored) {
       if (!explored) return null;
@@ -1393,13 +1470,17 @@ status: stable
     }
 
     function updateOverlays() {
+      const isPlayMode = screen === 'playing' || screen === 'paused';
       document.getElementById('menuOverlay').classList.toggle('hidden', screen !== 'menu');
       document.getElementById('gameOverOverlay').classList.toggle('hidden', screen !== 'gameover');
       document.getElementById('resultOverlay').classList.toggle('hidden', screen !== 'result');
       document.getElementById('pauseOverlay').classList.toggle('hidden', screen !== 'paused');
-      document.getElementById('hudPanel').classList.toggle('hidden', !(screen === 'playing' || screen === 'paused'));
-      document.getElementById('controlsPanel').classList.toggle('hidden', !(screen === 'playing' || screen === 'paused'));
+      document.getElementById('hudOverlay').classList.toggle('hidden', !isPlayMode);
+      document.getElementById('topToolbar').classList.toggle('hidden', !isPlayMode);
+      document.getElementById('controlsPanel').classList.toggle('hidden', !isPlayMode);
+      document.body.classList.toggle('game-active', isPlayMode);
       if (screen === 'menu') renderMenuStats();
+      resizeCanvas();
     }
 
     /* ===================== Input wiring ===================== */
@@ -1413,14 +1494,33 @@ status: stable
     });
     window.addEventListener('keyup', (e) => { keys.delete(e.key.toLowerCase()); });
 
+    const wiredButtonResets = [];
+
     function wirePadButton(id, onPress, onRelease) {
       const el = document.getElementById(id);
-      const start = (ev) => { ev.preventDefault(); el.classList.add('pressed'); onPress(); };
-      const end = (ev) => { if (ev) ev.preventDefault(); el.classList.remove('pressed'); if (onRelease) onRelease(); };
+      let activePointerId = null;
+      const start = (ev) => {
+        ev.preventDefault();
+        if (activePointerId !== null) return;
+        activePointerId = ev.pointerId;
+        try { el.setPointerCapture(ev.pointerId); } catch (e) { /* capture unsupported, fall back to plain events */ }
+        el.classList.add('pressed');
+        onPress();
+      };
+      const end = (ev) => {
+        if (ev && ev.pointerId !== undefined && activePointerId !== null && ev.pointerId !== activePointerId) return;
+        if (ev) ev.preventDefault();
+        activePointerId = null;
+        el.classList.remove('pressed');
+        if (onRelease) onRelease();
+      };
       el.addEventListener('pointerdown', start);
       el.addEventListener('pointerup', end);
       el.addEventListener('pointercancel', end);
-      el.addEventListener('pointerleave', end);
+      el.addEventListener('pointerleave', (ev) => { if (ev.pointerType === 'mouse') end(ev); });
+      const forceRelease = () => { if (activePointerId !== null) end(null); };
+      wiredButtonResets.push(forceRelease);
+      return forceRelease;
     }
 
     wirePadButton('padUp', () => { pad.up = true; }, () => { pad.up = false; });
@@ -1429,7 +1529,19 @@ status: stable
     wirePadButton('padRight', () => { pad.right = true; }, () => { pad.right = false; });
     wirePadButton('btnAttack', () => { playerAttack(); });
     wirePadButton('btnPotion', () => { usePotion(); });
-    wirePadButton('btnRetreat', () => { retreat(); });
+
+    function resetAllInputs() {
+      pad.up = pad.down = pad.left = pad.right = false;
+      keys.clear();
+      wiredButtonResets.forEach((reset) => reset());
+    }
+
+    document.addEventListener('visibilitychange', () => { if (document.hidden) resetAllInputs(); });
+    window.addEventListener('blur', resetAllInputs);
+    window.addEventListener('orientationchange', () => {
+      resetAllInputs();
+      setTimeout(resizeCanvas, 200);
+    });
 
     function togglePause() {
       if (screen === 'playing') { screen = 'paused'; updateOverlays(); }
@@ -1438,6 +1550,7 @@ status: stable
 
     document.getElementById('btnPause').addEventListener('click', togglePause);
     document.getElementById('btnResume').addEventListener('click', togglePause);
+    document.getElementById('btnRetreat').addEventListener('click', retreat);
     document.getElementById('btnRetreatFromPause').addEventListener('click', retreat);
     document.getElementById('btnStartRun').addEventListener('click', startRun);
     document.getElementById('btnBackFromGameOver').addEventListener('click', () => { screen = 'menu'; run = null; updateOverlays(); });
