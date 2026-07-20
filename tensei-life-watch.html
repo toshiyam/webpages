@@ -1,0 +1,1546 @@
+<!doctype html>
+<!--
+name: 転生者観測日誌
+version: 1.0
+type: single-html-app
+status: stable
+-->
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="description" content="異世界へ送り込んだ転生者の人生を観測する放置型ブラウザゲーム。性格と状況に基づき転生者が自律的に人生を歩む様子をログで追体験できます。">
+<title>転生者観測日誌</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #121016;
+    --panel: #1c1a24;
+    --panel-soft: #262330;
+    --text: #eee7f7;
+    --muted: #a89bc0;
+    --line: #383150;
+    --accent: #b28cff;
+    --accent-soft: #2a2340;
+    --good: #7fd8a0;
+    --warn: #f0c674;
+    --danger: #ef8a8a;
+    --gold: #e8c874;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f4f1fb;
+      --panel: #ffffff;
+      --panel-soft: #f1ecfb;
+      --text: #221e33;
+      --muted: #6a6088;
+      --line: #ded4f5;
+      --accent: #7a4de0;
+      --accent-soft: #ece3ff;
+      --good: #23895a;
+      --warn: #9a6c00;
+      --danger: #c23c3c;
+      --gold: #97710a;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { touch-action: manipulation; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+    line-height: 1.6;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  button, select { font: inherit; cursor: pointer; }
+  .app { max-width: 560px; margin: 0 auto; padding: 14px 12px 48px; }
+  header.top {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-bottom: 12px;
+  }
+  header.top .brand { display: flex; align-items: center; gap: 8px; }
+  header.top .brand .icon { font-size: 1.5rem; }
+  header.top h1 { font-size: 1.05rem; margin: 0; }
+  header.top .genline { font-size: 0.72rem; color: var(--muted); }
+
+  nav.tabs {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    margin-bottom: 12px;
+  }
+  nav.tabs button {
+    min-height: 42px; border: 1px solid var(--line); border-radius: 12px;
+    background: var(--panel); color: var(--muted); font-weight: 700; font-size: 0.86rem;
+  }
+  nav.tabs button.active { background: var(--accent); color: #1a1424; border-color: var(--accent); }
+
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+    padding: 14px; margin-bottom: 12px;
+  }
+  .card h2 { margin: 0 0 10px; font-size: 0.98rem; }
+  .card h2 .sub { color: var(--muted); font-weight: 400; font-size: 0.78rem; }
+
+  .rowline { display: flex; justify-content: space-between; gap: 8px; font-size: 0.86rem; padding: 4px 0; border-bottom: 1px dashed var(--line); }
+  .rowline:last-child { border-bottom: none; }
+  .rowline .k { color: var(--muted); }
+  .rowline .v { font-weight: 700; text-align: right; }
+
+  .barlist { display: grid; gap: 7px; }
+  .bar-item { display: grid; grid-template-columns: 64px 1fr 34px; align-items: center; gap: 8px; font-size: 0.78rem; }
+  .bar-item .label { color: var(--muted); }
+  .bar-track { height: 8px; border-radius: 999px; background: var(--panel-soft); overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--accent); }
+  .bar-item .val { text-align: right; color: var(--muted); }
+
+  .traitgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; font-size: 0.76rem; }
+  .traitgrid .t { display: flex; justify-content: space-between; padding: 3px 0; }
+  .traitgrid .t .tv { color: var(--muted); }
+  .traitgrid .t.hi .tv { color: var(--accent); font-weight: 800; }
+
+  .btnrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .btnrow.single { grid-template-columns: 1fr; }
+  button.primary {
+    min-height: 50px; border: 0; border-radius: 14px; background: var(--accent); color: #1a1424;
+    font-weight: 800; font-size: 0.98rem;
+  }
+  button.secondary {
+    min-height: 50px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-soft); color: var(--text);
+    font-weight: 700; font-size: 0.9rem;
+  }
+  button.small {
+    min-height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft); color: var(--text);
+    font-size: 0.8rem; font-weight: 700;
+  }
+  button:disabled { opacity: 0.5; }
+  button.small.active { background: var(--accent); color: #1a1424; border-color: var(--accent); }
+
+  .speedrow { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+
+  .relchips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; border-radius: 999px;
+    background: var(--panel-soft); border: 1px solid var(--line); font-size: 0.74rem; color: var(--muted);
+  }
+  .chip b { color: var(--text); }
+
+  .logfilter { display: flex; gap: 6px; margin-bottom: 10px; }
+  .loglist { display: grid; gap: 8px; max-height: 60vh; overflow-y: auto; }
+  .logentry {
+    border-left: 3px solid var(--line); padding: 6px 0 6px 10px; font-size: 0.84rem;
+  }
+  .logentry.major { border-left-color: var(--warn); }
+  .logentry.historic { border-left-color: var(--gold); background: linear-gradient(90deg, var(--accent-soft), transparent); border-radius: 0 8px 8px 0; }
+  .logentry .meta { font-size: 0.7rem; color: var(--muted); margin-bottom: 2px; }
+  .logentry .txt { color: var(--text); }
+
+  .empty { text-align: center; color: var(--muted); padding: 28px 10px; font-size: 0.9rem; }
+
+  .banner { padding: 10px 12px; border-radius: 10px; font-size: 0.82rem; margin-bottom: 12px; border: 1px solid var(--line); background: var(--panel-soft); color: var(--muted); }
+  .banner.info { border-color: var(--accent); color: var(--text); }
+  .banner.warn { border-color: var(--warn); color: var(--warn); }
+
+  .deathwrap { text-align: center; }
+  .deathwrap .causebadge {
+    display: inline-block; padding: 8px 20px; border-radius: 999px; background: var(--panel-soft);
+    color: var(--danger); font-weight: 800; margin-bottom: 10px; border: 1px solid var(--line);
+  }
+  .summarytext { text-align: left; font-size: 0.9rem; margin: 12px 0; white-space: pre-wrap; }
+
+  .pastlives { display: grid; gap: 6px; }
+  .pastlife { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); border-bottom: 1px dashed var(--line); padding: 4px 0; }
+  .pastlife b { color: var(--text); }
+
+  details.simpanel summary { cursor: pointer; font-size: 0.82rem; color: var(--muted); }
+  .simresult { font-size: 0.78rem; color: var(--muted); margin-top: 8px; white-space: pre-wrap; }
+
+  footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <span class="icon">🌌</span>
+      <div>
+        <h1>転生者観測日誌</h1>
+        <div class="genline" id="genLine">第1転生</div>
+      </div>
+    </div>
+    <button class="small" id="resetBtn" type="button" title="全データを削除してやり直す">初期化</button>
+  </header>
+
+  <div id="bannerBox"></div>
+
+  <nav class="tabs" id="tabNav" hidden>
+    <button type="button" data-tab="observe" class="active">観測</button>
+    <button type="button" data-tab="log">人生記録</button>
+    <button type="button" data-tab="world">世界</button>
+  </nav>
+
+  <!-- START SCREEN -->
+  <section id="screenStart">
+    <div class="card">
+      <h2>転生の準備 <span class="sub">新しい転生者を送り込む</span></h2>
+      <div id="candidateBox"></div>
+      <div class="btnrow single">
+        <button class="primary" id="startBtn" type="button">この人物で転生を開始</button>
+      </div>
+      <div class="btnrow single">
+        <button class="secondary" id="rerollBtn" type="button">別の人物を見る</button>
+      </div>
+    </div>
+    <div class="card" id="pastLivesCard" hidden>
+      <h2>これまでの転生 <span class="sub" id="pastLivesCount"></span></h2>
+      <div class="pastlives" id="pastLivesList"></div>
+    </div>
+    <div class="card">
+      <details class="simpanel">
+        <summary>開発者向け: バランス検証（高速シミュレーション）</summary>
+        <div class="btnrow single">
+          <button class="secondary small" id="simBtn" type="button">300人生を高速実行して統計を見る</button>
+        </div>
+        <div class="simresult" id="simResult"></div>
+      </details>
+    </div>
+  </section>
+
+  <!-- OBSERVE SCREEN -->
+  <section id="screenObserve" hidden>
+    <div class="card">
+      <h2 id="charTitle">観測対象</h2>
+      <div class="rowline"><span class="k">年齢</span><span class="v" id="ovAge"></span></div>
+      <div class="rowline"><span class="k">職業</span><span class="v" id="ovOcc"></span></div>
+      <div class="rowline"><span class="k">健康</span><span class="v" id="ovHealth"></span></div>
+      <div class="rowline"><span class="k">所持金</span><span class="v" id="ovMoney"></span></div>
+      <div class="rowline"><span class="k">出身</span><span class="v" id="ovRegion"></span></div>
+    </div>
+
+    <div class="card">
+      <h2>基礎能力</h2>
+      <div class="barlist" id="abilityBars"></div>
+    </div>
+
+    <div class="card">
+      <h2>性格傾向 <span class="sub">濃い値ほど強い傾向</span></h2>
+      <div class="traitgrid" id="traitGrid"></div>
+    </div>
+
+    <div class="card">
+      <h2>人間関係 <span class="sub" id="relCount"></span></h2>
+      <div class="relchips" id="relChips"></div>
+      <div class="empty" id="relEmpty" hidden>まだ深い関係を築いていない。</div>
+    </div>
+
+    <div class="card">
+      <h2>最新ログ</h2>
+      <div class="loglist" id="latestLog"></div>
+    </div>
+
+    <div class="card">
+      <h2>時間進行</h2>
+      <div class="rowline"><span class="k">状態</span><span class="v" id="timeState">停止中</span></div>
+      <div class="btnrow">
+        <button class="secondary" id="playPauseBtn" type="button">再生</button>
+        <button class="secondary" id="advanceBtn" type="button">1年進める</button>
+      </div>
+      <div class="speedrow" id="speedRow"></div>
+    </div>
+  </section>
+
+  <!-- LOG SCREEN -->
+  <section id="screenLog" hidden>
+    <div class="card">
+      <h2>人生記録 <span class="sub" id="logSpan"></span></h2>
+      <div class="logfilter">
+        <button class="small active" data-filter="all" type="button">すべて</button>
+        <button class="small" data-filter="major" type="button">転機以上</button>
+        <button class="small" data-filter="historic" type="button">歴史的</button>
+      </div>
+      <div class="loglist" id="fullLog"></div>
+      <div class="empty" id="logEmpty" hidden>まだ記録がない。</div>
+    </div>
+  </section>
+
+  <!-- WORLD SCREEN -->
+  <section id="screenWorld" hidden>
+    <div class="card">
+      <h2>世界の状態</h2>
+      <div class="rowline"><span class="k">暦</span><span class="v" id="wYear"></span></div>
+      <div class="rowline"><span class="k">情勢</span><span class="v" id="wUnrest"></span></div>
+      <div class="rowline"><span class="k">これまでの転生数</span><span class="v" id="wLifetimes"></span></div>
+      <div class="rowline"><span class="k">最終保存</span><span class="v" id="wSaved"></span></div>
+    </div>
+    <div class="card" id="pastLivesCard2">
+      <h2>転生履歴</h2>
+      <div class="pastlives" id="pastLivesList2"></div>
+    </div>
+  </section>
+
+  <!-- DEATH SCREEN -->
+  <section id="screenDeath" hidden>
+    <div class="card deathwrap">
+      <div class="causebadge" id="deathCause"></div>
+      <h2 id="deathName"></h2>
+      <div class="summarytext" id="deathSummary"></div>
+      <div class="btnrow single">
+        <button class="primary" id="nextLifeBtn" type="button">次の転生を開始</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">性格と状況に基づく重み付き抽選で人生が自動進行する観測ゲームです。LLMは使用していません。</footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ============================== 定数データ ============================== */
+
+  var SCHEMA_VERSION = 1;
+  var STORAGE_KEY = 'tenseiLifeWatch:v1';
+
+  var ABILITIES = [
+    { id: 'physical', label: '身体' },
+    { id: 'intelligence', label: '知性' },
+    { id: 'social', label: '社交' },
+    { id: 'willpower', label: '意志' },
+    { id: 'sensitivity', label: '感受性' },
+    { id: 'luck', label: '運' }
+  ];
+
+  var TRAITS = [
+    { id: 'bravery', label: '勇敢' },
+    { id: 'caution', label: '慎重' },
+    { id: 'ambition', label: '野心' },
+    { id: 'altruism', label: '利他' },
+    { id: 'self_interest', label: '利己' },
+    { id: 'curiosity', label: '好奇心' },
+    { id: 'loyalty', label: '忠誠' },
+    { id: 'faith', label: '信仰' },
+    { id: 'family_orientation', label: '家族愛' },
+    { id: 'persistence', label: '執念' }
+  ];
+
+  var OCCUPATIONS = {
+    unemployed: '無職', farmer: '農民', apprentice: '職人見習い', artisan: '職人',
+    merchant: '商人', soldier: '兵士', adventurer: '冒険者', official: '役人',
+    priest: '聖職者', thief: '盗賊'
+  };
+
+  var OCCUPATION_INCOME = {
+    unemployed: 1, farmer: 3, apprentice: 2, artisan: 6, merchant: 8,
+    soldier: 5, adventurer: 4, official: 7, priest: 3, thief: 5
+  };
+
+  var OCCUPATION_RISK = {
+    soldier: 0.02, adventurer: 0.025, thief: 0.02
+  };
+
+  var DEATH_CAUSE_LABELS = {
+    aging: '老衰', illness: '病気', accident: '事故', battle: '戦闘',
+    crime: '犯罪・処刑', starvation: '飢餓', special: '不慮の出来事'
+  };
+
+  var MALE_NAMES = ['アルド', 'ガイウス', 'ヴォルフ', 'レオン', 'エルネスト', 'カイル', 'ダリオ', 'ロラン', 'ジーク', 'フェリクス', 'バルド', 'オーウェン', 'ハロルド', 'セドリック', 'イアン', 'ノア', 'ラルフ', 'ヴィンス', 'ティモ', 'アクセル'];
+  var FEMALE_NAMES = ['エリーゼ', 'ミラ', 'セレナ', 'ロザリンド', 'フィオナ', 'ノーラ', 'イレーネ', 'リゼット', 'アドリア', 'ヴィオラ', 'エスメ', 'カリナ', 'ソフィア', 'ネリア', 'ユリア', 'マリエル', 'リディア', 'クレア', 'オリヴィア', 'セシリア'];
+  var REGIONS = ['東方の穀倉地帯', '山間の鉱山町', '港湾都市', '森辺の開拓村', '王都近郊', '荒野の辺境集落', '湖畔の小さな町'];
+  var RELATION_NAME_POOL = MALE_NAMES.concat(FEMALE_NAMES);
+
+  var SPEEDS = [
+    { id: 'slow', label: '遅い', yearMs: 8000 },
+    { id: 'normal', label: '標準', yearMs: 3000 },
+    { id: 'fast', label: '速い', yearMs: 900 }
+  ];
+
+  var MAX_OFFLINE_YEARS = 300;
+  var MAX_RELATIONS = 9;
+
+  /* ============================== イベント定義 ==============================
+     20件以上の試作イベントを満たし、鍛冶屋/冒険者/商人の3系統でイベント連鎖を構成する。
+  */
+  var EVENTS = [
+    // --- 幼少期・家庭 ---
+    {
+      id: 'child_curious_exploration', title: '好奇心の芽生え', category: 'childhood', eventType: 'normal',
+      ageRange: { min: 2, max: 8 }, baseWeight: 14,
+      text: '幼い{name}は、周囲の物事に強い興味を示すようになった。',
+      choices: [
+        { id: 'explore', label: '自由に探索する', baseWeight: 12, traitWeights: { curiosity: 0.5, bravery: 0.2 },
+          effects: { abilities: { intelligence: 1, physical: 1 } }, resultText: '{name}は村中を駆け回り、たくさんの発見をした。' },
+        { id: 'stay_close', label: '家族のそばで過ごす', baseWeight: 12, traitWeights: { caution: 0.4, family_orientation: 0.4 },
+          effects: { abilities: { social: 1 }, flagsAdd: ['bonded_with_family'] }, resultText: '{name}は家族のそばで穏やかな時間を過ごした。' }
+      ]
+    },
+    {
+      id: 'child_early_talent', title: '早熟な才能', category: 'childhood', eventType: 'normal',
+      ageRange: { min: 5, max: 10 }, baseWeight: 10,
+      text: '{name}は同年代の子供たちの中で、際立った何かを見せ始めた。',
+      choices: [
+        { id: 'hone_talent', label: '才能を磨きこむ', baseWeight: 10, traitWeights: { ambition: 0.4, curiosity: 0.3 },
+          effects: { abilities: { intelligence: 2, willpower: 1 }, flagsAdd: ['gifted_child'] }, resultText: '{name}は寝る間も惜しんで才を磨いた。', importance: 'major' },
+        { id: 'play_around', label: 'のびのびと遊んで過ごす', baseWeight: 12, traitWeights: { curiosity: 0.2, self_interest: 0.1 },
+          effects: { abilities: { sensitivity: 1 } }, resultText: '{name}は才を伸ばすより、今を楽しむことを選んだ。' }
+      ]
+    },
+    {
+      id: 'child_hardship', title: '家の苦境', category: 'childhood', eventType: 'branch',
+      ageRange: { min: 6, max: 12 }, baseWeight: 8,
+      text: '{name}の家は不作と借金に苦しみ、暮らしが傾き始めた。',
+      choices: [
+        { id: 'help_family', label: '家業を手伝う', baseWeight: 10, traitWeights: { family_orientation: 0.5, persistence: 0.3 },
+          effects: { abilities: { physical: 1 }, money: 2, flagsAdd: ['hard_worker_child'] }, resultText: '{name}は幼いながらに家を支えようと働いた。', importance: 'major' },
+        { id: 'leave_early', label: '早くに家を出て自立を志す', baseWeight: 8, traitWeights: { bravery: 0.3, self_interest: 0.3, caution: -0.2 },
+          effects: { flagsAdd: ['early_independence'] }, resultText: '{name}は家を出て、自分の力で生きていく決意を固めた。', importance: 'major' }
+      ]
+    },
+
+    // --- 教育・修業 ---
+    {
+      id: 'edu_temple_school', title: '寺子屋の誘い', category: 'education', eventType: 'normal',
+      ageRange: { min: 7, max: 14 }, baseWeight: 10, unique: true,
+      text: '町の寺子屋から、{name}に学ぶ機会が与えられた。',
+      choices: [
+        { id: 'study_hard', label: '熱心に学ぶ', baseWeight: 10, traitWeights: { intelligence_bias: 0, curiosity: 0.3, faith: 0.2 },
+          effects: { abilities: { intelligence: 3 }, flagsAdd: ['educated'] }, resultText: '{name}は読み書きと教養を身につけた。', importance: 'major' },
+        { id: 'skip_lessons', label: '授業を抜け出して遊ぶ', baseWeight: 9, traitWeights: { curiosity: -0.1, self_interest: 0.2 },
+          effects: { abilities: { social: 1 } }, resultText: '{name}は勉強よりも外の世界に興味を示した。' }
+      ]
+    },
+    {
+      id: 'edu_mentor_offer', title: '師との出会い', category: 'education', eventType: 'branch', unique: true,
+      ageRange: { min: 10, max: 20 }, baseWeight: 9,
+      text: '腕利きの師が、{name}に弟子入りを持ちかけてきた。',
+      choices: [
+        { id: 'accept_mentor', label: '弟子入りを受ける', baseWeight: 11, traitWeights: { loyalty: 0.3, ambition: 0.3, curiosity: 0.2 },
+          effects: { abilities: { willpower: 2 }, flagsAdd: ['has_mentor'], relation: { add: { type: 'mentor', role: '師匠' } } },
+          resultText: '{name}はある人物に弟子入りし、師と呼べる存在を得た。', importance: 'major' },
+        { id: 'decline_mentor', label: '一人の道を選ぶ', baseWeight: 8, traitWeights: { self_interest: 0.2, caution: 0.2 },
+          effects: {}, resultText: '{name}は師を持たず、自分の力だけで進む道を選んだ。' }
+      ]
+    },
+    {
+      id: 'edu_talent_test', title: '適性検査', category: 'education', eventType: 'branch', unique: true,
+      ageRange: { min: 12, max: 20 }, baseWeight: 9,
+      text: '町を訪れた組合の使者が、{name}の適性を見立てた。',
+      choices: [
+        { id: 'suited_adventure', label: '「冒険者向き」と診断される', baseWeight: 10, traitWeights: { bravery: 0.4, curiosity: 0.2 },
+          effects: { flagsAdd: ['suited_adventurer'] }, resultText: '使者は{name}に冒険者としての素質を見出した。' },
+        { id: 'suited_trade', label: '「商才あり」と診断される', baseWeight: 10, traitWeights: { ambition: 0.3, social_bias: 0 },
+          effects: { flagsAdd: ['suited_merchant'] }, resultText: '使者は{name}に商いの才を見出した。' },
+        { id: 'suited_craft', label: '「手先が器用」と診断される', baseWeight: 10, traitWeights: { persistence: 0.3, caution: 0.2 },
+          effects: { flagsAdd: ['suited_artisan'] }, resultText: '使者は{name}に職人としての適性を見出した。' }
+      ]
+    },
+
+    // --- 職業選択（最初の職） ---
+    {
+      id: 'career_first_job', title: '初めての仕事選び', category: 'career', eventType: 'branch', unique: true,
+      ageRange: { min: 13, max: 22 }, baseWeight: 20,
+      conditions: { occupations: ['unemployed'] },
+      text: '{name}は生計を立てるため、最初の道を選ばねばならなくなった。',
+      choices: [
+        { id: 'become_farmer', label: '農地を耕す', baseWeight: 10, traitWeights: { family_orientation: 0.3, caution: 0.2 },
+          effects: { occupation: 'farmer' }, resultText: '{name}は畑仕事を始めた。', importance: 'major' },
+        { id: 'become_blacksmith_apprentice', label: '鍛冶屋に弟子入りする', baseWeight: 9, traitWeights: { curiosity: 0.2, persistence: 0.2 },
+          contextWeights: { suited_artisan: 12 },
+          effects: { occupation: 'apprentice', flagsAdd: ['blacksmith_track'] }, resultText: '{name}は鍛冶屋の門を叩いた。', importance: 'major' },
+        { id: 'become_merchant_apprentice', label: '商家に丁稚奉公する', baseWeight: 9, traitWeights: { ambition: 0.3, self_interest: 0.2 },
+          contextWeights: { suited_merchant: 12 },
+          effects: { occupation: 'merchant', flagsAdd: ['merchant_track'] }, resultText: '{name}は商家に住み込みで働き始めた。', importance: 'major' },
+        { id: 'register_adventurer', label: '冒険者ギルドに登録する', baseWeight: 8, traitWeights: { bravery: 0.4, caution: -0.2 },
+          contextWeights: { suited_adventurer: 14 },
+          effects: { occupation: 'adventurer', flagsAdd: ['adventurer_track'] }, resultText: '{name}は冒険者ギルドの門を叩いた。', importance: 'major' },
+        { id: 'join_soldiers', label: '衛兵隊に志願する', baseWeight: 7, traitWeights: { bravery: 0.2, loyalty: 0.3 },
+          effects: { occupation: 'soldier' }, resultText: '{name}は衛兵隊に志願入隊した。', importance: 'major' }
+      ]
+    },
+
+    // --- 鍛冶屋チェーン（連鎖1） ---
+    {
+      id: 'career_blacksmith_apprentice', title: '鍛冶屋への弟子入り', category: 'career', eventType: 'branch', unique: true,
+      ageRange: { min: 12, max: 30 }, baseWeight: 10,
+      conditions: { occupations: ['unemployed', 'farmer'], excludedFlags: ['blacksmith_rejected'] },
+      text: '{name}は町の鍛冶屋に才能を見込まれ、弟子入りを勧められた。',
+      choices: [
+        { id: 'accept', label: '弟子入りする', baseWeight: 12, traitWeights: { curiosity: 0.3, ambition: 0.2, family_orientation: -0.2 },
+          contextWeights: { suited_artisan: 10 },
+          effects: { occupation: 'apprentice', abilities: { intelligence: 2 }, flagsAdd: ['blacksmith_track'] },
+          resultText: '{name}は家を離れ、鍛冶屋で修業を始めた。', importance: 'major' },
+        { id: 'decline', label: '断る', baseWeight: 8, traitWeights: { caution: 0.2, family_orientation: 0.3 },
+          effects: { flagsAdd: ['blacksmith_rejected'] }, resultText: '{name}は現在の暮らしを選び、誘いを断った。' }
+      ]
+    },
+    {
+      id: 'career_blacksmith_conflict', title: '師匠との確執', category: 'career', eventType: 'branch', unique: true,
+      ageRange: { min: 14, max: 35 }, baseWeight: 11,
+      conditions: { occupations: ['apprentice'], requiredFlags: ['blacksmith_track'] },
+      text: '{name}は鍛冶の技をめぐり、師匠と激しく対立するようになった。',
+      choices: [
+        { id: 'endure', label: '耐えて学び続ける', baseWeight: 10, traitWeights: { persistence: 0.5, loyalty: 0.3 },
+          effects: { abilities: { willpower: 2 }, flagsAdd: ['blacksmith_endured'] }, resultText: '{name}は屈辱に耐え、技を盗むように学び続けた。', importance: 'major' },
+        { id: 'break_away', label: '対立し、独立を目指す', baseWeight: 10, traitWeights: { ambition: 0.4, self_interest: 0.3, loyalty: -0.3 },
+          effects: { flagsAdd: ['blacksmith_independent_track'] }, resultText: '{name}は師匠と決別し、独立の準備を始めた。', importance: 'major' },
+        { id: 'flee', label: '諦めて逃げ出す', baseWeight: 6, traitWeights: { caution: 0.3, willpower: -0.1 },
+          effects: { occupation: 'unemployed', flagsAdd: ['blacksmith_fled'] }, resultText: '{name}は工房を飛び出し、行方をくらませた。', importance: 'major' }
+      ]
+    },
+    {
+      id: 'career_blacksmith_outcome', title: '鍛冶屋修業の結末', category: 'career', eventType: 'historic', unique: true,
+      ageRange: { min: 16, max: 45 }, baseWeight: 12,
+      conditions: { occupations: ['apprentice'], requiredFlags: ['blacksmith_track'] },
+      text: '{name}の鍛冶の道が、一つの結末を迎えようとしている。',
+      choices: [
+        { id: 'become_master', label: '工房を継ぎ、名工になる', baseWeight: 10, traitWeights: { persistence: 0.4, ambition: 0.2 },
+          contextWeights: { blacksmith_endured: 16, blacksmith_fled: -20 },
+          effects: { occupation: 'artisan', abilities: { intelligence: 2 }, tagsAdd: ['notable_smith'] },
+          resultText: '{name}は工房を継ぎ、その名を知られる名工となった。', importance: 'historic' },
+        { id: 'become_arms_dealer', label: '独立し、軍需商人になる', baseWeight: 9, traitWeights: { ambition: 0.4, self_interest: 0.3 },
+          contextWeights: { blacksmith_independent_track: 18, blacksmith_fled: -15 },
+          effects: { occupation: 'merchant', money: 30, tagsAdd: ['arms_dealer'] },
+          resultText: '{name}は独立し、武具を扱う商人として財を築き始めた。', importance: 'historic' },
+        { id: 'give_up_smith', label: '技を極められず廃業する', baseWeight: 7, traitWeights: { caution: 0.2 },
+          contextWeights: { blacksmith_fled: 22 },
+          effects: { occupation: 'unemployed', health: -3 },
+          resultText: '{name}は鍛冶の道を諦め、工房を去った。', importance: 'major' }
+      ]
+    },
+
+    // --- 冒険者チェーン（連鎖2） ---
+    {
+      id: 'career_adventurer_registration', title: '冒険者ギルド登録', category: 'career', eventType: 'branch', unique: true,
+      ageRange: { min: 14, max: 30 }, baseWeight: 10,
+      conditions: { occupations: ['unemployed', 'farmer'] },
+      text: '{name}は冒険者ギルドの扉の前に立っていた。',
+      choices: [
+        { id: 'register', label: '登録する', baseWeight: 10, traitWeights: { bravery: 0.5, curiosity: 0.2, caution: -0.2 },
+          contextWeights: { suited_adventurer: 12 },
+          effects: { occupation: 'adventurer', flagsAdd: ['adventurer_track'] }, resultText: '{name}は冒険者として登録を済ませた。', importance: 'major' },
+        { id: 'walk_away', label: 'やはり思いとどまる', baseWeight: 9, traitWeights: { caution: 0.4 },
+          effects: {}, resultText: '{name}はギルドの扉を前に、踵を返した。' }
+      ]
+    },
+    {
+      id: 'career_dangerous_quest', title: '危険な依頼', category: 'career', eventType: 'branch', unique: true,
+      ageRange: { min: 15, max: 45 }, baseWeight: 11,
+      conditions: { occupations: ['adventurer'] }, minGapYears: 2,
+      text: 'ギルドの掲示板に、危険度の高い討伐依頼が張り出された。',
+      choices: [
+        { id: 'take_quest', label: '危険な依頼を受ける', baseWeight: 10, traitWeights: { bravery: 0.5, ambition: 0.2, caution: -0.3 },
+          effects: { flagsAdd: ['dangerous_quest_taken'], money: 8 }, resultText: '{name}は危険を承知で依頼を受けた。', importance: 'major' },
+        { id: 'safe_quest', label: '安全な依頼にとどめる', baseWeight: 11, traitWeights: { caution: 0.4, family_orientation: 0.2 },
+          effects: { money: 3 }, resultText: '{name}は堅実な依頼をこなすにとどめた。' }
+      ]
+    },
+    {
+      id: 'career_adventurer_outcome', title: '冒険者としての岐路', category: 'career', eventType: 'historic', unique: true,
+      ageRange: { min: 16, max: 55 }, baseWeight: 12,
+      conditions: { occupations: ['adventurer'], requiredFlags: ['dangerous_quest_taken'] },
+      text: '{name}は死線をくぐり抜けた依頼の果てに立っていた。',
+      choices: [
+        { id: 'renowned', label: '生還し、名声を得る', baseWeight: 10, traitWeights: { bravery: 0.3, luck_bias: 0 },
+          effects: { abilities: { luck: 3, physical: 1 }, tagsAdd: ['renowned_adventurer'] },
+          resultText: '{name}は生還を果たし、その武勇は方々で語られるようになった。', importance: 'historic' },
+        { id: 'crippled', label: '大怪我を負い、引退する', baseWeight: 8, traitWeights: { caution: 0.1 },
+          effects: { occupation: 'unemployed', health: -25, flagsAdd: ['disabled_veteran'] },
+          resultText: '{name}は深い傷を負い、冒険者を引退した。', importance: 'major' },
+        { id: 'fallen_thief', label: '仲間を失い、盗賊に身を落とす', baseWeight: 6, traitWeights: { self_interest: 0.3, loyalty: -0.2 },
+          effects: { occupation: 'thief', tagsAdd: ['fallen_adventurer'] },
+          resultText: '{name}は仲間を失った絶望の中で、盗賊へと堕ちていった。', importance: 'historic' }
+      ]
+    },
+
+    // --- 商人チェーン（連鎖3） ---
+    {
+      id: 'career_merchant_start', title: '商家への奉公', category: 'career', eventType: 'branch', unique: true,
+      ageRange: { min: 12, max: 28 }, baseWeight: 9,
+      conditions: { occupations: ['unemployed', 'farmer'] },
+      text: '町の商家が、{name}に住み込みの奉公を持ちかけた。',
+      choices: [
+        { id: 'accept_apprentice', label: '奉公を受ける', baseWeight: 10, traitWeights: { ambition: 0.3, self_interest: 0.2 },
+          contextWeights: { suited_merchant: 12 },
+          effects: { occupation: 'merchant', flagsAdd: ['merchant_track'] }, resultText: '{name}は商家に住み込み、商いの基礎を学び始めた。', importance: 'major' },
+        { id: 'decline_apprentice', label: '断る', baseWeight: 9, traitWeights: { caution: 0.3 },
+          effects: {}, resultText: '{name}は奉公の話を断った。' }
+      ]
+    },
+    {
+      id: 'career_merchant_deal', title: '大きな商談', category: 'career', eventType: 'branch', unique: true,
+      ageRange: { min: 16, max: 50 }, baseWeight: 10,
+      conditions: { occupations: ['merchant'], requiredFlags: ['merchant_track'] },
+      text: '{name}のもとに、一世一代とも言える大きな商談が舞い込んだ。',
+      choices: [
+        { id: 'take_deal', label: '大勝負に出る', baseWeight: 10, traitWeights: { ambition: 0.4, bravery: 0.2, caution: -0.3 },
+          effects: { flagsAdd: ['big_deal_taken'] }, resultText: '{name}は持てる金すべてを商談に注ぎ込んだ。', importance: 'major' },
+        { id: 'safe_bet', label: '手堅く断る', baseWeight: 11, traitWeights: { caution: 0.5 },
+          effects: { money: 5 }, resultText: '{name}は堅実な商いを続けることを選んだ。' }
+      ]
+    },
+    {
+      id: 'career_merchant_outcome', title: '商談の結末', category: 'career', eventType: 'historic', unique: true,
+      ageRange: { min: 17, max: 55 }, baseWeight: 12,
+      conditions: { occupations: ['merchant'], requiredFlags: ['big_deal_taken'] },
+      text: '{name}の大商談は、いよいよ決着の時を迎えた。',
+      choices: [
+        { id: 'success', label: '成功し、豪商になる', baseWeight: 10, traitWeights: { ambition: 0.3, luck_bias: 0 },
+          effects: { money: 60, tagsAdd: ['wealthy_merchant'] }, resultText: '{name}は大商談を成功させ、豪商と呼ばれるまでになった。', importance: 'historic' },
+        { id: 'fail', label: '失敗し、借金を抱える', baseWeight: 9, traitWeights: { caution: -0.1 },
+          effects: { money: -40, flagsAdd: ['in_debt'] }, resultText: '{name}の商談は失敗に終わり、多額の借金だけが残った。', importance: 'major' }
+      ]
+    },
+
+    // --- その他の職業イベント ---
+    {
+      id: 'career_promotion', title: '昇進の機会', category: 'career', eventType: 'normal',
+      ageRange: { min: 20, max: 55 }, baseWeight: 8, minGapYears: 4,
+      conditions: { occupations: ['official', 'soldier'] },
+      text: '{name}に昇進の話が持ち上がった。',
+      choices: [
+        { id: 'pursue', label: '昇進を目指す', baseWeight: 10, traitWeights: { ambition: 0.4, loyalty: 0.2 },
+          effects: { abilities: { social: 1 }, money: 6 }, resultText: '{name}は昇進を勝ち取った。', importance: 'major' },
+        { id: 'stay', label: '今の立場にとどまる', baseWeight: 9, traitWeights: { family_orientation: 0.2, caution: 0.2 },
+          effects: {}, resultText: '{name}は昇進を辞退し、今の立場を守った。' }
+      ]
+    },
+    {
+      id: 'career_economic_hardship', title: '不景気の波', category: 'career', eventType: 'normal',
+      ageRange: { min: 16, max: 65 }, baseWeight: 6, minGapYears: 5,
+      text: '{name}の暮らす地域を不景気の波が襲った。',
+      choices: [
+        { id: 'endure_hardship', label: '倹約して耐え忍ぶ', baseWeight: 10, traitWeights: { persistence: 0.3, caution: 0.3 },
+          effects: { money: -5 }, resultText: '{name}は苦しい時期を倹約で乗り切った。' },
+        { id: 'seek_help', label: '周囲に助けを求める', baseWeight: 8, traitWeights: { social_bias: 0, altruism: -0.1 },
+          effects: { money: -2 }, resultText: '{name}は周囲の助けを借りて急場をしのいだ。' }
+      ]
+    },
+
+    // --- 人間関係 ---
+    {
+      id: 'rel_new_friend', title: '新しい友人', category: 'relationship', eventType: 'normal',
+      ageRange: { min: 8, max: 60 }, baseWeight: 12, minGapYears: 3,
+      text: '{name}は気の合う人物と出会った。',
+      choices: [
+        { id: 'deepen', label: '親しく付き合う', baseWeight: 10, traitWeights: { social_bias: 0, altruism: 0.2, loyalty: 0.2 },
+          effects: { relation: { add: { type: 'friend', role: '友人' } } }, resultText: '{name}は新しい友人を得た。' },
+        { id: 'keep_distance', label: '距離を置く', baseWeight: 7, traitWeights: { caution: 0.3, self_interest: 0.2 },
+          effects: {}, resultText: '{name}は深入りせず、当たり障りない付き合いにとどめた。' }
+      ]
+    },
+    {
+      id: 'rel_betrayal', title: '裏切り', category: 'relationship', eventType: 'branch',
+      ageRange: { min: 12, max: 70 }, baseWeight: 6, minGapYears: 6,
+      conditions: { requiredFlags: ['has_any_relation'] },
+      text: '{name}は信頼していた相手に裏切られた。',
+      choices: [
+        { id: 'forgive', label: '許す', baseWeight: 8, traitWeights: { altruism: 0.4, faith: 0.2 },
+          effects: { relation: { affinity: { type: 'friend', delta: -10 } } }, resultText: '{name}は苦しみながらも相手を許した。', importance: 'major' },
+        { id: 'cut_ties', label: '絶縁する', baseWeight: 9, traitWeights: { persistence: 0.3, self_interest: 0.2, loyalty: -0.2 },
+          effects: { relation: { remove: { type: 'friend' } }, flagsAdd: ['betrayed_once'] }, resultText: '{name}は相手との縁を断ち切った。', importance: 'major' }
+      ]
+    },
+    {
+      id: 'rel_rival_appears', title: '好敵手の出現', category: 'relationship', eventType: 'normal', unique: true,
+      ageRange: { min: 10, max: 50 }, baseWeight: 7,
+      text: '{name}の前に、実力の近い好敵手が現れた。',
+      choices: [
+        { id: 'compete', label: '競い合う', baseWeight: 10, traitWeights: { ambition: 0.4, bravery: 0.2 },
+          effects: { abilities: { willpower: 1 }, relation: { add: { type: 'rival', role: '好敵手' } } }, resultText: '{name}は好敵手を得て、腕を磨く糧とした。' },
+        { id: 'ignore_rival', label: '意識せず我が道を行く', baseWeight: 8, traitWeights: { self_interest: 0.2 },
+          effects: {}, resultText: '{name}は好敵手の存在を気にとめなかった。' }
+      ]
+    },
+
+    // --- 恋愛・家族 ---
+    {
+      id: 'love_meet_partner', title: '恋人との出会い', category: 'romance', eventType: 'branch', unique: true,
+      ageRange: { min: 16, max: 45 }, baseWeight: 9,
+      conditions: { excludedFlags: ['has_partner', 'married'] },
+      text: '{name}はある人物に心を惹かれ始めた。',
+      choices: [
+        { id: 'pursue_love', label: '想いを伝える', baseWeight: 10, traitWeights: { sensitivity_bias: 0, family_orientation: 0.3, bravery: 0.1 },
+          effects: { flagsAdd: ['has_partner'], relation: { add: { type: 'partner', role: '恋人' } } }, resultText: '{name}は想いを伝え、恋人ができた。', importance: 'major' },
+        { id: 'stay_silent', label: '想いを胸に秘める', baseWeight: 8, traitWeights: { caution: 0.3, self_interest: 0.1 },
+          effects: {}, resultText: '{name}は想いを誰にも告げなかった。' }
+      ]
+    },
+    {
+      id: 'love_marriage', title: '結婚の決断', category: 'romance', eventType: 'branch', unique: true,
+      ageRange: { min: 17, max: 50 }, baseWeight: 10,
+      conditions: { requiredFlags: ['has_partner'], excludedFlags: ['married'] },
+      text: '{name}と恋人は、これからの人生について話し合った。',
+      choices: [
+        { id: 'marry', label: '結婚する', baseWeight: 10, traitWeights: { family_orientation: 0.5, loyalty: 0.3 },
+          effects: { flagsAdd: ['married'], relation: { promote: { from: 'partner', to: 'spouse', role: '配偶者' } } }, resultText: '{name}は結婚し、新たな家庭を築いた。', importance: 'major' },
+        { id: 'part_ways', label: '別々の道を歩む', baseWeight: 7, traitWeights: { self_interest: 0.2, ambition: 0.2, family_orientation: -0.2 },
+          effects: { flagsAdd: ['past_relationship'], flagsRemove: ['has_partner'], relation: { remove: { type: 'partner' } } }, resultText: '{name}たちは別々の道を選んだ。', importance: 'major' }
+      ]
+    },
+    {
+      id: 'love_child_birth', title: '子の誕生', category: 'romance', eventType: 'normal', unique: true,
+      ageRange: { min: 18, max: 55 }, baseWeight: 10,
+      conditions: { requiredFlags: ['married'], excludedFlags: ['has_child'] },
+      text: '{name}の家に新しい命が誕生した。',
+      choices: [
+        { id: 'welcome_child', label: '喜んで迎え入れる', baseWeight: 10, traitWeights: { family_orientation: 0.4, altruism: 0.2 },
+          effects: { flagsAdd: ['has_child'], relation: { add: { type: 'child', role: '子' } } }, resultText: '{name}に子が生まれ、家族が増えた。', importance: 'major' }
+      ]
+    },
+
+    // --- 冒険・危険（汎用） ---
+    {
+      id: 'adv_monster_attack', title: '魔物の襲撃', category: 'adventure', eventType: 'normal',
+      ageRange: { min: 14, max: 60 }, baseWeight: 7, minGapYears: 4,
+      text: '{name}の暮らす地域が、魔物の襲撃を受けた。',
+      choices: [
+        { id: 'fight', label: '立ち向かう', baseWeight: 9, traitWeights: { bravery: 0.5, altruism: 0.2, caution: -0.3 },
+          effects: { health: -8, abilities: { physical: 1 }, flagsAdd: ['fought_monster'] }, resultText: '{name}は危険を顧みず立ち向かった。', importance: 'major' },
+        { id: 'flee_monster', label: '避難する', baseWeight: 9, traitWeights: { caution: 0.4, family_orientation: 0.2 },
+          effects: {}, resultText: '{name}は難を避け、安全な場所へ逃れた。' }
+      ]
+    },
+    {
+      id: 'adv_treasure_rumor', title: '秘宝の噂', category: 'adventure', eventType: 'normal',
+      ageRange: { min: 14, max: 55 }, baseWeight: 6, minGapYears: 5,
+      text: '{name}は近隣に眠る秘宝の噂を耳にした。',
+      choices: [
+        { id: 'search', label: '探索に出る', baseWeight: 8, traitWeights: { curiosity: 0.4, self_interest: 0.2, caution: -0.2 },
+          effects: { health: -4, money: 10 }, resultText: '{name}は噂を頼りに探索へ出て、いくらかの財を得た。' },
+        { id: 'ignore_rumor', label: '噂を気にとめない', baseWeight: 10, traitWeights: { caution: 0.3 },
+          effects: {}, resultText: '{name}は噂話に興味を示さなかった。' }
+      ]
+    },
+
+    // --- 病気・事故・老化 ---
+    {
+      id: 'illness_common', title: '流行り病', category: 'health', eventType: 'normal',
+      ageRange: { min: 3, max: 95 }, baseWeight: 8, minGapYears: 3,
+      text: '{name}の暮らす土地で、病が流行した。',
+      choices: [
+        { id: 'get_treatment', label: '治療を受ける', baseWeight: 9, traitWeights: { caution: 0.2 },
+          contextWeights: { low_money: -6 },
+          effects: { health: 6, money: -6 }, resultText: '{name}は治療を受け、病を乗り越えた。' },
+        { id: 'endure_illness', label: '我慢してやり過ごす', baseWeight: 8, traitWeights: { persistence: 0.3 },
+          effects: { health: -10 }, resultText: '{name}は治療を受けられず、病に苦しんだ。' }
+      ]
+    },
+    {
+      id: 'accident_workplace', title: '仕事中の事故', category: 'health', eventType: 'normal',
+      ageRange: { min: 14, max: 70 }, baseWeight: 6, minGapYears: 4,
+      conditions: { occupations: ['soldier', 'adventurer', 'thief', 'apprentice', 'artisan'] },
+      text: '{name}は仕事中に危険な事態に見舞われた。',
+      choices: [
+        { id: 'handle_calmly', label: '冷静に対処する', baseWeight: 9, traitWeights: { willpower_bias: 0, caution: 0.3 },
+          effects: { health: -6 }, resultText: '{name}は落ち着いて事態を切り抜けた。' },
+        { id: 'panic', label: 'とっさに動いて怪我をする', baseWeight: 6, traitWeights: { caution: -0.2, bravery: -0.1 },
+          effects: { health: -15 }, resultText: '{name}はとっさの判断を誤り、大きな怪我を負った。', importance: 'major' }
+      ]
+    },
+
+    // --- 転生者固有 ---
+    {
+      id: 'reinc_past_life_flash', title: '前世の記憶の残滓', category: 'reincarnator', eventType: 'normal', unique: true,
+      ageRange: { min: 5, max: 40 }, baseWeight: 5,
+      text: 'ふとした瞬間、{name}の脳裏に見知らぬ景色の記憶がよぎった。',
+      choices: [
+        { id: 'embrace_memory', label: 'その記憶を心に留める', baseWeight: 10, traitWeights: { sensitivity_bias: 0, curiosity: 0.2 },
+          effects: { abilities: { intelligence: 1, sensitivity: 1 }, flagsAdd: ['past_life_awareness'] },
+          resultText: '{name}は説明のつかないその記憶を、そっと胸にしまった。' }
+      ]
+    },
+    {
+      id: 'reinc_strange_luck', title: '異様なまでの強運', category: 'reincarnator', eventType: 'normal', unique: true,
+      ageRange: { min: 10, max: 60 }, baseWeight: 5,
+      text: '{name}にまつわる不思議なほどの幸運の噂が、周囲でささやかれ始めた。',
+      choices: [
+        { id: 'let_rumor_grow', label: '噂を否定せずにおく', baseWeight: 10, traitWeights: { self_interest: 0.1 },
+          effects: { abilities: { luck: 3 }, tagsAdd: ['rumored_lucky'] }, resultText: '{name}にまつわる強運の噂が広まっていった。' }
+      ]
+    }
+  ];
+
+  /* ============================== 汎用関数 ============================== */
+
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+  function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+  function pick(arr) { return arr[randInt(0, arr.length - 1)]; }
+  function bell100() {
+    return clamp(Math.round(((Math.random() + Math.random() + Math.random()) / 3) * 100), 0, 100);
+  }
+  function uid() {
+    return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; });
+  }
+  function fillName(text, name) { return String(text).split('{name}').join(name); }
+
+  /* ============================== 転生者生成 ============================== */
+
+  function generateCharacter() {
+    var isFemale = Math.random() < 0.5;
+    var name = isFemale ? pick(FEMALE_NAMES) : pick(MALE_NAMES);
+    var abilities = {};
+    ABILITIES.forEach(function (a) { abilities[a.id] = bell100(); });
+    var traits = {};
+    TRAITS.forEach(function (t) { traits[t.id] = bell100(); });
+
+    return {
+      id: uid(),
+      name: name,
+      genderLabel: isFemale ? '女性' : '男性',
+      age: 0,
+      region: pick(REGIONS),
+      occupation: 'unemployed',
+      money: randInt(3, 15),
+      health: 100,
+      alive: true,
+      abilities: abilities,
+      traits: traits,
+      flags: [],
+      tags: [],
+      firedUnique: {},
+      eventHistory: {},
+      zeroMoneyStreak: 0
+    };
+  }
+
+  /* ============================== イベント選択・意思決定 ============================== */
+
+  function buildContextSet(character, relations) {
+    var ctx = {};
+    character.flags.forEach(function (f) { ctx[f] = true; });
+    if (character.health < 40) ctx.low_health = true;
+    if (character.money < 5) ctx.low_money = true;
+    if (relations.length > 0) ctx.has_any_relation = true;
+    if (relations.some(function (r) { return r.type === 'partner'; })) ctx.has_partner_rel = true;
+    if (relations.some(function (r) { return r.type === 'spouse'; })) ctx.is_married = true;
+    return ctx;
+  }
+
+  function eventEligible(evt, character, ctx, worldYear) {
+    if (evt.ageRange && (character.age < evt.ageRange.min || character.age > evt.ageRange.max)) return false;
+    if (evt.unique && character.firedUnique[evt.id]) return false;
+    if (evt.minGapYears) {
+      var last = character.eventHistory[evt.id];
+      if (last !== undefined && (worldYear - last) < evt.minGapYears) return false;
+    }
+    var cond = evt.conditions;
+    if (cond) {
+      if (cond.occupations && cond.occupations.indexOf(character.occupation) === -1) return false;
+      if (cond.requiredFlags && !cond.requiredFlags.every(function (f) { return ctx[f]; })) return false;
+      if (cond.excludedFlags && cond.excludedFlags.some(function (f) { return ctx[f]; })) return false;
+      if (cond.minAbility) {
+        for (var k in cond.minAbility) {
+          if (character.abilities[k] < cond.minAbility[k]) return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  function scoreChoice(choice, character, ctx) {
+    var score = choice.baseWeight || 1;
+    if (choice.traitWeights) {
+      for (var k in choice.traitWeights) {
+        var traitVal = character.traits[k];
+        if (traitVal === undefined) continue; // *_bias placeholder keys are ignored on purpose
+        score += choice.traitWeights[k] * traitVal;
+      }
+    }
+    if (choice.contextWeights) {
+      for (var ck in choice.contextWeights) {
+        if (ctx[ck]) score += choice.contextWeights[ck];
+      }
+    }
+    score += rand(-6, 6);
+    return Math.max(0.5, score);
+  }
+
+  function weightedPick(items, weightFn) {
+    var total = 0;
+    var weights = items.map(function (it) { var w = weightFn(it); total += w; return w; });
+    var r = Math.random() * total;
+    var acc = 0;
+    for (var i = 0; i < items.length; i++) {
+      acc += weights[i];
+      if (r <= acc) return items[i];
+    }
+    return items[items.length - 1];
+  }
+
+  function pickEvent(character, ctx, worldYear) {
+    var eligible = EVENTS.filter(function (evt) { return eventEligible(evt, character, ctx, worldYear); });
+    if (eligible.length === 0) return null;
+    return weightedPick(eligible, function (evt) { return (evt.baseWeight || 1) + rand(0, 5); });
+  }
+
+  function pickChoice(evt, character, ctx) {
+    return weightedPick(evt.choices, function (c) { return scoreChoice(c, character, ctx); });
+  }
+
+  /* ============================== 効果適用 ============================== */
+
+  function findRelationIndex(relations, type) {
+    for (var i = relations.length - 1; i >= 0; i--) {
+      if (relations[i].type === type && relations[i].alive) return i;
+    }
+    return -1;
+  }
+
+  function createRelation(type, role) {
+    return {
+      id: uid(), name: pick(RELATION_NAME_POOL), role: role || type, type: type,
+      affinity: randInt(30, 70), trust: randInt(30, 70), fear: randInt(0, 20), alive: true, tags: []
+    };
+  }
+
+  function applyRelationEffect(relations, relEffect) {
+    if (!relEffect) return;
+    if (relEffect.add && relations.length < MAX_RELATIONS) {
+      relations.push(createRelation(relEffect.add.type, relEffect.add.role));
+    }
+    if (relEffect.affinity) {
+      var idx = findRelationIndex(relations, relEffect.affinity.type);
+      if (idx >= 0) relations[idx].affinity = clamp(relations[idx].affinity + relEffect.affinity.delta, -100, 100);
+    }
+    if (relEffect.remove) {
+      var idx2 = findRelationIndex(relations, relEffect.remove.type);
+      if (idx2 >= 0) relations.splice(idx2, 1);
+    }
+    if (relEffect.promote) {
+      var idx3 = findRelationIndex(relations, relEffect.promote.from);
+      if (idx3 >= 0) {
+        relations[idx3].type = relEffect.promote.to;
+        relations[idx3].role = relEffect.promote.role || relEffect.promote.to;
+      }
+    }
+  }
+
+  function applyEffects(character, relations, effects) {
+    if (!effects) return;
+    if (effects.abilities) {
+      for (var k in effects.abilities) {
+        character.abilities[k] = clamp(character.abilities[k] + effects.abilities[k], 0, 100);
+      }
+    }
+    if (typeof effects.health === 'number') character.health = clamp(character.health + effects.health, 0, 100);
+    if (typeof effects.money === 'number') character.money = Math.max(0, character.money + effects.money);
+    if (effects.occupation) character.occupation = effects.occupation;
+    if (effects.flagsAdd) effects.flagsAdd.forEach(function (f) { if (character.flags.indexOf(f) === -1) character.flags.push(f); });
+    if (effects.flagsRemove) effects.flagsRemove.forEach(function (f) {
+      var idx = character.flags.indexOf(f); if (idx >= 0) character.flags.splice(idx, 1);
+    });
+    if (effects.tagsAdd) effects.tagsAdd.forEach(function (t) { if (character.tags.indexOf(t) === -1) character.tags.push(t); });
+    if (effects.relation) applyRelationEffect(relations, effects.relation);
+  }
+
+  /* ============================== 死亡判定 ============================== */
+
+  function mortalityChance(character) {
+    var age = character.age, base = 0.001;
+    if (age >= 100) return 1;
+    if (age >= 90) base = 0.35;
+    else if (age >= 75) base = 0.11;
+    else if (age >= 60) base = 0.035;
+    else if (age >= 40) base = 0.008;
+    if (character.health < 20) base += 0.22;
+    else if (character.health < 40) base += 0.09;
+    else if (character.health < 60) base += 0.02;
+    var risk = OCCUPATION_RISK[character.occupation];
+    if (risk) base += risk * (character.flags.indexOf('dangerous_quest_taken') >= 0 ? 1.6 : 1);
+    if (character.zeroMoneyStreak >= 4) base += 0.06;
+    return clamp(base, 0, 1);
+  }
+
+  function decideDeathCause(character) {
+    var weights = {
+      aging: character.age >= 65 ? (character.age - 60) * 2 : 0.2,
+      illness: character.health < 45 ? (45 - character.health) : 1,
+      accident: OCCUPATION_RISK[character.occupation] ? 14 : 3,
+      battle: (character.occupation === 'soldier' || character.occupation === 'adventurer') && character.flags.indexOf('dangerous_quest_taken') >= 0 ? 16 : 1,
+      crime: character.occupation === 'thief' ? 14 : 0.5,
+      starvation: character.zeroMoneyStreak >= 4 ? 20 : 0.2
+    };
+    var keys = Object.keys(weights);
+    return weightedPick(keys, function (k) { return Math.max(0.1, weights[k]); });
+  }
+
+  /* ============================== 1年分のシミュレーション ============================== */
+
+  function simulateYear(state) {
+    var character = state.character, relations = state.relations, world = state.world;
+    character.age += 1;
+    world.yearEra += 1;
+
+    // 経済処理
+    var income = OCCUPATION_INCOME[character.occupation] || 1;
+    var livingCost = 2 + Math.floor(character.age / 25);
+    var netMoney = income + randInt(-1, 2) - livingCost;
+    character.money = Math.max(0, character.money + netMoney);
+    character.zeroMoneyStreak = character.money === 0 ? character.zeroMoneyStreak + 1 : 0;
+    if (character.zeroMoneyStreak >= 3) character.health = clamp(character.health - 4, 0, 100);
+
+    // 健康の自然変動
+    if (character.age > 55) {
+      character.health = clamp(character.health - randInt(0, 2), 0, 100);
+    } else {
+      character.health = clamp(character.health + randInt(-1, 1), 0, 100);
+      if (character.health < 90 && Math.random() < 0.35) character.health = clamp(character.health + 1, 0, 100);
+    }
+
+    // 人間関係の自然変動
+    relations.forEach(function (r) { r.affinity = clamp(r.affinity + randInt(-2, 2), -100, 100); });
+
+    // イベント抽選
+    var newLogs = [];
+    var ctx = buildContextSet(character, relations);
+    if (Math.random() < 0.78) {
+      var evt = pickEvent(character, ctx, world.yearEra);
+      if (evt) {
+        var choice = pickChoice(evt, character, ctx);
+        applyEffects(character, relations, choice.effects);
+        character.eventHistory[evt.id] = world.yearEra;
+        if (evt.unique) character.firedUnique[evt.id] = true;
+        var text = fillName(choice.resultText || evt.text, character.name);
+        var importance = choice.importance || (evt.eventType === 'historic' ? 'historic' : (evt.eventType === 'branch' ? 'major' : 'minor'));
+        newLogs.push({
+          year: world.yearEra, age: character.age, eventId: evt.id, choiceId: choice.id,
+          text: text, importance: importance
+        });
+      }
+    }
+
+    // 死亡判定
+    var died = false, deathInfo = null;
+    if (character.health <= 0) died = true;
+    else if (Math.random() < mortalityChance(character)) died = true;
+
+    if (died) {
+      character.alive = false;
+      var cause = decideDeathCause(character);
+      deathInfo = { cause: cause, age: character.age };
+      newLogs.push({
+        year: world.yearEra, age: character.age, eventId: 'death', choiceId: cause,
+        text: character.name + 'は' + character.age + '歳で、' + DEATH_CAUSE_LABELS[cause] + 'によりその生涯を閉じた。',
+        importance: 'historic'
+      });
+    }
+
+    return { logs: newLogs, died: died, deathInfo: deathInfo };
+  }
+
+  /* ============================== 人生要約テンプレート ============================== */
+
+  var TAG_PHRASES = {
+    notable_smith: '{name}は工房を継ぎ、名工としてその名を残した。',
+    arms_dealer: '{name}は武具商として財を成した。',
+    renowned_adventurer: '{name}の武勇は各地で語り継がれた。',
+    fallen_adventurer: '{name}は仲間を失った末に、裏の道へ足を踏み入れた。',
+    wealthy_merchant: '{name}は豪商として名を馳せた。',
+    rumored_lucky: '{name}には生涯、不思議な強運の噂がつきまとった。',
+    disabled_veteran: '{name}は深い傷を負いながらも、生き抜いた。'
+  };
+
+  var TRAIT_PHRASES = {
+    bravery: '{name}は生涯、恐れを知らぬ勇敢さで知られた。',
+    caution: '{name}は常に慎重さを失わず、危うい橋を渡らなかった。',
+    ambition: '{name}は野心を胸に、絶えず上を目指し続けた。',
+    altruism: '{name}は多くの人を助け、慕われた。',
+    self_interest: '{name}は自らの利益を第一に、したたかに生きた。',
+    curiosity: '{name}は最後まで、未知への好奇心を失わなかった。',
+    loyalty: '{name}は仲間や主への忠義を貫いた。',
+    faith: '{name}は信仰とともに人生を歩んだ。',
+    family_orientation: '{name}は家族との時間を何より大切にした。',
+    persistence: '{name}は幾度の困難にも屈しなかった。'
+  };
+
+  function dominantTrait(character) {
+    var best = null, bestVal = -1;
+    TRAITS.forEach(function (t) {
+      if (character.traits[t.id] > bestVal) { bestVal = character.traits[t.id]; best = t.id; }
+    });
+    return best;
+  }
+
+  function generateSummary(character, relations, deathInfo) {
+    var name = character.name;
+    var parts = [];
+    parts.push(name + 'は' + character.age + '歳で、' + DEATH_CAUSE_LABELS[deathInfo.cause] + 'によりその生涯を閉じた。');
+    parts.push('最終的な身分は「' + OCCUPATIONS[character.occupation] + '」であった。');
+
+    character.tags.forEach(function (tag) {
+      if (TAG_PHRASES[tag]) parts.push(fillName(TAG_PHRASES[tag], name));
+    });
+
+    var spouse = relations.some(function (r) { return r.type === 'spouse'; });
+    var child = relations.some(function (r) { return r.type === 'child'; });
+    if (spouse && child) parts.push(name + 'は家庭を築き、家族に見守られながら人生を歩んだ。');
+    else if (spouse) parts.push(name + 'は生涯の伴侶と共に歩んだ。');
+    else parts.push(name + 'は家庭を持つことなく、その人生を歩んだ。');
+
+    var dom = dominantTrait(character);
+    if (TRAIT_PHRASES[dom]) parts.push(fillName(TRAIT_PHRASES[dom], name));
+
+    var historic = character.tags.length > 0;
+    parts.push(historic
+      ? 'その生涯の一部は、後世まで語り継がれることとなった。'
+      : 'その名が歴史に刻まれることはなかったが、確かにこの世界で生きた証を残した。');
+
+    return parts.join('\n');
+  }
+
+  /* ============================== ゲーム状態管理 ============================== */
+
+  var state = null;
+  var timerHandle = null;
+  var isPlaying = false;
+  var speedIndex = 1;
+  var currentTab = 'observe';
+  var currentLogFilter = 'all';
+
+  function freshWorld() {
+    return { yearEra: 0, unrest: false };
+  }
+
+  function freshState() {
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      world: freshWorld(),
+      character: null,
+      candidate: generateCharacter(),
+      relations: [],
+      log: [],
+      lifetimeCount: 0,
+      pastLives: [],
+      lastSavedAt: Date.now(),
+      speedIndex: 1
+    };
+  }
+
+  function sanitizeLoaded(raw) {
+    if (!raw || typeof raw !== 'object' || raw.schemaVersion !== SCHEMA_VERSION) return null;
+    try {
+      if (raw.character) {
+        ABILITIES.forEach(function (a) { if (typeof raw.character.abilities[a.id] !== 'number') throw new Error('bad'); });
+        TRAITS.forEach(function (t) { if (typeof raw.character.traits[t.id] !== 'number') throw new Error('bad'); });
+      }
+      return raw;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function loadState() {
+    var raw = null;
+    try {
+      var text = window.localStorage.getItem(STORAGE_KEY);
+      if (text) raw = JSON.parse(text);
+    } catch (e) {
+      showBanner('保存データの読み込みに失敗したため、新しく開始します。', 'warn');
+      return freshState();
+    }
+    var sanitized = sanitizeLoaded(raw);
+    if (!sanitized) return freshState();
+    if (!sanitized.candidate) sanitized.candidate = generateCharacter();
+    if (!sanitized.pastLives) sanitized.pastLives = [];
+    if (typeof sanitized.speedIndex !== 'number') sanitized.speedIndex = 1;
+    return sanitized;
+  }
+
+  function saveState() {
+    state.lastSavedAt = Date.now();
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) {
+      showBanner('保存に失敗しました。この端末では続行できない可能性があります。', 'warn');
+    }
+  }
+
+  function showBanner(msg, type) {
+    var box = document.getElementById('bannerBox');
+    box.innerHTML = '<div class="banner ' + (type || 'info') + '">' + escapeHtml(msg) + '</div>';
+  }
+  function clearBanner() {
+    document.getElementById('bannerBox').innerHTML = '';
+  }
+
+  /* ---- オフライン進行の反映 ---- */
+
+  function catchUpOffline() {
+    if (!state.character || !state.character.alive) return;
+    var elapsedMs = Date.now() - (state.lastSavedAt || Date.now());
+    var yearMs = SPEEDS[state.speedIndex].yearMs;
+    var elapsedYears = Math.floor(elapsedMs / yearMs);
+    if (elapsedYears <= 0) return;
+    var years = Math.min(elapsedYears, MAX_OFFLINE_YEARS);
+    var majorLogs = [];
+    var processed = 0;
+    for (var i = 0; i < years; i++) {
+      var result = simulateYear(state);
+      state.log = state.log.concat(result.logs);
+      result.logs.forEach(function (l) { if (l.importance !== 'minor') majorLogs.push(l); });
+      processed++;
+      if (result.died) { finishLife(result.deathInfo); break; }
+    }
+    if (processed > 0) {
+      var msg = '不在の間に約' + processed + '年が経過しました。';
+      if (majorLogs.length > 0) {
+        msg += '（主な出来事: ' + majorLogs.slice(-3).map(function (l) { return l.text; }).join(' / ') + '）';
+      }
+      showBanner(msg, 'info');
+    }
+  }
+
+  /* ---- 転生ライフサイクル ---- */
+
+  function startLife() {
+    state.character = state.candidate;
+    state.relations = [];
+    state.log = [{
+      year: state.world.yearEra, age: 0, eventId: 'birth', choiceId: 'birth',
+      text: state.character.name + 'が' + state.character.region + 'に転生した。',
+      importance: 'historic'
+    }];
+    state.lifetimeCount += 1;
+    saveState();
+    renderAll();
+  }
+
+  function finishLife(deathInfo) {
+    isPlaying = false;
+    stopTimer();
+    var summary = generateSummary(state.character, state.relations, deathInfo);
+    state.pastLives.unshift({
+      name: state.character.name, age: state.character.age,
+      occupation: OCCUPATIONS[state.character.occupation], cause: DEATH_CAUSE_LABELS[deathInfo.cause]
+    });
+    if (state.pastLives.length > 20) state.pastLives.length = 20;
+    state.lastDeathSummary = summary;
+    state.lastDeathInfo = deathInfo;
+    state.candidate = generateCharacter();
+    state.character.alive = false;
+    saveState();
+    renderAll();
+  }
+
+  function nextLife() {
+    state.character = null;
+    saveState();
+    renderAll();
+  }
+
+  function advanceOneYear() {
+    if (!state.character || !state.character.alive) return;
+    var result = simulateYear(state);
+    state.log = state.log.concat(result.logs);
+    if (result.died) {
+      finishLife(result.deathInfo);
+      return;
+    }
+    saveState();
+    renderAll();
+  }
+
+  function rerollCandidate() {
+    state.candidate = generateCharacter();
+    saveState();
+    renderStart();
+  }
+
+  /* ---- タイマー制御 ---- */
+
+  function stopTimer() {
+    if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
+  }
+  function startTimer() {
+    stopTimer();
+    timerHandle = setInterval(function () {
+      if (!isPlaying) return;
+      advanceOneYear();
+    }, SPEEDS[state.speedIndex].yearMs);
+  }
+
+  /* ============================== 描画 ============================== */
+
+  function renderAll() {
+    document.getElementById('genLine').textContent = '第' + (state.lifetimeCount || (state.character ? 1 : state.lifetimeCount + 1)) + '転生 / 暦' + state.world.yearEra + '年';
+
+    var hasLiving = state.character && state.character.alive;
+    var showDeath = state.character && !state.character.alive;
+
+    document.getElementById('tabNav').hidden = !hasLiving;
+    document.getElementById('screenStart').hidden = !!state.character;
+    document.getElementById('screenDeath').hidden = !showDeath;
+    document.getElementById('screenObserve').hidden = !(hasLiving && currentTab === 'observe');
+    document.getElementById('screenLog').hidden = !(hasLiving && currentTab === 'log');
+    document.getElementById('screenWorld').hidden = !(hasLiving && currentTab === 'world');
+
+    if (!state.character) renderStart();
+    if (showDeath) renderDeath();
+    if (hasLiving) {
+      renderObserve();
+      renderLog();
+      renderWorld();
+    }
+  }
+
+  function renderStart() {
+    var c = state.candidate;
+    var html = '';
+    html += '<div class="rowline"><span class="k">名前</span><span class="v">' + escapeHtml(c.name) + '（' + c.genderLabel + '）</span></div>';
+    html += '<div class="rowline"><span class="k">出身</span><span class="v">' + escapeHtml(c.region) + '</span></div>';
+    html += '<div class="barlist" style="margin-top:10px">';
+    ABILITIES.forEach(function (a) {
+      html += abilityBarHtml(a, c.abilities[a.id]);
+    });
+    html += '</div>';
+    html += '<div class="traitgrid" style="margin-top:10px">';
+    TRAITS.forEach(function (t) {
+      var v = c.traits[t.id];
+      html += '<div class="t' + (v >= 70 ? ' hi' : '') + '"><span>' + t.label + '</span><span class="tv">' + v + '</span></div>';
+    });
+    html += '</div>';
+    document.getElementById('candidateBox').innerHTML = html;
+
+    var pastCard = document.getElementById('pastLivesCard');
+    if (state.pastLives.length > 0) {
+      pastCard.hidden = false;
+      document.getElementById('pastLivesCount').textContent = '（全' + state.pastLives.length + '件）';
+      document.getElementById('pastLivesList').innerHTML = pastLivesHtml(state.pastLives);
+    } else {
+      pastCard.hidden = true;
+    }
+  }
+
+  function pastLivesHtml(list) {
+    return list.map(function (p) {
+      return '<div class="pastlife"><span><b>' + escapeHtml(p.name) + '</b>（' + escapeHtml(p.occupation) + '）</span><span>享年' + p.age + '歳・' + escapeHtml(p.cause) + '</span></div>';
+    }).join('');
+  }
+
+  function abilityBarHtml(def, val) {
+    return '<div class="bar-item"><span class="label">' + def.label + '</span>' +
+      '<span class="bar-track"><span class="bar-fill" style="width:' + val + '%"></span></span>' +
+      '<span class="val">' + val + '</span></div>';
+  }
+
+  function renderObserve() {
+    var c = state.character;
+    document.getElementById('charTitle').textContent = c.name + '（' + c.genderLabel + '・' + c.age + '歳）';
+    document.getElementById('ovAge').textContent = c.age + '歳';
+    document.getElementById('ovOcc').textContent = OCCUPATIONS[c.occupation];
+    document.getElementById('ovHealth').textContent = c.health + ' / 100';
+    document.getElementById('ovMoney').textContent = c.money + ' G';
+    document.getElementById('ovRegion').textContent = c.region;
+
+    var abHtml = '';
+    ABILITIES.forEach(function (a) { abHtml += abilityBarHtml(a, c.abilities[a.id]); });
+    document.getElementById('abilityBars').innerHTML = abHtml;
+
+    var sortedTraits = TRAITS.slice().sort(function (a, b) { return c.traits[b.id] - c.traits[a.id]; });
+    var top3 = sortedTraits.slice(0, 3).map(function (t) { return t.id; });
+    var trHtml = '';
+    TRAITS.forEach(function (t) {
+      var v = c.traits[t.id];
+      trHtml += '<div class="t' + (top3.indexOf(t.id) >= 0 ? ' hi' : '') + '"><span>' + t.label + '</span><span class="tv">' + v + '</span></div>';
+    });
+    document.getElementById('traitGrid').innerHTML = trHtml;
+
+    document.getElementById('relCount').textContent = '（' + state.relations.length + '人）';
+    var relEmpty = document.getElementById('relEmpty');
+    if (state.relations.length === 0) {
+      relEmpty.hidden = false;
+      document.getElementById('relChips').innerHTML = '';
+    } else {
+      relEmpty.hidden = true;
+      document.getElementById('relChips').innerHTML = state.relations.map(function (r) {
+        return '<span class="chip"><b>' + escapeHtml(r.name) + '</b>' + escapeHtml(r.role) + '</span>';
+      }).join('');
+    }
+
+    var latest = state.log.slice(-5).reverse();
+    document.getElementById('latestLog').innerHTML = latest.length ? logListHtml(latest) : '<div class="empty">まだ記録がない。</div>';
+
+    document.getElementById('timeState').textContent = isPlaying ? '進行中（' + SPEEDS[state.speedIndex].label + '）' : '停止中';
+    document.getElementById('playPauseBtn').textContent = isPlaying ? '一時停止' : '再生';
+
+    var speedHtml = SPEEDS.map(function (s, i) {
+      return '<button class="small' + (i === state.speedIndex ? ' active' : '') + '" data-speed="' + i + '" type="button">' + s.label + '</button>';
+    }).join('');
+    document.getElementById('speedRow').innerHTML = speedHtml;
+  }
+
+  function logListHtml(entries) {
+    return entries.map(function (l) {
+      return '<div class="logentry ' + l.importance + '"><div class="meta">暦' + l.year + '年 / ' + l.age + '歳</div><div class="txt">' + escapeHtml(l.text) + '</div></div>';
+    }).join('');
+  }
+
+  function renderLog() {
+    document.getElementById('logSpan').textContent = '全' + state.log.length + '件';
+    var filtered = state.log.slice().reverse().filter(function (l) {
+      if (currentLogFilter === 'all') return true;
+      if (currentLogFilter === 'major') return l.importance === 'major' || l.importance === 'historic';
+      if (currentLogFilter === 'historic') return l.importance === 'historic';
+      return true;
+    });
+    var box = document.getElementById('fullLog');
+    var empty = document.getElementById('logEmpty');
+    if (filtered.length === 0) {
+      empty.hidden = false;
+      box.innerHTML = '';
+    } else {
+      empty.hidden = true;
+      box.innerHTML = logListHtml(filtered);
+    }
+  }
+
+  function renderWorld() {
+    document.getElementById('wYear').textContent = state.world.yearEra + '年';
+    document.getElementById('wUnrest').textContent = '平穏';
+    document.getElementById('wLifetimes').textContent = state.lifetimeCount + '人';
+    document.getElementById('wSaved').textContent = new Date(state.lastSavedAt).toLocaleString('ja-JP');
+    document.getElementById('pastLivesList2').innerHTML = state.pastLives.length ? pastLivesHtml(state.pastLives) : '<div class="empty">まだ記録がない。</div>';
+  }
+
+  function renderDeath() {
+    var info = state.lastDeathInfo || { cause: 'special' };
+    document.getElementById('deathCause').textContent = DEATH_CAUSE_LABELS[info.cause];
+    document.getElementById('deathName').textContent = state.character.name + 'の生涯';
+    document.getElementById('deathSummary').textContent = state.lastDeathSummary || '';
+  }
+
+  /* ============================== バランス検証（高速シミュレーション） ============================== */
+
+  function simulateOneLifeHeadless() {
+    var character = generateCharacter();
+    var relations = [];
+    var world = freshWorld();
+    var localState = { character: character, relations: relations, world: world };
+    var events = {};
+    var marriedFlag = false;
+    var deathInfo = null;
+    for (var i = 0; i < 130; i++) {
+      var result = simulateYear(localState);
+      result.logs.forEach(function (l) { events[l.eventId] = (events[l.eventId] || 0) + 1; });
+      if (character.flags.indexOf('married') >= 0) marriedFlag = true;
+      if (result.died) { deathInfo = result.deathInfo; break; }
+    }
+    return {
+      lifespan: character.age,
+      occupation: character.occupation,
+      cause: deathInfo ? deathInfo.cause : 'aging',
+      married: marriedFlag,
+      events: events
+    };
+  }
+
+  function runBatchSimulation(n) {
+    var lifespans = [];
+    var occCount = {};
+    var causeCount = {};
+    var marriedCount = 0;
+    for (var i = 0; i < n; i++) {
+      var r = simulateOneLifeHeadless();
+      lifespans.push(r.lifespan);
+      occCount[r.occupation] = (occCount[r.occupation] || 0) + 1;
+      causeCount[r.cause] = (causeCount[r.cause] || 0) + 1;
+      if (r.married) marriedCount++;
+    }
+    var avg = lifespans.reduce(function (a, b) { return a + b; }, 0) / lifespans.length;
+    var lines = [];
+    lines.push('試行回数: ' + n);
+    lines.push('平均寿命: ' + avg.toFixed(1) + '歳');
+    lines.push('結婚率: ' + Math.round((marriedCount / n) * 100) + '%');
+    lines.push('最終職業分布: ' + Object.keys(occCount).sort(function (a, b) { return occCount[b] - occCount[a]; })
+      .map(function (k) { return OCCUPATIONS[k] + ' ' + occCount[k]; }).join(' / '));
+    lines.push('死因分布: ' + Object.keys(causeCount).sort(function (a, b) { return causeCount[b] - causeCount[a]; })
+      .map(function (k) { return DEATH_CAUSE_LABELS[k] + ' ' + causeCount[k]; }).join(' / '));
+    return lines.join('\n');
+  }
+
+  /* ============================== イベントハンドラ ============================== */
+
+  function init() {
+    state = loadState();
+    catchUpOffline();
+    renderAll();
+    isPlaying = false;
+    speedIndex = state.speedIndex;
+
+    document.getElementById('startBtn').addEventListener('click', function () { clearBanner(); startLife(); });
+    document.getElementById('rerollBtn').addEventListener('click', rerollCandidate);
+    document.getElementById('nextLifeBtn').addEventListener('click', function () { clearBanner(); nextLife(); });
+    document.getElementById('advanceBtn').addEventListener('click', function () { clearBanner(); advanceOneYear(); });
+    document.getElementById('playPauseBtn').addEventListener('click', function () {
+      isPlaying = !isPlaying;
+      if (isPlaying) startTimer(); else stopTimer();
+      renderObserve();
+    });
+
+    document.getElementById('speedRow').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-speed]');
+      if (!btn) return;
+      state.speedIndex = parseInt(btn.getAttribute('data-speed'), 10);
+      saveState();
+      if (isPlaying) startTimer();
+      renderObserve();
+    });
+
+    document.getElementById('tabNav').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-tab]');
+      if (!btn) return;
+      currentTab = btn.getAttribute('data-tab');
+      Array.prototype.forEach.call(document.querySelectorAll('#tabNav button'), function (b) {
+        b.classList.toggle('active', b === btn);
+      });
+      renderAll();
+    });
+
+    document.querySelector('.logfilter').addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-filter]');
+      if (!btn) return;
+      currentLogFilter = btn.getAttribute('data-filter');
+      Array.prototype.forEach.call(document.querySelectorAll('.logfilter button'), function (b) {
+        b.classList.toggle('active', b === btn);
+      });
+      renderLog();
+    });
+
+    document.getElementById('simBtn').addEventListener('click', function () {
+      document.getElementById('simResult').textContent = '計算中…';
+      setTimeout(function () {
+        document.getElementById('simResult').textContent = runBatchSimulation(300);
+      }, 30);
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      if (!window.confirm('全ての観測データを削除して最初からやり直します。よろしいですか？')) return;
+      stopTimer();
+      isPlaying = false;
+      try { window.localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      state = freshState();
+      currentTab = 'observe';
+      renderAll();
+    });
+
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) { saveState(); }
+      else { catchUpOffline(); renderAll(); }
+    });
+    window.addEventListener('beforeunload', function () { saveState(); });
+
+    if (isPlaying) startTimer();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>
+</body>
+</html>
