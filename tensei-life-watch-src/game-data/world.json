@@ -29,6 +29,21 @@
   },
   "initial": {
     "yearEra": 0,
-    "unrest": false
+    "unrest": false,
+    "stability": 50,
+    "warThreat": 15,
+    "demonThreat": 15,
+    "religiousInfluence": 50,
+    "techLevel": 30,
+    "economy": 50
+  },
+  "worldFieldBounds": { "min": 0, "max": 100 },
+  "worldFlagThresholds": {
+    "world_war_active": { "field": "warThreat", "gte": 55 },
+    "demon_threat_high": { "field": "demonThreat", "gte": 55 },
+    "kingdom_unstable": { "field": "stability", "lte": 30 },
+    "economic_crisis": { "field": "economy", "lte": 30 },
+    "religious_fervor": { "field": "religiousInfluence", "gte": 70 },
+    "tech_advanced": { "field": "techLevel", "gte": 70 }
   }
 }

@@ -20,3 +20,5 @@ UIを介さないバランス検証:
 cd tensei-life-watch-src
 node scripts/simulate-cli.js 500
 ```
+
+`../tensei-life-watch.html` はこのソースから `node scripts/build-single-file.mjs` で自動生成しています（`toshiyam/iseten` リポジトリ側で実行し、生成物をここへコピーしています）。

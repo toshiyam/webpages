@@ -7,9 +7,17 @@ function esc(s) {
   return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; });
 }
 
-var SCHEMA_VERSION = 1;
+var SCHEMA_VERSION = 2;
 var STORAGE_KEY = 'tenseiLifeWatch:v1';
 var MAX_OFFLINE_YEARS = 300;
+
+var ELEMENT_LABELS = {
+  modern_knowledge: '前世の現代知識', divine_mission: '神から与えられた使命', cursed_soul: '魂に刻まれた呪い',
+  magic_affinity: '異常な魔法適性', monster_affinity: '魔物との親和性', hero_mark: '勇者候補の証',
+  demon_mark: '魔王候補の証', past_life_memory: '前世の記憶', return_desire: '帰還願望'
+};
+
+var GOAL_STATUS_LABELS = { active: '追求中', completed: '達成', abandoned: '放棄', failed: '未達成', distorted: '変質' };
 
 var SPEEDS = [
   { id: 'slow', label: '遅い', yearMs: 8000 },
@@ -36,7 +44,9 @@ async function loadData() {
   var occupations = await loadJson(new URL('occupations.json', base));
   var world = await loadJson(new URL('world.json', base));
   var events = await loadJson(new URL('events.json', base));
-  return buildDataBundle(traits, occupations, world, events);
+  var elements = await loadJson(new URL('elements.json', base));
+  var goals = await loadJson(new URL('goals.json', base));
+  return buildDataBundle(traits, occupations, world, events, elements, goals);
 }
 
 function freshWorld() {
@@ -58,9 +68,39 @@ function freshState() {
   };
 }
 
+// schemaVersion 1 (要素/生涯目標/世界状態の拡張前) の保存データを、
+// 新しいフィールドを補いながら壊さずに引き継ぐ。
+function migrateCharacter(character) {
+  if (!character) return character;
+  if (!Array.isArray(character.elements)) character.elements = [];
+  if (character.goal === undefined) character.goal = null;
+  if (typeof character.fame !== 'number') character.fame = 0;
+  return character;
+}
+
+function migrateWorld(world) {
+  if (!world) return world;
+  Object.keys(data.initialWorld).forEach(function (key) {
+    if (typeof world[key] !== 'number') world[key] = data.initialWorld[key];
+  });
+  return world;
+}
+
+function migrateState(raw) {
+  if (raw.schemaVersion === 1) {
+    migrateCharacter(raw.character);
+    migrateCharacter(raw.candidate);
+    migrateWorld(raw.world);
+    raw.schemaVersion = SCHEMA_VERSION;
+  }
+  return raw;
+}
+
 function sanitizeLoaded(raw) {
-  if (!raw || typeof raw !== 'object' || raw.schemaVersion !== SCHEMA_VERSION) return null;
+  if (!raw || typeof raw !== 'object') return null;
+  if (raw.schemaVersion !== SCHEMA_VERSION && raw.schemaVersion !== 1) return null;
   try {
+    raw = migrateState(raw);
     if (raw.character) {
       data.abilities.forEach(function (a) { if (typeof raw.character.abilities[a.id] !== 'number') throw new Error('bad'); });
       data.traits.forEach(function (t) { if (typeof raw.character.traits[t.id] !== 'number') throw new Error('bad'); });
@@ -145,7 +185,10 @@ function startLife() {
 function finishLife(deathInfo) {
   isPlaying = false;
   stopTimer();
-  var summary = generateSummary(state.character, state.relations, deathInfo, data.occupations, data.traits, data.deathCauseLabels);
+  var summary = generateSummary(
+    state.character, state.relations, deathInfo, state.world, data.initialWorld,
+    data.occupations, data.traits, data.deathCauseLabels
+  );
   state.pastLives.unshift({
     name: state.character.name, age: state.character.age,
     occupation: data.occupations[state.character.occupation], cause: data.deathCauseLabels[deathInfo.cause]
@@ -283,6 +326,20 @@ function renderObserve() {
   });
   document.getElementById('traitGrid').innerHTML = trHtml;
 
+  var elementEmpty = document.getElementById('elementEmpty');
+  if (c.elements.length === 0) {
+    elementEmpty.hidden = false;
+    document.getElementById('elementChips').innerHTML = '';
+  } else {
+    elementEmpty.hidden = true;
+    document.getElementById('elementChips').innerHTML = c.elements.map(function (id) {
+      return '<span class="chip"><b>' + esc(ELEMENT_LABELS[id] || id) + '</b></span>';
+    }).join('');
+  }
+  document.getElementById('goalLine').textContent = c.goal
+    ? c.goal.label + '（' + (GOAL_STATUS_LABELS[c.goal.status] || c.goal.status) + '・進捗' + c.goal.progress + '）'
+    : '未形成';
+
   document.getElementById('relCount').textContent = '（' + state.relations.length + '人）';
   var relEmpty = document.getElementById('relEmpty');
   if (state.relations.length === 0) {
@@ -326,8 +383,11 @@ function renderLog() {
 }
 
 function renderWorld() {
-  document.getElementById('wYear').textContent = state.world.yearEra + '年';
-  document.getElementById('wUnrest').textContent = '平穏';
+  var w = state.world;
+  document.getElementById('wYear').textContent = w.yearEra + '年';
+  document.getElementById('wUnrest').textContent =
+    '安定' + Math.round(w.stability) + ' / 戦争' + Math.round(w.warThreat) + ' / 魔' + Math.round(w.demonThreat) +
+    ' / 信仰' + Math.round(w.religiousInfluence) + ' / 技術' + Math.round(w.techLevel) + ' / 経済' + Math.round(w.economy);
   document.getElementById('wLifetimes').textContent = state.lifetimeCount + '人';
   document.getElementById('wSaved').textContent = new Date(state.lastSavedAt).toLocaleString('ja-JP');
   document.getElementById('pastLivesList2').innerHTML = state.pastLives.length ? pastLivesHtml(state.pastLives) : '<div class="empty">まだ記録がない。</div>';
@@ -391,10 +451,16 @@ async function init() {
     document.getElementById('simResult').textContent = '計算中…';
     setTimeout(function () {
       var stats = runBatchSimulation(data, 300);
+      var pct = function (v) { return Math.round(v * 100) + '%'; };
       var lines = [];
       lines.push('試行回数: ' + stats.trials);
       lines.push('平均寿命: ' + stats.avgLifespan.toFixed(1) + '歳');
-      lines.push('結婚率: ' + Math.round(stats.marriageRate * 100) + '%');
+      lines.push('結婚率: ' + pct(stats.marriageRate));
+      lines.push('生涯目標の形成率: ' + pct(stats.goalFormationRate));
+      lines.push('人生アークへの突入率: ' + pct(stats.arcEntryRate));
+      lines.push('アーク最終段への到達率: ' + pct(stats.arcClimaxRate));
+      lines.push('世界へ影響を残した率: ' + pct(stats.worldImpactRate));
+      lines.push('ほぼ何も起きない人生: ' + pct(stats.nothingHappenedRate));
       lines.push('未発生イベント: ' + (stats.unfiredEvents.length ? stats.unfiredEvents.join(', ') : 'なし'));
       document.getElementById('simResult').textContent = lines.join('\n');
     }, 30);
