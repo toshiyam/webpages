@@ -1,0 +1,375 @@
+[
+  {
+    "id": "child_curious_exploration", "title": "好奇心の芽生え", "category": "childhood", "eventType": "normal",
+    "ageRange": { "min": 2, "max": 8 }, "baseWeight": 14,
+    "text": "幼い{name}は、周囲の物事に強い興味を示すようになった。",
+    "choices": [
+      { "id": "explore", "label": "自由に探索する", "baseWeight": 12, "traitWeights": { "curiosity": 0.5, "bravery": 0.2 },
+        "effects": { "abilities": { "intelligence": 1, "physical": 1 } }, "resultText": "{name}は村中を駆け回り、たくさんの発見をした。" },
+      { "id": "stay_close", "label": "家族のそばで過ごす", "baseWeight": 12, "traitWeights": { "caution": 0.4, "family_orientation": 0.4 },
+        "effects": { "abilities": { "social": 1 }, "flagsAdd": ["bonded_with_family"] }, "resultText": "{name}は家族のそばで穏やかな時間を過ごした。" }
+    ]
+  },
+  {
+    "id": "child_early_talent", "title": "早熟な才能", "category": "childhood", "eventType": "normal",
+    "ageRange": { "min": 5, "max": 10 }, "baseWeight": 10,
+    "text": "{name}は同年代の子供たちの中で、際立った何かを見せ始めた。",
+    "choices": [
+      { "id": "hone_talent", "label": "才能を磨きこむ", "baseWeight": 10, "traitWeights": { "ambition": 0.4, "curiosity": 0.3 },
+        "effects": { "abilities": { "intelligence": 2, "willpower": 1 }, "flagsAdd": ["gifted_child"] }, "resultText": "{name}は寝る間も惜しんで才を磨いた。", "importance": "major" },
+      { "id": "play_around", "label": "のびのびと遊んで過ごす", "baseWeight": 12, "traitWeights": { "curiosity": 0.2, "self_interest": 0.1 },
+        "effects": { "abilities": { "sensitivity": 1 } }, "resultText": "{name}は才を伸ばすより、今を楽しむことを選んだ。" }
+    ]
+  },
+  {
+    "id": "child_hardship", "title": "家の苦境", "category": "childhood", "eventType": "branch",
+    "ageRange": { "min": 6, "max": 12 }, "baseWeight": 8,
+    "text": "{name}の家は不作と借金に苦しみ、暮らしが傾き始めた。",
+    "choices": [
+      { "id": "help_family", "label": "家業を手伝う", "baseWeight": 10, "traitWeights": { "family_orientation": 0.5, "persistence": 0.3 },
+        "effects": { "abilities": { "physical": 1 }, "money": 2, "flagsAdd": ["hard_worker_child"] }, "resultText": "{name}は幼いながらに家を支えようと働いた。", "importance": "major" },
+      { "id": "leave_early", "label": "早くに家を出て自立を志す", "baseWeight": 8, "traitWeights": { "bravery": 0.3, "self_interest": 0.3, "caution": -0.2 },
+        "effects": { "flagsAdd": ["early_independence"] }, "resultText": "{name}は家を出て、自分の力で生きていく決意を固めた。", "importance": "major" }
+    ]
+  },
+  {
+    "id": "edu_temple_school", "title": "寺子屋の誘い", "category": "education", "eventType": "normal",
+    "ageRange": { "min": 7, "max": 14 }, "baseWeight": 10, "unique": true,
+    "text": "町の寺子屋から、{name}に学ぶ機会が与えられた。",
+    "choices": [
+      { "id": "study_hard", "label": "熱心に学ぶ", "baseWeight": 10, "traitWeights": { "curiosity": 0.3, "faith": 0.2 },
+        "effects": { "abilities": { "intelligence": 3 }, "flagsAdd": ["educated"] }, "resultText": "{name}は読み書きと教養を身につけた。", "importance": "major" },
+      { "id": "skip_lessons", "label": "授業を抜け出して遊ぶ", "baseWeight": 9, "traitWeights": { "curiosity": -0.1, "self_interest": 0.2 },
+        "effects": { "abilities": { "social": 1 } }, "resultText": "{name}は勉強よりも外の世界に興味を示した。" }
+    ]
+  },
+  {
+    "id": "edu_mentor_offer", "title": "師との出会い", "category": "education", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 10, "max": 20 }, "baseWeight": 9,
+    "text": "腕利きの師が、{name}に弟子入りを持ちかけてきた。",
+    "choices": [
+      { "id": "accept_mentor", "label": "弟子入りを受ける", "baseWeight": 11, "traitWeights": { "loyalty": 0.3, "ambition": 0.3, "curiosity": 0.2 },
+        "effects": { "abilities": { "willpower": 2 }, "flagsAdd": ["has_mentor"], "relation": { "add": { "type": "mentor", "role": "師匠" } } },
+        "resultText": "{name}はある人物に弟子入りし、師と呼べる存在を得た。", "importance": "major" },
+      { "id": "decline_mentor", "label": "一人の道を選ぶ", "baseWeight": 8, "traitWeights": { "self_interest": 0.2, "caution": 0.2 },
+        "effects": {}, "resultText": "{name}は師を持たず、自分の力だけで進む道を選んだ。" }
+    ]
+  },
+  {
+    "id": "edu_talent_test", "title": "適性検査", "category": "education", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 12, "max": 20 }, "baseWeight": 9,
+    "text": "町を訪れた組合の使者が、{name}の適性を見立てた。",
+    "choices": [
+      { "id": "suited_adventure", "label": "「冒険者向き」と診断される", "baseWeight": 10, "traitWeights": { "bravery": 0.4, "curiosity": 0.2 },
+        "effects": { "flagsAdd": ["suited_adventurer"] }, "resultText": "使者は{name}に冒険者としての素質を見出した。" },
+      { "id": "suited_trade", "label": "「商才あり」と診断される", "baseWeight": 10, "traitWeights": { "ambition": 0.3 },
+        "effects": { "flagsAdd": ["suited_merchant"] }, "resultText": "使者は{name}に商いの才を見出した。" },
+      { "id": "suited_craft", "label": "「手先が器用」と診断される", "baseWeight": 10, "traitWeights": { "persistence": 0.3, "caution": 0.2 },
+        "effects": { "flagsAdd": ["suited_artisan"] }, "resultText": "使者は{name}に職人としての適性を見出した。" }
+    ]
+  },
+  {
+    "id": "career_first_job", "title": "初めての仕事選び", "category": "career", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 13, "max": 22 }, "baseWeight": 20,
+    "conditions": { "occupations": ["unemployed"] },
+    "text": "{name}は生計を立てるため、最初の道を選ばねばならなくなった。",
+    "choices": [
+      { "id": "become_farmer", "label": "農地を耕す", "baseWeight": 10, "traitWeights": { "family_orientation": 0.3, "caution": 0.2 },
+        "effects": { "occupation": "farmer" }, "resultText": "{name}は畑仕事を始めた。", "importance": "major" },
+      { "id": "become_blacksmith_apprentice", "label": "鍛冶屋に弟子入りする", "baseWeight": 9, "traitWeights": { "curiosity": 0.2, "persistence": 0.2 },
+        "contextWeights": { "suited_artisan": 12 },
+        "effects": { "occupation": "apprentice", "flagsAdd": ["blacksmith_track"] }, "resultText": "{name}は鍛冶屋の門を叩いた。", "importance": "major" },
+      { "id": "become_merchant_apprentice", "label": "商家に丁稚奉公する", "baseWeight": 9, "traitWeights": { "ambition": 0.3, "self_interest": 0.2 },
+        "contextWeights": { "suited_merchant": 12 },
+        "effects": { "occupation": "merchant", "flagsAdd": ["merchant_track"] }, "resultText": "{name}は商家に住み込みで働き始めた。", "importance": "major" },
+      { "id": "register_adventurer", "label": "冒険者ギルドに登録する", "baseWeight": 8, "traitWeights": { "bravery": 0.4, "caution": -0.2 },
+        "contextWeights": { "suited_adventurer": 14 },
+        "effects": { "occupation": "adventurer", "flagsAdd": ["adventurer_track"] }, "resultText": "{name}は冒険者ギルドの門を叩いた。", "importance": "major" },
+      { "id": "join_soldiers", "label": "衛兵隊に志願する", "baseWeight": 7, "traitWeights": { "bravery": 0.2, "loyalty": 0.3 },
+        "effects": { "occupation": "soldier" }, "resultText": "{name}は衛兵隊に志願入隊した。", "importance": "major" }
+    ]
+  },
+  {
+    "id": "career_blacksmith_apprentice", "title": "鍛冶屋への弟子入り", "category": "career", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 12, "max": 30 }, "baseWeight": 10,
+    "conditions": { "occupations": ["unemployed", "farmer"], "excludedFlags": ["blacksmith_rejected"] },
+    "text": "{name}は町の鍛冶屋に才能を見込まれ、弟子入りを勧められた。",
+    "choices": [
+      { "id": "accept", "label": "弟子入りする", "baseWeight": 12, "traitWeights": { "curiosity": 0.3, "ambition": 0.2, "family_orientation": -0.2 },
+        "contextWeights": { "suited_artisan": 10 },
+        "effects": { "occupation": "apprentice", "abilities": { "intelligence": 2 }, "flagsAdd": ["blacksmith_track"] },
+        "resultText": "{name}は家を離れ、鍛冶屋で修業を始めた。", "importance": "major" },
+      { "id": "decline", "label": "断る", "baseWeight": 8, "traitWeights": { "caution": 0.2, "family_orientation": 0.3 },
+        "effects": { "flagsAdd": ["blacksmith_rejected"] }, "resultText": "{name}は現在の暮らしを選び、誘いを断った。" }
+    ]
+  },
+  {
+    "id": "career_blacksmith_conflict", "title": "師匠との確執", "category": "career", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 14, "max": 35 }, "baseWeight": 11,
+    "conditions": { "occupations": ["apprentice"], "requiredFlags": ["blacksmith_track"] },
+    "text": "{name}は鍛冶の技をめぐり、師匠と激しく対立するようになった。",
+    "choices": [
+      { "id": "endure", "label": "耐えて学び続ける", "baseWeight": 10, "traitWeights": { "persistence": 0.5, "loyalty": 0.3 },
+        "effects": { "abilities": { "willpower": 2 }, "flagsAdd": ["blacksmith_endured"] }, "resultText": "{name}は屈辱に耐え、技を盗むように学び続けた。", "importance": "major" },
+      { "id": "break_away", "label": "対立し、独立を目指す", "baseWeight": 10, "traitWeights": { "ambition": 0.4, "self_interest": 0.3, "loyalty": -0.3 },
+        "effects": { "flagsAdd": ["blacksmith_independent_track"] }, "resultText": "{name}は師匠と決別し、独立の準備を始めた。", "importance": "major" },
+      { "id": "flee", "label": "諦めて逃げ出す", "baseWeight": 6, "traitWeights": { "caution": 0.3, "willpower": -0.1 },
+        "effects": { "occupation": "unemployed", "flagsAdd": ["blacksmith_fled"] }, "resultText": "{name}は工房を飛び出し、行方をくらませた。", "importance": "major" }
+    ]
+  },
+  {
+    "id": "career_blacksmith_outcome", "title": "鍛冶屋修業の結末", "category": "career", "eventType": "historic", "unique": true,
+    "ageRange": { "min": 16, "max": 45 }, "baseWeight": 12,
+    "conditions": { "occupations": ["apprentice"], "requiredFlags": ["blacksmith_track"] },
+    "text": "{name}の鍛冶の道が、一つの結末を迎えようとしている。",
+    "choices": [
+      { "id": "become_master", "label": "工房を継ぎ、名工になる", "baseWeight": 10, "traitWeights": { "persistence": 0.4, "ambition": 0.2 },
+        "contextWeights": { "blacksmith_endured": 16, "blacksmith_fled": -20 },
+        "effects": { "occupation": "artisan", "abilities": { "intelligence": 2 }, "tagsAdd": ["notable_smith"] },
+        "resultText": "{name}は工房を継ぎ、その名を知られる名工となった。", "importance": "historic" },
+      { "id": "become_arms_dealer", "label": "独立し、軍需商人になる", "baseWeight": 9, "traitWeights": { "ambition": 0.4, "self_interest": 0.3 },
+        "contextWeights": { "blacksmith_independent_track": 18, "blacksmith_fled": -15 },
+        "effects": { "occupation": "merchant", "money": 30, "tagsAdd": ["arms_dealer"] },
+        "resultText": "{name}は独立し、武具を扱う商人として財を築き始めた。", "importance": "historic" },
+      { "id": "give_up_smith", "label": "技を極められず廃業する", "baseWeight": 7, "traitWeights": { "caution": 0.2 },
+        "contextWeights": { "blacksmith_fled": 22 },
+        "effects": { "occupation": "unemployed", "health": -3 },
+        "resultText": "{name}は鍛冶の道を諦め、工房を去った。", "importance": "major" }
+    ]
+  },
+  {
+    "id": "career_adventurer_registration", "title": "冒険者ギルド登録", "category": "career", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 14, "max": 30 }, "baseWeight": 10,
+    "conditions": { "occupations": ["unemployed", "farmer"] },
+    "text": "{name}は冒険者ギルドの扉の前に立っていた。",
+    "choices": [
+      { "id": "register", "label": "登録する", "baseWeight": 10, "traitWeights": { "bravery": 0.5, "curiosity": 0.2, "caution": -0.2 },
+        "contextWeights": { "suited_adventurer": 12 },
+        "effects": { "occupation": "adventurer", "flagsAdd": ["adventurer_track"] }, "resultText": "{name}は冒険者として登録を済ませた。", "importance": "major" },
+      { "id": "walk_away", "label": "やはり思いとどまる", "baseWeight": 9, "traitWeights": { "caution": 0.4 },
+        "effects": {}, "resultText": "{name}はギルドの扉を前に、踵を返した。" }
+    ]
+  },
+  {
+    "id": "career_dangerous_quest", "title": "危険な依頼", "category": "career", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 15, "max": 45 }, "baseWeight": 11,
+    "conditions": { "occupations": ["adventurer"] }, "minGapYears": 2,
+    "text": "ギルドの掲示板に、危険度の高い討伐依頼が張り出された。",
+    "choices": [
+      { "id": "take_quest", "label": "危険な依頼を受ける", "baseWeight": 10, "traitWeights": { "bravery": 0.5, "ambition": 0.2, "caution": -0.3 },
+        "effects": { "flagsAdd": ["dangerous_quest_taken"], "money": 8 }, "resultText": "{name}は危険を承知で依頼を受けた。", "importance": "major" },
+      { "id": "safe_quest", "label": "安全な依頼にとどめる", "baseWeight": 11, "traitWeights": { "caution": 0.4, "family_orientation": 0.2 },
+        "effects": { "money": 3 }, "resultText": "{name}は堅実な依頼をこなすにとどめた。" }
+    ]
+  },
+  {
+    "id": "career_adventurer_outcome", "title": "冒険者としての岐路", "category": "career", "eventType": "historic", "unique": true,
+    "ageRange": { "min": 16, "max": 55 }, "baseWeight": 12,
+    "conditions": { "occupations": ["adventurer"], "requiredFlags": ["dangerous_quest_taken"] },
+    "text": "{name}は死線をくぐり抜けた依頼の果てに立っていた。",
+    "choices": [
+      { "id": "renowned", "label": "生還し、名声を得る", "baseWeight": 10, "traitWeights": { "bravery": 0.3 },
+        "effects": { "abilities": { "luck": 3, "physical": 1 }, "tagsAdd": ["renowned_adventurer"] },
+        "resultText": "{name}は生還を果たし、その武勇は方々で語られるようになった。", "importance": "historic" },
+      { "id": "crippled", "label": "大怪我を負い、引退する", "baseWeight": 8, "traitWeights": { "caution": 0.1 },
+        "effects": { "occupation": "unemployed", "health": -25, "flagsAdd": ["disabled_veteran"] },
+        "resultText": "{name}は深い傷を負い、冒険者を引退した。", "importance": "major" },
+      { "id": "fallen_thief", "label": "仲間を失い、盗賊に身を落とす", "baseWeight": 6, "traitWeights": { "self_interest": 0.3, "loyalty": -0.2 },
+        "effects": { "occupation": "thief", "tagsAdd": ["fallen_adventurer"] },
+        "resultText": "{name}は仲間を失った絶望の中で、盗賊へと堕ちていった。", "importance": "historic" }
+    ]
+  },
+  {
+    "id": "career_merchant_start", "title": "商家への奉公", "category": "career", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 12, "max": 28 }, "baseWeight": 9,
+    "conditions": { "occupations": ["unemployed", "farmer"] },
+    "text": "町の商家が、{name}に住み込みの奉公を持ちかけた。",
+    "choices": [
+      { "id": "accept_apprentice", "label": "奉公を受ける", "baseWeight": 10, "traitWeights": { "ambition": 0.3, "self_interest": 0.2 },
+        "contextWeights": { "suited_merchant": 12 },
+        "effects": { "occupation": "merchant", "flagsAdd": ["merchant_track"] }, "resultText": "{name}は商家に住み込み、商いの基礎を学び始めた。", "importance": "major" },
+      { "id": "decline_apprentice", "label": "断る", "baseWeight": 9, "traitWeights": { "caution": 0.3 },
+        "effects": {}, "resultText": "{name}は奉公の話を断った。" }
+    ]
+  },
+  {
+    "id": "career_merchant_deal", "title": "大きな商談", "category": "career", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 16, "max": 50 }, "baseWeight": 10,
+    "conditions": { "occupations": ["merchant"], "requiredFlags": ["merchant_track"] },
+    "text": "{name}のもとに、一世一代とも言える大きな商談が舞い込んだ。",
+    "choices": [
+      { "id": "take_deal", "label": "大勝負に出る", "baseWeight": 10, "traitWeights": { "ambition": 0.4, "bravery": 0.2, "caution": -0.3 },
+        "effects": { "flagsAdd": ["big_deal_taken"] }, "resultText": "{name}は持てる金すべてを商談に注ぎ込んだ。", "importance": "major" },
+      { "id": "safe_bet", "label": "手堅く断る", "baseWeight": 11, "traitWeights": { "caution": 0.5 },
+        "effects": { "money": 5 }, "resultText": "{name}は堅実な商いを続けることを選んだ。" }
+    ]
+  },
+  {
+    "id": "career_merchant_outcome", "title": "商談の結末", "category": "career", "eventType": "historic", "unique": true,
+    "ageRange": { "min": 17, "max": 55 }, "baseWeight": 12,
+    "conditions": { "occupations": ["merchant"], "requiredFlags": ["big_deal_taken"] },
+    "text": "{name}の大商談は、いよいよ決着の時を迎えた。",
+    "choices": [
+      { "id": "success", "label": "成功し、豪商になる", "baseWeight": 10, "traitWeights": { "ambition": 0.3 },
+        "effects": { "money": 60, "tagsAdd": ["wealthy_merchant"] }, "resultText": "{name}は大商談を成功させ、豪商と呼ばれるまでになった。", "importance": "historic" },
+      { "id": "fail", "label": "失敗し、借金を抱える", "baseWeight": 9, "traitWeights": { "caution": -0.1 },
+        "effects": { "money": -40, "flagsAdd": ["in_debt"] }, "resultText": "{name}の商談は失敗に終わり、多額の借金だけが残った。", "importance": "major" }
+    ]
+  },
+  {
+    "id": "career_promotion", "title": "昇進の機会", "category": "career", "eventType": "normal",
+    "ageRange": { "min": 20, "max": 55 }, "baseWeight": 8, "minGapYears": 4,
+    "conditions": { "occupations": ["official", "soldier"] },
+    "text": "{name}に昇進の話が持ち上がった。",
+    "choices": [
+      { "id": "pursue", "label": "昇進を目指す", "baseWeight": 10, "traitWeights": { "ambition": 0.4, "loyalty": 0.2 },
+        "effects": { "abilities": { "social": 1 }, "money": 6 }, "resultText": "{name}は昇進を勝ち取った。", "importance": "major" },
+      { "id": "stay", "label": "今の立場にとどまる", "baseWeight": 9, "traitWeights": { "family_orientation": 0.2, "caution": 0.2 },
+        "effects": {}, "resultText": "{name}は昇進を辞退し、今の立場を守った。" }
+    ]
+  },
+  {
+    "id": "career_economic_hardship", "title": "不景気の波", "category": "career", "eventType": "normal",
+    "ageRange": { "min": 16, "max": 65 }, "baseWeight": 6, "minGapYears": 5,
+    "text": "{name}の暮らす地域を不景気の波が襲った。",
+    "choices": [
+      { "id": "endure_hardship", "label": "倹約して耐え忍ぶ", "baseWeight": 10, "traitWeights": { "persistence": 0.3, "caution": 0.3 },
+        "effects": { "money": -5 }, "resultText": "{name}は苦しい時期を倹約で乗り切った。" },
+      { "id": "seek_help", "label": "周囲に助けを求める", "baseWeight": 8, "traitWeights": { "altruism": -0.1 },
+        "effects": { "money": -2 }, "resultText": "{name}は周囲の助けを借りて急場をしのいだ。" }
+    ]
+  },
+  {
+    "id": "rel_new_friend", "title": "新しい友人", "category": "relationship", "eventType": "normal",
+    "ageRange": { "min": 8, "max": 60 }, "baseWeight": 12, "minGapYears": 3,
+    "text": "{name}は気の合う人物と出会った。",
+    "choices": [
+      { "id": "deepen", "label": "親しく付き合う", "baseWeight": 10, "traitWeights": { "altruism": 0.2, "loyalty": 0.2 },
+        "effects": { "relation": { "add": { "type": "friend", "role": "友人" } } }, "resultText": "{name}は新しい友人を得た。" },
+      { "id": "keep_distance", "label": "距離を置く", "baseWeight": 7, "traitWeights": { "caution": 0.3, "self_interest": 0.2 },
+        "effects": {}, "resultText": "{name}は深入りせず、当たり障りない付き合いにとどめた。" }
+    ]
+  },
+  {
+    "id": "rel_betrayal", "title": "裏切り", "category": "relationship", "eventType": "branch",
+    "ageRange": { "min": 12, "max": 70 }, "baseWeight": 6, "minGapYears": 6,
+    "conditions": { "requiredFlags": ["has_any_relation"] },
+    "text": "{name}は信頼していた相手に裏切られた。",
+    "choices": [
+      { "id": "forgive", "label": "許す", "baseWeight": 8, "traitWeights": { "altruism": 0.4, "faith": 0.2 },
+        "effects": { "relation": { "affinity": { "type": "friend", "delta": -10 } } }, "resultText": "{name}は苦しみながらも相手を許した。", "importance": "major" },
+      { "id": "cut_ties", "label": "絶縁する", "baseWeight": 9, "traitWeights": { "persistence": 0.3, "self_interest": 0.2, "loyalty": -0.2 },
+        "effects": { "relation": { "remove": { "type": "friend" } }, "flagsAdd": ["betrayed_once"] }, "resultText": "{name}は相手との縁を断ち切った。", "importance": "major" }
+    ]
+  },
+  {
+    "id": "rel_rival_appears", "title": "好敵手の出現", "category": "relationship", "eventType": "normal", "unique": true,
+    "ageRange": { "min": 10, "max": 50 }, "baseWeight": 7,
+    "text": "{name}の前に、実力の近い好敵手が現れた。",
+    "choices": [
+      { "id": "compete", "label": "競い合う", "baseWeight": 10, "traitWeights": { "ambition": 0.4, "bravery": 0.2 },
+        "effects": { "abilities": { "willpower": 1 }, "relation": { "add": { "type": "rival", "role": "好敵手" } } }, "resultText": "{name}は好敵手を得て、腕を磨く糧とした。" },
+      { "id": "ignore_rival", "label": "意識せず我が道を行く", "baseWeight": 8, "traitWeights": { "self_interest": 0.2 },
+        "effects": {}, "resultText": "{name}は好敵手の存在を気にとめなかった。" }
+    ]
+  },
+  {
+    "id": "love_meet_partner", "title": "恋人との出会い", "category": "romance", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 16, "max": 45 }, "baseWeight": 9,
+    "conditions": { "excludedFlags": ["has_partner", "married"] },
+    "text": "{name}はある人物に心を惹かれ始めた。",
+    "choices": [
+      { "id": "pursue_love", "label": "想いを伝える", "baseWeight": 10, "traitWeights": { "family_orientation": 0.3, "bravery": 0.1 },
+        "effects": { "flagsAdd": ["has_partner"], "relation": { "add": { "type": "partner", "role": "恋人" } } }, "resultText": "{name}は想いを伝え、恋人ができた。", "importance": "major" },
+      { "id": "stay_silent", "label": "想いを胸に秘める", "baseWeight": 8, "traitWeights": { "caution": 0.3, "self_interest": 0.1 },
+        "effects": {}, "resultText": "{name}は想いを誰にも告げなかった。" }
+    ]
+  },
+  {
+    "id": "love_marriage", "title": "結婚の決断", "category": "romance", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 17, "max": 50 }, "baseWeight": 10,
+    "conditions": { "requiredFlags": ["has_partner"], "excludedFlags": ["married"] },
+    "text": "{name}と恋人は、これからの人生について話し合った。",
+    "choices": [
+      { "id": "marry", "label": "結婚する", "baseWeight": 10, "traitWeights": { "family_orientation": 0.5, "loyalty": 0.3 },
+        "effects": { "flagsAdd": ["married"], "relation": { "promote": { "from": "partner", "to": "spouse", "role": "配偶者" } } }, "resultText": "{name}は結婚し、新たな家庭を築いた。", "importance": "major" },
+      { "id": "part_ways", "label": "別々の道を歩む", "baseWeight": 7, "traitWeights": { "self_interest": 0.2, "ambition": 0.2, "family_orientation": -0.2 },
+        "effects": { "flagsAdd": ["past_relationship"], "flagsRemove": ["has_partner"], "relation": { "remove": { "type": "partner" } } }, "resultText": "{name}たちは別々の道を選んだ。", "importance": "major" }
+    ]
+  },
+  {
+    "id": "love_child_birth", "title": "子の誕生", "category": "romance", "eventType": "normal", "unique": true,
+    "ageRange": { "min": 18, "max": 55 }, "baseWeight": 10,
+    "conditions": { "requiredFlags": ["married"], "excludedFlags": ["has_child"] },
+    "text": "{name}の家に新しい命が誕生した。",
+    "choices": [
+      { "id": "welcome_child", "label": "喜んで迎え入れる", "baseWeight": 10, "traitWeights": { "family_orientation": 0.4, "altruism": 0.2 },
+        "effects": { "flagsAdd": ["has_child"], "relation": { "add": { "type": "child", "role": "子" } } }, "resultText": "{name}に子が生まれ、家族が増えた。", "importance": "major" }
+    ]
+  },
+  {
+    "id": "adv_monster_attack", "title": "魔物の襲撃", "category": "adventure", "eventType": "normal",
+    "ageRange": { "min": 14, "max": 60 }, "baseWeight": 7, "minGapYears": 4,
+    "text": "{name}の暮らす地域が、魔物の襲撃を受けた。",
+    "choices": [
+      { "id": "fight", "label": "立ち向かう", "baseWeight": 9, "traitWeights": { "bravery": 0.5, "altruism": 0.2, "caution": -0.3 },
+        "effects": { "health": -8, "abilities": { "physical": 1 }, "flagsAdd": ["fought_monster"] }, "resultText": "{name}は危険を顧みず立ち向かった。", "importance": "major" },
+      { "id": "flee_monster", "label": "避難する", "baseWeight": 9, "traitWeights": { "caution": 0.4, "family_orientation": 0.2 },
+        "effects": {}, "resultText": "{name}は難を避け、安全な場所へ逃れた。" }
+    ]
+  },
+  {
+    "id": "adv_treasure_rumor", "title": "秘宝の噂", "category": "adventure", "eventType": "normal",
+    "ageRange": { "min": 14, "max": 55 }, "baseWeight": 6, "minGapYears": 5,
+    "text": "{name}は近隣に眠る秘宝の噂を耳にした。",
+    "choices": [
+      { "id": "search", "label": "探索に出る", "baseWeight": 8, "traitWeights": { "curiosity": 0.4, "self_interest": 0.2, "caution": -0.2 },
+        "effects": { "health": -4, "money": 10 }, "resultText": "{name}は噂を頼りに探索へ出て、いくらかの財を得た。" },
+      { "id": "ignore_rumor", "label": "噂を気にとめない", "baseWeight": 10, "traitWeights": { "caution": 0.3 },
+        "effects": {}, "resultText": "{name}は噂話に興味を示さなかった。" }
+    ]
+  },
+  {
+    "id": "illness_common", "title": "流行り病", "category": "health", "eventType": "normal",
+    "ageRange": { "min": 3, "max": 95 }, "baseWeight": 8, "minGapYears": 3,
+    "text": "{name}の暮らす土地で、病が流行した。",
+    "choices": [
+      { "id": "get_treatment", "label": "治療を受ける", "baseWeight": 9, "traitWeights": { "caution": 0.2 },
+        "contextWeights": { "low_money": -6 },
+        "effects": { "health": 6, "money": -6 }, "resultText": "{name}は治療を受け、病を乗り越えた。" },
+      { "id": "endure_illness", "label": "我慢してやり過ごす", "baseWeight": 8, "traitWeights": { "persistence": 0.3 },
+        "effects": { "health": -10 }, "resultText": "{name}は治療を受けられず、病に苦しんだ。" }
+    ]
+  },
+  {
+    "id": "accident_workplace", "title": "仕事中の事故", "category": "health", "eventType": "normal",
+    "ageRange": { "min": 14, "max": 70 }, "baseWeight": 6, "minGapYears": 4,
+    "conditions": { "occupations": ["soldier", "adventurer", "thief", "apprentice", "artisan"] },
+    "text": "{name}は仕事中に危険な事態に見舞われた。",
+    "choices": [
+      { "id": "handle_calmly", "label": "冷静に対処する", "baseWeight": 9, "traitWeights": { "caution": 0.3 },
+        "effects": { "health": -6 }, "resultText": "{name}は落ち着いて事態を切り抜けた。" },
+      { "id": "panic", "label": "とっさに動いて怪我をする", "baseWeight": 6, "traitWeights": { "caution": -0.2, "bravery": -0.1 },
+        "effects": { "health": -15 }, "resultText": "{name}はとっさの判断を誤り、大きな怪我を負った。", "importance": "major" }
+    ]
+  },
+  {
+    "id": "reinc_past_life_flash", "title": "前世の記憶の残滓", "category": "reincarnator", "eventType": "normal", "unique": true,
+    "ageRange": { "min": 5, "max": 40 }, "baseWeight": 5,
+    "text": "ふとした瞬間、{name}の脳裏に見知らぬ景色の記憶がよぎった。",
+    "choices": [
+      { "id": "embrace_memory", "label": "その記憶を心に留める", "baseWeight": 10, "traitWeights": { "curiosity": 0.2 },
+        "effects": { "abilities": { "intelligence": 1, "sensitivity": 1 }, "flagsAdd": ["past_life_awareness"] },
+        "resultText": "{name}は説明のつかないその記憶を、そっと胸にしまった。" }
+    ]
+  },
+  {
+    "id": "reinc_strange_luck", "title": "異様なまでの強運", "category": "reincarnator", "eventType": "normal", "unique": true,
+    "ageRange": { "min": 10, "max": 60 }, "baseWeight": 5,
+    "text": "{name}にまつわる不思議なほどの幸運の噂が、周囲でささやかれ始めた。",
+    "choices": [
+      { "id": "let_rumor_grow", "label": "噂を否定せずにおく", "baseWeight": 10, "traitWeights": { "self_interest": 0.1 },
+        "effects": { "abilities": { "luck": 3 }, "tagsAdd": ["rumored_lucky"] }, "resultText": "{name}にまつわる強運の噂が広まっていった。" }
+    ]
+  }
+]

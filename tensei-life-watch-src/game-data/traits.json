@@ -1,0 +1,22 @@
+{
+  "abilities": [
+    { "id": "physical", "label": "身体" },
+    { "id": "intelligence", "label": "知性" },
+    { "id": "social", "label": "社交" },
+    { "id": "willpower", "label": "意志" },
+    { "id": "sensitivity", "label": "感受性" },
+    { "id": "luck", "label": "運" }
+  ],
+  "traits": [
+    { "id": "bravery", "label": "勇敢" },
+    { "id": "caution", "label": "慎重" },
+    { "id": "ambition", "label": "野心" },
+    { "id": "altruism", "label": "利他" },
+    { "id": "self_interest", "label": "利己" },
+    { "id": "curiosity", "label": "好奇心" },
+    { "id": "loyalty", "label": "忠誠" },
+    { "id": "faith", "label": "信仰" },
+    { "id": "family_orientation", "label": "家族愛" },
+    { "id": "persistence", "label": "執念" }
+  ]
+}

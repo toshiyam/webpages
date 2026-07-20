@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="description" content="異世界へ送り込んだ転生者の人生を観測する放置型ブラウザゲーム（開発版UI）。">
+<title>転生者観測日誌（開発版）</title>
+<link rel="stylesheet" href="./web-ui/styles.css">
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <span class="icon">🌌</span>
+      <div>
+        <h1>転生者観測日誌</h1>
+        <div class="genline" id="genLine">読み込み中...</div>
+      </div>
+    </div>
+    <button class="small" id="resetBtn" type="button" title="全データを削除してやり直す">初期化</button>
+  </header>
+
+  <div id="bannerBox"></div>
+
+  <nav class="tabs" id="tabNav" hidden>
+    <button type="button" data-tab="observe" class="active">観測</button>
+    <button type="button" data-tab="log">人生記録</button>
+    <button type="button" data-tab="world">世界</button>
+  </nav>
+
+  <section id="screenStart">
+    <div class="card">
+      <h2>転生の準備 <span class="sub">新しい転生者を送り込む</span></h2>
+      <div id="candidateBox"></div>
+      <div class="btnrow single">
+        <button class="primary" id="startBtn" type="button">この人物で転生を開始</button>
+      </div>
+      <div class="btnrow single">
+        <button class="secondary" id="rerollBtn" type="button">別の人物を見る</button>
+      </div>
+    </div>
+    <div class="card" id="pastLivesCard" hidden>
+      <h2>これまでの転生 <span class="sub" id="pastLivesCount"></span></h2>
+      <div class="pastlives" id="pastLivesList"></div>
+    </div>
+    <div class="card">
+      <details class="simpanel">
+        <summary>開発者向け: バランス検証（高速シミュレーション）</summary>
+        <div class="btnrow single">
+          <button class="secondary small" id="simBtn" type="button">300人生を高速実行して統計を見る</button>
+        </div>
+        <div class="simresult" id="simResult"></div>
+      </details>
+    </div>
+  </section>
+
+  <section id="screenObserve" hidden>
+    <div class="card">
+      <h2 id="charTitle">観測対象</h2>
+      <div class="rowline"><span class="k">年齢</span><span class="v" id="ovAge"></span></div>
+      <div class="rowline"><span class="k">職業</span><span class="v" id="ovOcc"></span></div>
+      <div class="rowline"><span class="k">健康</span><span class="v" id="ovHealth"></span></div>
+      <div class="rowline"><span class="k">所持金</span><span class="v" id="ovMoney"></span></div>
+      <div class="rowline"><span class="k">出身</span><span class="v" id="ovRegion"></span></div>
+    </div>
+    <div class="card">
+      <h2>基礎能力</h2>
+      <div class="barlist" id="abilityBars"></div>
+    </div>
+    <div class="card">
+      <h2>性格傾向 <span class="sub">濃い値ほど強い傾向</span></h2>
+      <div class="traitgrid" id="traitGrid"></div>
+    </div>
+    <div class="card">
+      <h2>人間関係 <span class="sub" id="relCount"></span></h2>
+      <div class="relchips" id="relChips"></div>
+      <div class="empty" id="relEmpty" hidden>まだ深い関係を築いていない。</div>
+    </div>
+    <div class="card">
+      <h2>最新ログ</h2>
+      <div class="loglist" id="latestLog"></div>
+    </div>
+    <div class="card">
+      <h2>時間進行</h2>
+      <div class="rowline"><span class="k">状態</span><span class="v" id="timeState">停止中</span></div>
+      <div class="btnrow">
+        <button class="secondary" id="playPauseBtn" type="button">再生</button>
+        <button class="secondary" id="advanceBtn" type="button">1年進める</button>
+      </div>
+      <div class="speedrow" id="speedRow"></div>
+    </div>
+  </section>
+
+  <section id="screenLog" hidden>
+    <div class="card">
+      <h2>人生記録 <span class="sub" id="logSpan"></span></h2>
+      <div class="logfilter">
+        <button class="small active" data-filter="all" type="button">すべて</button>
+        <button class="small" data-filter="major" type="button">転機以上</button>
+        <button class="small" data-filter="historic" type="button">歴史的</button>
+      </div>
+      <div class="loglist" id="fullLog"></div>
+      <div class="empty" id="logEmpty" hidden>まだ記録がない。</div>
+    </div>
+  </section>
+
+  <section id="screenWorld" hidden>
+    <div class="card">
+      <h2>世界の状態</h2>
+      <div class="rowline"><span class="k">暦</span><span class="v" id="wYear"></span></div>
+      <div class="rowline"><span class="k">情勢</span><span class="v" id="wUnrest"></span></div>
+      <div class="rowline"><span class="k">これまでの転生数</span><span class="v" id="wLifetimes"></span></div>
+      <div class="rowline"><span class="k">最終保存</span><span class="v" id="wSaved"></span></div>
+    </div>
+    <div class="card">
+      <h2>転生履歴</h2>
+      <div class="pastlives" id="pastLivesList2"></div>
+    </div>
+  </section>
+
+  <section id="screenDeath" hidden>
+    <div class="card deathwrap">
+      <div class="causebadge" id="deathCause"></div>
+      <h2 id="deathName"></h2>
+      <div class="summarytext" id="deathSummary"></div>
+      <div class="btnrow single">
+        <button class="primary" id="nextLifeBtn" type="button">次の転生を開始</button>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">性格と状況に基づく重み付き抽選で人生が自動進行する観測ゲームです。LLMは使用していません。ゲームロジックは game-engine/ に、データは game-data/ に分離されています。</footer>
+</div>
+
+<script type="module" src="./web-ui/main.js"></script>
+</body>
+</html>
