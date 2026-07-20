@@ -1,0 +1,15 @@
+{
+  "elements": [
+    { "id": "modern_knowledge", "label": "前世の現代知識", "weight": 1 },
+    { "id": "divine_mission", "label": "神から与えられた使命", "weight": 1 },
+    { "id": "cursed_soul", "label": "魂に刻まれた呪い", "weight": 1 },
+    { "id": "magic_affinity", "label": "異常に高い魔法適性", "weight": 1 },
+    { "id": "monster_affinity", "label": "魔物との親和性", "weight": 1 },
+    { "id": "hero_mark", "label": "勇者候補の証", "weight": 1 },
+    { "id": "demon_mark", "label": "魔王候補の証", "weight": 1 },
+    { "id": "past_life_memory", "label": "前世の記憶を保持", "weight": 1 },
+    { "id": "return_desire", "label": "元の世界への帰還願望", "weight": 1 },
+    { "id": "none", "label": "特別な要素なし", "weight": 4 }
+  ],
+  "secondaryChance": 0.15
+}

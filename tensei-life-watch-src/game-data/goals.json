@@ -1,0 +1,16 @@
+{
+  "goals": [
+    { "id": "become_hero", "label": "英雄として名を残す", "traitWeights": { "bravery": 0.4, "ambition": 0.3 }, "contextWeights": { "element_hero_mark": 20 } },
+    { "id": "become_king", "label": "王になる", "traitWeights": { "ambition": 0.5, "persistence": 0.2 }, "contextWeights": {} },
+    { "id": "defeat_demon_lord", "label": "魔王を倒す", "traitWeights": { "bravery": 0.4, "altruism": 0.3 }, "contextWeights": { "element_divine_mission": 20, "element_hero_mark": 15 } },
+    { "id": "become_demon_lord", "label": "魔王になる", "traitWeights": { "self_interest": 0.4, "ambition": 0.3 }, "contextWeights": { "element_demon_mark": 25, "element_cursed_soul": 12 } },
+    { "id": "protect_family", "label": "家族を守る", "traitWeights": { "family_orientation": 0.5, "loyalty": 0.2 }, "contextWeights": {} },
+    { "id": "see_world_end", "label": "世界の果てを見る", "traitWeights": { "curiosity": 0.5 }, "contextWeights": {} },
+    { "id": "unravel_magic", "label": "魔法を解明する", "traitWeights": { "curiosity": 0.4, "persistence": 0.2 }, "contextWeights": { "element_magic_affinity": 20, "element_modern_knowledge": 12 } },
+    { "id": "deny_god", "label": "神を否定する", "traitWeights": { "faith": -0.3, "persistence": 0.3 }, "contextWeights": {} },
+    { "id": "pursue_revenge", "label": "復讐を遂げる", "traitWeights": { "persistence": 0.5, "self_interest": 0.2 }, "contextWeights": { "element_cursed_soul": 18 } },
+    { "id": "become_immortal", "label": "不老不死になる", "traitWeights": { "ambition": 0.3, "curiosity": 0.3 }, "contextWeights": { "element_magic_affinity": 12 } },
+    { "id": "return_home", "label": "元の世界へ帰る", "traitWeights": { "caution": 0.2 }, "contextWeights": { "element_return_desire": 25, "element_past_life_memory": 10 } },
+    { "id": "protect_peace", "label": "平穏な生活を守る", "traitWeights": { "caution": 0.4, "family_orientation": 0.3 }, "contextWeights": {} }
+  ]
+}

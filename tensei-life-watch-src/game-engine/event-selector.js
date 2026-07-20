@@ -1,8 +1,16 @@
 import { rand, weightedPick } from './rng.js';
 
-// 性格フラグ・状況フラグ・低健康/低所持金などを1つのコンテキスト集合にまとめる。
+function fieldPasses(value, rule) {
+  if (typeof rule.gte === 'number' && value < rule.gte) return false;
+  if (typeof rule.lte === 'number' && value > rule.lte) return false;
+  return true;
+}
+
+// 性格フラグ・状況フラグ・世界状態由来のフラグ・現在の生涯目標を1つのコンテキスト集合にまとめる。
 // イベントの requiredFlags / excludedFlags / choice.contextWeights から共通の語彙として参照される。
-export function buildContextSet(character, relations) {
+// 特殊要素は character.flags に 'element_<id>' として、生涯目標は 'goal_<id>' として
+// 既に載っているため、新しい条件構文を増やさずに既存の仕組みだけで参照できる。
+export function buildContextSet(character, relations, world, worldFlagThresholds) {
   var ctx = {};
   character.flags.forEach(function (f) { ctx[f] = true; });
   if (character.health < 40) ctx.low_health = true;
@@ -10,6 +18,19 @@ export function buildContextSet(character, relations) {
   if (relations.length > 0) ctx.has_any_relation = true;
   if (relations.some(function (r) { return r.type === 'partner'; })) ctx.has_partner_rel = true;
   if (relations.some(function (r) { return r.type === 'spouse'; })) ctx.is_married = true;
+
+  if (character.goal && character.goal.status === 'active') {
+    ctx['goal_' + character.goal.id] = true;
+  }
+
+  if (world && worldFlagThresholds) {
+    Object.keys(worldFlagThresholds).forEach(function (flagName) {
+      var rule = worldFlagThresholds[flagName];
+      var value = world[rule.field];
+      if (typeof value === 'number' && fieldPasses(value, rule)) ctx[flagName] = true;
+    });
+  }
+
   return ctx;
 }
 
@@ -25,6 +46,7 @@ export function eventEligible(evt, character, ctx, worldYear) {
     if (cond.occupations && cond.occupations.indexOf(character.occupation) === -1) return false;
     if (cond.requiredFlags && !cond.requiredFlags.every(function (f) { return ctx[f]; })) return false;
     if (cond.excludedFlags && cond.excludedFlags.some(function (f) { return ctx[f]; })) return false;
+    if (cond.anyOfFlags && !cond.anyOfFlags.some(function (f) { return ctx[f]; })) return false;
     if (cond.minAbility) {
       for (var k in cond.minAbility) {
         if (character.abilities[k] < cond.minAbility[k]) return false;

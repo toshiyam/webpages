@@ -38,8 +38,38 @@ export function applyRelationEffect(relations, namePool, relEffect) {
   }
 }
 
-// イベント選択肢の effects を転生者・人間関係へ反映する。
-export function applyEffects(character, relations, namePool, effects) {
+// 生涯目標の形成・進捗・状態変化を扱う。goal: {id, label} を渡すと未設定時のみ新規形成する
+// （既に目標を持つ転生者に対しては上書きしない。目標の変質は goalStatus:'distorted' と
+// 新しい goal を組み合わせて表現する）。
+export function applyGoalEffect(character, worldYear, goalEffect, goalProgressDelta, goalStatus) {
+  if (goalEffect && !character.goal) {
+    character.goal = {
+      id: goalEffect.id, label: goalEffect.label, status: 'active',
+      formedAtAge: character.age, progress: 0, resolvedAtAge: null
+    };
+  }
+  if (character.goal && typeof goalProgressDelta === 'number') {
+    character.goal.progress = clamp(character.goal.progress + goalProgressDelta, 0, 100);
+  }
+  if (character.goal && goalStatus) {
+    character.goal.status = goalStatus;
+    character.goal.resolvedAtAge = character.age;
+  }
+}
+
+export function applyWorldEffect(world, bounds, worldEffect) {
+  if (!worldEffect) return;
+  var lo = (bounds && bounds.min) || 0;
+  var hi = (bounds && bounds.max) || 100;
+  for (var k in worldEffect) {
+    if (typeof world[k] === 'number') {
+      world[k] = clamp(world[k] + worldEffect[k], lo, hi);
+    }
+  }
+}
+
+// イベント選択肢の effects を転生者・人間関係・生涯目標・世界状態へ反映する。
+export function applyEffects(character, relations, world, worldBounds, namePool, effects) {
   if (!effects) return;
   if (effects.abilities) {
     for (var k in effects.abilities) {
@@ -48,6 +78,7 @@ export function applyEffects(character, relations, namePool, effects) {
   }
   if (typeof effects.health === 'number') character.health = clamp(character.health + effects.health, 0, 100);
   if (typeof effects.money === 'number') character.money = Math.max(0, character.money + effects.money);
+  if (typeof effects.fame === 'number') character.fame = clamp(character.fame + effects.fame, 0, 100);
   if (effects.occupation) character.occupation = effects.occupation;
   if (effects.flagsAdd) {
     effects.flagsAdd.forEach(function (f) {
@@ -66,4 +97,8 @@ export function applyEffects(character, relations, namePool, effects) {
     });
   }
   if (effects.relation) applyRelationEffect(relations, namePool, effects.relation);
+  if (effects.goal || typeof effects.goalProgress === 'number' || effects.goalStatus) {
+    applyGoalEffect(character, character.age, effects.goal, effects.goalProgress, effects.goalStatus);
+  }
+  if (effects.world) applyWorldEffect(world, worldBounds, effects.world);
 }

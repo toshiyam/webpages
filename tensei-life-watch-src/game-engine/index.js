@@ -4,6 +4,7 @@ export * from './event-selector.js';
 export * from './decision-engine.js';
 export * from './effect-processor.js';
 export * from './mortality.js';
+export * from './life-rank.js';
 export * from './time-processor.js';
 export * from './summary-generator.js';
 export * from './load-data.js';
