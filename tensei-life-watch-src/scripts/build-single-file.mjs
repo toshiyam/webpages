@@ -37,6 +37,7 @@ var ENGINE_FILES = [
   'game-engine/effect-processor.js',
   'game-engine/mortality.js',
   'game-engine/life-rank.js',
+  'game-engine/consistency.js',
   'game-engine/time-processor.js',
   'game-engine/summary-generator.js',
   'game-engine/load-data.js',

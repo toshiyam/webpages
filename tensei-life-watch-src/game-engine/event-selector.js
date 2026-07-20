@@ -56,8 +56,12 @@ export function eventEligible(evt, character, ctx, worldYear) {
   return true;
 }
 
+export function filterEligibleEvents(events, character, ctx, worldYear) {
+  return events.filter(function (evt) { return eventEligible(evt, character, ctx, worldYear); });
+}
+
 export function pickEvent(events, character, ctx, worldYear) {
-  var eligible = events.filter(function (evt) { return eventEligible(evt, character, ctx, worldYear); });
+  var eligible = filterEligibleEvents(events, character, ctx, worldYear);
   if (eligible.length === 0) return null;
   return weightedPick(eligible, function (evt) { return (evt.baseWeight || 1) + rand(0, 5); });
 }

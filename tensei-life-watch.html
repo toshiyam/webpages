@@ -4221,6 +4221,22 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
         "effects": { "goalResolution": { "ids": ["return_home"], "status": "distorted" } },
         "resultText": "{name}は帰る道を見つけられぬまま、この世界で生きていくことを受け入れた。", "importance": "major" }
     ]
+  },
+
+  {
+    "id": "goal_check_unravel_magic", "title": "魔法の探求の果てに", "category": "goal", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 30, "max": 70 }, "baseWeight": 8,
+    "conditions": { "requiredFlags": ["goal_unravel_magic"] },
+    "text": "{name}は長年続けてきた魔法の探求が、ひとつの結論に至ろうとしていた。",
+    "choices": [
+      { "id": "magic_unraveled", "label": "ついに魔法の理を解き明かす", "baseWeight": 7, "traitWeights": { "curiosity": 0.4, "persistence": 0.2 },
+        "contextWeights": { "element_magic_affinity": 18, "element_modern_knowledge": 10 },
+        "effects": { "goalResolution": { "ids": ["unravel_magic"], "status": "completed" }, "abilities": { "intelligence": 3 } },
+        "resultText": "{name}はついに、長年追い求めてきた魔法の理を解き明かした。", "importance": "historic" },
+      { "id": "magic_remains_a_mystery", "label": "魔法はついに謎のまま残る", "baseWeight": 9, "traitWeights": { "caution": 0.1 },
+        "effects": { "goalResolution": { "ids": ["unravel_magic"], "status": "failed" } },
+        "resultText": "{name}の探求も及ばず、魔法は結局謎のまま残された。", "importance": "major" }
+    ]
   }
 ];
   var __ELEMENTS_JSON__ = {
@@ -4416,8 +4432,12 @@ function eventEligible(evt, character, ctx, worldYear) {
   return true;
 }
 
+function filterEligibleEvents(events, character, ctx, worldYear) {
+  return events.filter(function (evt) { return eventEligible(evt, character, ctx, worldYear); });
+}
+
 function pickEvent(events, character, ctx, worldYear) {
-  var eligible = events.filter(function (evt) { return eventEligible(evt, character, ctx, worldYear); });
+  var eligible = filterEligibleEvents(events, character, ctx, worldYear);
   if (eligible.length === 0) return null;
   return weightedPick(eligible, function (evt) { return (evt.baseWeight || 1) + rand(0, 5); });
 }
@@ -4521,6 +4541,12 @@ function applyGoalResolution(character, goalResolution) {
   if (goalResolution.status) {
     character.goal.status = goalResolution.status;
     character.goal.resolvedAtAge = character.age;
+    // 「達成」は定義上、進捗100%を意味する。個々のイベントで100まで
+    // 積み上げ忘れても、完遂と未完了の進捗値が矛盾した状態
+    // （例: 状態=達成なのに進捗30%）を作らないようにここで確定させる。
+    if (goalResolution.status === 'completed') {
+      character.goal.progress = 100;
+    }
   }
 }
 
@@ -4682,6 +4708,117 @@ function lifeRankLabel(rank) {
 // 「ほぼ何も起きない人生」判定: 目標を持たず、アークにも入らず、実績タグも無い。
 function hadNothingHappen(character) {
   return !character.goal && !hasEnteredAnyArc(character) && character.tags.length === 0;
+}
+
+  /* ---- game-engine/consistency.js ---- */
+var ABILITY_IDS = ['physical', 'intelligence', 'social', 'willpower', 'sensitivity', 'luck'];
+
+// --- 自己テスト ---------------------------------------------------------
+// 「対象外の目標を完遂扱いにした人生」「目標がないのに goalStatus が適用された
+// イベント」は、applyGoalResolution の ids ガードによって実行時には構造的に
+// 発生し得ない。1,000人生を乱数で回しても再現できない（起こらないことを
+// 確かめようがない）性質のバグなので、境界条件を直接叩く自己テストとして
+// 常に実行し、回帰があれば即座に失敗させる。
+function runGoalResolutionSelfTests() {
+  var results = [];
+
+  function check(name, fn) {
+    var passed;
+    try { passed = !!fn(); } catch (e) { passed = false; }
+    results.push({ name: name, passed: passed });
+  }
+
+  check('対象外の目標は状態変更されない', function () {
+    var character = { age: 30, goal: { id: 'protect_family', label: '家族を守る', status: 'active', progress: 40, resolvedAtAge: null } };
+    applyGoalResolution(character, { ids: ['become_king'], status: 'completed' });
+    return character.goal.status === 'active' && character.goal.progress === 40;
+  });
+
+  check('一致する目標は状態変更される', function () {
+    var character = { age: 30, goal: { id: 'become_king', label: '王になる', status: 'active', progress: 40, resolvedAtAge: null } };
+    applyGoalResolution(character, { ids: ['become_king'], status: 'completed' });
+    return character.goal.status === 'completed';
+  });
+
+  check('目標が無ければ goalStatus は無視される', function () {
+    var character = { age: 30, goal: null };
+    applyGoalResolution(character, { ids: ['become_king'], status: 'completed' });
+    return character.goal === null;
+  });
+
+  check('completed は progress を必ず100にする', function () {
+    var character = { age: 30, goal: { id: 'unravel_magic', label: '魔法を解明する', status: 'active', progress: 10, resolvedAtAge: null } };
+    applyGoalResolution(character, { ids: ['unravel_magic'], status: 'completed' });
+    return character.goal.progress === 100;
+  });
+
+  check('failed は progress を上書きしない', function () {
+    var character = { age: 30, goal: { id: 'unravel_magic', label: '魔法を解明する', status: 'active', progress: 55, resolvedAtAge: null } };
+    applyGoalResolution(character, { ids: ['unravel_magic'], status: 'failed' });
+    return character.goal.status === 'failed' && character.goal.progress === 55;
+  });
+
+  check('既に目標がある場合、新規形成は上書きしない', function () {
+    var character = { age: 20, goal: { id: 'protect_family', label: '家族を守る', status: 'active', progress: 0, resolvedAtAge: null } };
+    applyGoalFormation(character, { id: 'become_king', label: '王になる' });
+    return character.goal.id === 'protect_family';
+  });
+
+  return results;
+}
+
+// --- 静的チェック（game-data/events.json 全体を1回だけ検証） -------------
+
+// traitWeights に能力値のキー（性格軸ではないもの）が紛れていないかを確認する。
+// character.traits に存在しないキーは黙って無視されるため、実行時エラーには
+// ならないが意図した補正が効かなくなる。
+function findAbilityKeysInTraitWeights(events) {
+  var violations = [];
+  events.forEach(function (evt) {
+    (evt.choices || []).forEach(function (choice) {
+      var tw = choice.traitWeights;
+      if (!tw) return;
+      Object.keys(tw).forEach(function (k) {
+        if (ABILITY_IDS.indexOf(k) >= 0) {
+          violations.push({ eventId: evt.id, choiceId: choice.id, key: k });
+        }
+      });
+    });
+  });
+  return violations;
+}
+
+// goalResolution に ids が無いと、意図せず「現在の目標が何であれ状態変更する」
+// 挙動になってしまう（issue #5 問題1の再発経路）。ids必須を静的に強制する。
+function findGoalResolutionWithoutIds(events) {
+  var violations = [];
+  events.forEach(function (evt) {
+    (evt.choices || []).forEach(function (choice) {
+      var gr = choice.effects && choice.effects.goalResolution;
+      if (gr && !Array.isArray(gr.ids)) {
+        violations.push({ eventId: evt.id, choiceId: choice.id });
+      }
+    });
+  });
+  return violations;
+}
+
+function runStaticConsistencyChecks(events) {
+  return {
+    abilityKeysInTraitWeights: findAbilityKeysInTraitWeights(events),
+    goalResolutionWithoutIds: findGoalResolutionWithoutIds(events)
+  };
+}
+
+// --- 人生ごとの整合性チェック --------------------------------------------
+
+// 「状態=達成なのに進捗が100%未満」という、意味的に矛盾した最終状態が
+// 生成されていないかを確認する（issue #5 で実際に検出されたバグそのもの）。
+function findGoalProgressViolation(character) {
+  if (character.goal && character.goal.status === 'completed' && character.goal.progress !== 100) {
+    return { goalId: character.goal.id, progress: character.goal.progress };
+  }
+  return null;
 }
 
   /* ---- game-engine/time-processor.js ---- */
@@ -4930,9 +5067,28 @@ function buildDataBundle(traitsJson, occupationsJson, worldJson, eventsJson, ele
   /* ---- game-engine/simulate.js ---- */
 var MAX_LIFE_YEARS = 130;
 
+// 各イベントが、どの生涯目標を決着させ得るか（goalResolution.ids）のマップを作る。
+// 「目標形成後に対応イベントが一度も候補にならない目標」を検出するのに使う。
+function buildGoalResolutionEventMap(events) {
+  var map = {}; // goalId -> [eventId, ...]
+  events.forEach(function (evt) {
+    (evt.choices || []).forEach(function (choice) {
+      var gr = choice.effects && choice.effects.goalResolution;
+      if (!gr || !Array.isArray(gr.ids)) return;
+      gr.ids.forEach(function (goalId) {
+        if (!map[goalId]) map[goalId] = [];
+        if (map[goalId].indexOf(evt.id) === -1) map[goalId].push(evt.id);
+      });
+    });
+  });
+  return map;
+}
+
 // UIを介さず、同じゲームエンジンで1人の人生を最後まで実行する。
 // ブラウザの高速シミュレーションパネルと Node の CLI (scripts/simulate-cli.js) の両方から使われる。
-function simulateOneLife(data) {
+// goalResolutionEventMap を渡すと、生涯目標の決着イベントが一度でも候補に
+// なったかどうか（到達可能性）も追跡する。
+function simulateOneLife(data, goalResolutionEventMap) {
   var character = generateCharacter(data);
   var relations = [];
   var world = Object.assign({}, data.initialWorld);
@@ -4940,19 +5096,31 @@ function simulateOneLife(data) {
   var eventCounts = {};
   var married = false;
   var deathInfo = null;
+  var eligibleEverSeen = {};
 
   for (var i = 0; i < MAX_LIFE_YEARS; i++) {
+    if (goalResolutionEventMap && character.goal && character.goal.status === 'active') {
+      var ctx = buildContextSet(character, relations, world, data.worldFlagThresholds);
+      filterEligibleEvents(data.events, character, ctx, world.yearEra).forEach(function (evt) {
+        eligibleEverSeen[evt.id] = true;
+      });
+    }
+
     var result = simulateYear(gameState, data);
     result.logs.forEach(function (l) { eventCounts[l.eventId] = (eventCounts[l.eventId] || 0) + 1; });
     if (character.flags.indexOf('married') >= 0) married = true;
     if (result.died) { deathInfo = result.deathInfo; break; }
   }
 
-  // 自然ドリフトや前の転生者の遺産を含む世界の生の値ではなく、この人生の
-  // イベント効果だけが積算される character.worldImpact を判定に使う。
   var worldImpact = Object.keys(character.worldImpact).some(function (key) {
     return Math.abs(character.worldImpact[key]) >= 12;
   });
+
+  var goalResolutionReachable = null;
+  if (goalResolutionEventMap && character.goal) {
+    var resolverIds = goalResolutionEventMap[character.goal.id] || [];
+    goalResolutionReachable = resolverIds.some(function (id) { return eligibleEverSeen[id]; });
+  }
 
   return {
     lifespan: character.age,
@@ -4960,23 +5128,30 @@ function simulateOneLife(data) {
     cause: deathInfo ? deathInfo.cause : 'aging',
     married: married,
     tags: character.tags.slice(),
-    hasGoal: !!character.goal,
-    goalStatus: character.goal ? character.goal.status : null,
+    goal: character.goal ? {
+      id: character.goal.id, status: character.goal.status, progress: character.goal.progress,
+      reachable: goalResolutionReachable
+    } : null,
     enteredArc: hasEnteredAnyArc(character),
     reachedArcClimax: hasReachedArcClimax(character),
     lifeRank: determineLifeRank(character),
     worldImpact: worldImpact,
+    worldImpactByField: character.worldImpact,
     nothingHappened: hadNothingHappen(character),
+    goalProgressViolation: findGoalProgressViolation(character),
     eventCounts: eventCounts
   };
 }
 
+var WORLD_FIELDS = ['stability', 'warThreat', 'demonThreat', 'religiousInfluence', 'techLevel', 'economy'];
+
 // バランス検証: 複数人生を高速実行し、平均寿命・職業到達率・死因分布・結婚率・
-// 生涯目標形成率・アーク突入率／到達率・世界影響率・人生ランク分布・
-// 各イベントの発生回数（=未発生イベントの検出にも使える）を集計する。
+// 目標別統計・人生アーク突入率／到達率・世界影響統計・人生ランク分布・
+// 整合性違反・各イベントの発生回数（=未発生イベントの検出にも使える）を集計する。
 function runBatchSimulation(data, n) {
+  var goalResolutionEventMap = buildGoalResolutionEventMap(data.events);
   var results = [];
-  for (var i = 0; i < n; i++) results.push(simulateOneLife(data));
+  for (var i = 0; i < n; i++) results.push(simulateOneLife(data, goalResolutionEventMap));
 
   var lifespans = results.map(function (r) { return r.lifespan; });
   var avgLifespan = lifespans.reduce(function (a, b) { return a + b; }, 0) / results.length;
@@ -4986,40 +5161,90 @@ function runBatchSimulation(data, n) {
   var eventTotals = {};
   var rankCounts = {};
   var marriedCount = 0;
-  var goalCount = 0;
-  var goalResolvedCount = 0;
   var arcEnteredCount = 0;
   var arcClimaxCount = 0;
   var worldImpactCount = 0;
   var nothingHappenedCount = 0;
+
+  // 目標別統計: 形成数/完遂数/失敗数/放棄数/変質数/未決着数/平均進捗/到達不能だった数
+  var goalStats = {};
+  function goalBucket(id) {
+    if (!goalStats[id]) {
+      goalStats[id] = { formed: 0, completed: 0, failed: 0, abandoned: 0, distorted: 0, unresolved: 0, progressTotal: 0, unreachableWhileActive: 0 };
+    }
+    return goalStats[id];
+  }
+
+  // 世界影響統計: 項目別の平均寄与（自然ドリフトは含まない。character.worldImpact のみ）と正負の人数
+  var worldFieldTotals = {};
+  WORLD_FIELDS.forEach(function (f) { worldFieldTotals[f] = 0; });
+  var positiveImpactCount = 0, negativeImpactCount = 0;
+
+  var goalProgressViolations = [];
 
   results.forEach(function (r) {
     occupationCounts[r.occupation] = (occupationCounts[r.occupation] || 0) + 1;
     causeCounts[r.cause] = (causeCounts[r.cause] || 0) + 1;
     rankCounts[r.lifeRank] = (rankCounts[r.lifeRank] || 0) + 1;
     if (r.married) marriedCount += 1;
-    if (r.hasGoal) goalCount += 1;
-    if (r.hasGoal && r.goalStatus !== 'active') goalResolvedCount += 1;
     if (r.enteredArc) arcEnteredCount += 1;
     if (r.reachedArcClimax) arcClimaxCount += 1;
     if (r.worldImpact) worldImpactCount += 1;
     if (r.nothingHappened) nothingHappenedCount += 1;
+    if (r.goalProgressViolation) goalProgressViolations.push(r.goalProgressViolation);
+
+    if (r.goal) {
+      var bucket = goalBucket(r.goal.id);
+      bucket.formed += 1;
+      bucket.progressTotal += r.goal.progress;
+      if (r.goal.status === 'active') {
+        bucket.unresolved += 1;
+        if (r.goal.reachable === false) bucket.unreachableWhileActive += 1;
+      } else if (bucket[r.goal.status] !== undefined) {
+        bucket[r.goal.status] += 1;
+      }
+    }
+
+    var fieldSum = 0;
+    WORLD_FIELDS.forEach(function (f) {
+      var v = r.worldImpactByField[f] || 0;
+      worldFieldTotals[f] += v;
+      fieldSum += v;
+    });
+    if (fieldSum >= 12) positiveImpactCount += 1;
+    else if (fieldSum <= -12) negativeImpactCount += 1;
+
     Object.keys(r.eventCounts).forEach(function (id) {
       eventTotals[id] = (eventTotals[id] || 0) + r.eventCounts[id];
     });
   });
+
+  Object.keys(goalStats).forEach(function (id) {
+    var b = goalStats[id];
+    b.avgProgress = b.formed > 0 ? b.progressTotal / b.formed : 0;
+    delete b.progressTotal;
+  });
+
+  var worldFieldAvg = {};
+  WORLD_FIELDS.forEach(function (f) { worldFieldAvg[f] = worldFieldTotals[f] / n; });
 
   var firedEventIds = Object.keys(eventTotals);
   var unfiredEvents = data.events
     .map(function (e) { return e.id; })
     .filter(function (id) { return firedEventIds.indexOf(id) === -1; });
 
+  var staticChecks = runStaticConsistencyChecks(data.events);
+  var selfTests = runGoalResolutionSelfTests();
+
+  var unreachableGoalResolution = {};
+  Object.keys(goalStats).forEach(function (id) {
+    if (goalStats[id].unreachableWhileActive > 0) unreachableGoalResolution[id] = goalStats[id].unreachableWhileActive;
+  });
+
   return {
     trials: n,
     avgLifespan: avgLifespan,
     marriageRate: marriedCount / n,
-    goalFormationRate: goalCount / n,
-    goalResolutionRate: goalCount > 0 ? goalResolvedCount / goalCount : 0,
     arcEntryRate: arcEnteredCount / n,
     arcClimaxRate: arcClimaxCount / n,
     worldImpactRate: worldImpactCount / n,
@@ -5028,7 +5253,26 @@ function runBatchSimulation(data, n) {
     occupationCounts: occupationCounts,
     causeCounts: causeCounts,
     eventTotals: eventTotals,
-    unfiredEvents: unfiredEvents
+    unfiredEvents: unfiredEvents,
+    goalStats: goalStats,
+    worldImpactStats: {
+      rate: worldImpactCount / n,
+      perFieldAvgContribution: worldFieldAvg,
+      positiveCount: positiveImpactCount,
+      negativeCount: negativeImpactCount
+    },
+    consistency: {
+      selfTests: selfTests,
+      selfTestsAllPassed: selfTests.every(function (t) { return t.passed; }),
+      staticChecks: staticChecks,
+      goalProgressViolations: goalProgressViolations,
+      unreachableGoalResolution: unreachableGoalResolution,
+      totalViolationCount:
+        goalProgressViolations.length +
+        staticChecks.abilityKeysInTraitWeights.length +
+        staticChecks.goalResolutionWithoutIds.length +
+        selfTests.filter(function (t) { return !t.passed; }).length
+    }
   };
 }
 
@@ -5475,16 +5719,40 @@ async function init() {
     setTimeout(function () {
       var stats = runBatchSimulation(data, 300);
       var pct = function (v) { return Math.round(v * 100) + '%'; };
+      var goalLabelOf = {};
+      data.goals.forEach(function (g) { goalLabelOf[g.id] = g.label; });
+
       var lines = [];
       lines.push('試行回数: ' + stats.trials);
       lines.push('平均寿命: ' + stats.avgLifespan.toFixed(1) + '歳');
       lines.push('結婚率: ' + pct(stats.marriageRate));
-      lines.push('生涯目標の形成率: ' + pct(stats.goalFormationRate));
       lines.push('人生アークへの突入率: ' + pct(stats.arcEntryRate));
       lines.push('アーク最終段への到達率: ' + pct(stats.arcClimaxRate));
-      lines.push('世界へ影響を残した率: ' + pct(stats.worldImpactRate));
       lines.push('ほぼ何も起きない人生: ' + pct(stats.nothingHappenedRate));
       lines.push('未発生イベント: ' + (stats.unfiredEvents.length ? stats.unfiredEvents.join(', ') : 'なし'));
+
+      lines.push('');
+      lines.push('[目標別統計] 形成/完遂/失敗/放棄/変質/未決着(内到達不能)/平均進捗');
+      Object.keys(stats.goalStats).sort().forEach(function (id) {
+        var g = stats.goalStats[id];
+        lines.push(
+          (goalLabelOf[id] || id) + ': ' + g.formed + '/' + g.completed + '/' + g.failed + '/' +
+          g.abandoned + '/' + g.distorted + '/' + g.unresolved + '(' + g.unreachableWhileActive + ')/' +
+          g.avgProgress.toFixed(0)
+        );
+      });
+
+      lines.push('');
+      lines.push('[世界影響統計（自然ドリフト除外）]');
+      lines.push('世界へ影響を残した率: ' + pct(stats.worldImpactStats.rate) +
+        '（正' + stats.worldImpactStats.positiveCount + ' / 負' + stats.worldImpactStats.negativeCount + '）');
+
+      lines.push('');
+      lines.push('[整合性検証]');
+      lines.push('自己テスト: ' + stats.consistency.selfTests.filter(function (t) { return t.passed; }).length +
+        '/' + stats.consistency.selfTests.length + ' PASS');
+      lines.push('合計整合性違反件数: ' + stats.consistency.totalViolationCount + (stats.consistency.totalViolationCount === 0 ? '（OK）' : '（要確認）'));
+
       document.getElementById('simResult').textContent = lines.join('\n');
     }, 30);
   });
