@@ -85,12 +85,15 @@ var WORLD_IMPACT_LABELS = {
   religiousInfluence: '宗教の影響力', techLevel: '技術水準', economy: '経済'
 };
 
-function worldImpactPhrase(world, initialWorld) {
+// character.worldImpact は「この人生のイベント効果が実際に世界状態へ与えた
+// 増減の累計」のみを保持している（driftWorld() による自然変動や、前の転生者
+// が残した変化は一切含まれない）。そのため世界の生の値を初期値と比較するの
+// ではなく、必ずこの積算値だけを参照する。
+function worldImpactPhrase(character) {
   var deltas = [];
   Object.keys(WORLD_IMPACT_LABELS).forEach(function (key) {
-    if (typeof world[key] !== 'number' || typeof initialWorld[key] !== 'number') return;
-    var diff = world[key] - initialWorld[key];
-    if (Math.abs(diff) >= 12) deltas.push({ key: key, diff: diff });
+    var diff = character.worldImpact[key];
+    if (typeof diff === 'number' && Math.abs(diff) >= 12) deltas.push({ key: key, diff: diff });
   });
   if (deltas.length === 0) return null;
   var parts = deltas.map(function (d) {
@@ -101,7 +104,7 @@ function worldImpactPhrase(world, initialWorld) {
 
 // LLMを使わず、死因・実績タグ・生涯目標・特殊要素・世界への影響・支配的な性格から
 // テンプレート文を組み合わせて人生要約を生成する（イベントログと状態のみを情報源とする）。
-export function generateSummary(character, relations, deathInfo, world, initialWorld, occupations, traitsDef, deathCauseLabels) {
+export function generateSummary(character, relations, deathInfo, occupations, traitsDef, deathCauseLabels) {
   var name = character.name;
   var parts = [];
   parts.push(name + 'は' + character.age + '歳で、' + deathCauseLabels[deathInfo.cause] + 'によりその生涯を閉じた。');
@@ -130,10 +133,8 @@ export function generateSummary(character, relations, deathInfo, world, initialW
   var dom = dominantTrait(character, traitsDef);
   if (TRAIT_PHRASES[dom]) parts.push(fillName(TRAIT_PHRASES[dom], name));
 
-  if (world && initialWorld) {
-    var impact = worldImpactPhrase(world, initialWorld);
-    if (impact) parts.push(impact);
-  }
+  var impact = worldImpactPhrase(character);
+  if (impact) parts.push(impact);
 
   var rank = determineLifeRank(character);
   parts.push('後世の評価: ' + lifeRankLabel(rank) + '。');

@@ -48,6 +48,7 @@ export function generateCharacter(data) {
     elements: elements,
     goal: null,
     fame: 0,
+    worldImpact: {},
     flags: flags,
     tags: [],
     firedUnique: {},

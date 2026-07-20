@@ -7,7 +7,7 @@ function esc(s) {
   return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; });
 }
 
-var SCHEMA_VERSION = 2;
+var SCHEMA_VERSION = 3;
 var STORAGE_KEY = 'tenseiLifeWatch:v1';
 var MAX_OFFLINE_YEARS = 300;
 
@@ -68,13 +68,14 @@ function freshState() {
   };
 }
 
-// schemaVersion 1 (要素/生涯目標/世界状態の拡張前) の保存データを、
-// 新しいフィールドを補いながら壊さずに引き継ぐ。
+// schemaVersion 1 (要素/生涯目標/世界状態の拡張前) や 2 (worldImpact集計の
+// 追加前) の保存データを、新しいフィールドを補いながら壊さずに引き継ぐ。
 function migrateCharacter(character) {
   if (!character) return character;
   if (!Array.isArray(character.elements)) character.elements = [];
   if (character.goal === undefined) character.goal = null;
   if (typeof character.fame !== 'number') character.fame = 0;
+  if (!character.worldImpact || typeof character.worldImpact !== 'object') character.worldImpact = {};
   return character;
 }
 
@@ -87,7 +88,7 @@ function migrateWorld(world) {
 }
 
 function migrateState(raw) {
-  if (raw.schemaVersion === 1) {
+  if (raw.schemaVersion === 1 || raw.schemaVersion === 2) {
     migrateCharacter(raw.character);
     migrateCharacter(raw.candidate);
     migrateWorld(raw.world);
@@ -98,7 +99,7 @@ function migrateState(raw) {
 
 function sanitizeLoaded(raw) {
   if (!raw || typeof raw !== 'object') return null;
-  if (raw.schemaVersion !== SCHEMA_VERSION && raw.schemaVersion !== 1) return null;
+  if (raw.schemaVersion !== SCHEMA_VERSION && raw.schemaVersion !== 1 && raw.schemaVersion !== 2) return null;
   try {
     raw = migrateState(raw);
     if (raw.character) {
@@ -186,8 +187,7 @@ function finishLife(deathInfo) {
   isPlaying = false;
   stopTimer();
   var summary = generateSummary(
-    state.character, state.relations, deathInfo, state.world, data.initialWorld,
-    data.occupations, data.traits, data.deathCauseLabels
+    state.character, state.relations, deathInfo, data.occupations, data.traits, data.deathCauseLabels
   );
   state.pastLives.unshift({
     name: state.character.name, age: state.character.age,
