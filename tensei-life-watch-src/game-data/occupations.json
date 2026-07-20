@@ -1,0 +1,31 @@
+{
+  "occupations": {
+    "unemployed": "無職",
+    "farmer": "農民",
+    "apprentice": "職人見習い",
+    "artisan": "職人",
+    "merchant": "商人",
+    "soldier": "兵士",
+    "adventurer": "冒険者",
+    "official": "役人",
+    "priest": "聖職者",
+    "thief": "盗賊"
+  },
+  "income": {
+    "unemployed": 1,
+    "farmer": 3,
+    "apprentice": 2,
+    "artisan": 6,
+    "merchant": 8,
+    "soldier": 5,
+    "adventurer": 4,
+    "official": 7,
+    "priest": 3,
+    "thief": 5
+  },
+  "risk": {
+    "soldier": 0.02,
+    "adventurer": 0.025,
+    "thief": 0.02
+  }
+}

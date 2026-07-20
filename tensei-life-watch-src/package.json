@@ -1,0 +1,10 @@
+{
+  "name": "iseten",
+  "version": "0.1.0",
+  "private": true,
+  "description": "異世界転生・人生観測放置ゲーム MVP",
+  "type": "module",
+  "scripts": {
+    "simulate": "node scripts/simulate-cli.js"
+  }
+}
