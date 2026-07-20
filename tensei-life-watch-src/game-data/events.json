@@ -540,8 +540,7 @@
         "label": "諦めて逃げ出す",
         "baseWeight": 6,
         "traitWeights": {
-          "caution": 0.3,
-          "willpower": -0.1
+          "caution": 0.3
         },
         "effects": {
           "occupation": "unemployed",
@@ -550,7 +549,10 @@
           ]
         },
         "resultText": "{name}は工房を飛び出し、行方をくらませた。",
-        "importance": "major"
+        "importance": "major",
+        "abilityWeights": {
+          "willpower": -0.1
+        }
       }
     ]
   },
@@ -1196,7 +1198,12 @@
             "betrayed_once",
             "sworn_revenge"
           ],
-          "goalProgress": 20
+          "goalResolution": {
+            "ids": [
+              "pursue_revenge"
+            ],
+            "progress": 20
+          }
         },
         "resultText": "{name}は裏切った相手への復讐を誓った。",
         "importance": "major"
@@ -2031,8 +2038,7 @@
         "label": "試練に立ち向かう",
         "baseWeight": 11,
         "traitWeights": {
-          "bravery": 0.4,
-          "willpower": 0.3
+          "bravery": 0.4
         },
         "effects": {
           "flagsAdd": [
@@ -2042,18 +2048,26 @@
             "demonThreat": -6
           },
           "fame": 10,
-          "goalProgress": 30
+          "goalResolution": {
+            "ids": [
+              "become_hero",
+              "defeat_demon_lord"
+            ],
+            "progress": 30
+          }
         },
         "resultText": "{name}は試練を乗り越え、勇者としての力を証明した。",
-        "importance": "major"
+        "importance": "major",
+        "abilityWeights": {
+          "willpower": 0.3
+        }
       },
       {
         "id": "falter",
         "label": "試練の前で心が折れかける",
         "baseWeight": 8,
         "traitWeights": {
-          "caution": 0.2,
-          "willpower": -0.2
+          "caution": 0.2
         },
         "effects": {
           "flagsAdd": [
@@ -2062,7 +2076,10 @@
           "fame": 2
         },
         "resultText": "{name}は試練の重さに心を折られかけた。",
-        "importance": "major"
+        "importance": "major",
+        "abilityWeights": {
+          "willpower": -0.2
+        }
       }
     ]
   },
@@ -2104,7 +2121,13 @@
             "stability": 15
           },
           "fame": 40,
-          "goalStatus": "completed"
+          "goalResolution": {
+            "ids": [
+              "become_hero",
+              "defeat_demon_lord"
+            ],
+            "status": "completed"
+          }
         },
         "resultText": "{name}は魔の脅威を打ち払い、伝説の勇者として名を刻んだ。",
         "importance": "historic"
@@ -2124,7 +2147,13 @@
           "world": {
             "stability": -10
           },
-          "goalStatus": "distorted"
+          "goalResolution": {
+            "ids": [
+              "become_hero",
+              "defeat_demon_lord"
+            ],
+            "status": "distorted"
+          }
         },
         "resultText": "{name}は力に溺れ、かつての志を見失っていった。",
         "importance": "historic"
@@ -2230,7 +2259,12 @@
           "world": {
             "demonThreat": 15
           },
-          "goalProgress": 30
+          "goalResolution": {
+            "ids": [
+              "become_demon_lord"
+            ],
+            "progress": 30
+          }
         },
         "resultText": "{name}は魔の勢力と盟約を交わし、後戻りのできない道へ進んだ。",
         "importance": "major"
@@ -2291,7 +2325,12 @@
             "stability": -25
           },
           "fame": 50,
-          "goalStatus": "completed"
+          "goalResolution": {
+            "ids": [
+              "become_demon_lord"
+            ],
+            "status": "completed"
+          }
         },
         "resultText": "{name}は新たな魔王として、世界に恐怖と混乱をもたらす存在となった。",
         "importance": "historic"
@@ -2300,9 +2339,6 @@
         "id": "consumed_by_darkness",
         "label": "闇に呑まれ、消えていく",
         "baseWeight": 3,
-        "traitWeights": {
-          "willpower": -0.2
-        },
         "effects": {
           "tagsAdd": [
             "fallen_to_darkness"
@@ -2310,7 +2346,10 @@
           "health": -30
         },
         "resultText": "{name}は自ら求めた闇に、最後には呑み込まれていった。",
-        "importance": "historic"
+        "importance": "historic",
+        "abilityWeights": {
+          "willpower": -0.2
+        }
       },
       {
         "id": "turn_back",
@@ -2327,7 +2366,12 @@
           "world": {
             "demonThreat": -10
           },
-          "goalStatus": "distorted"
+          "goalResolution": {
+            "ids": [
+              "become_demon_lord"
+            ],
+            "status": "distorted"
+          }
         },
         "resultText": "{name}は闇の中で、最後には人としての道を選び直した。",
         "importance": "historic"
@@ -2493,7 +2537,12 @@
             "stability": -20
           },
           "fame": 35,
-          "goalStatus": "completed"
+          "goalResolution": {
+            "ids": [
+              "become_king"
+            ],
+            "status": "completed"
+          }
         },
         "resultText": "{name}は武力を用いて玉座を奪い、簒奪者としての道を選んだ。",
         "importance": "historic"
@@ -2517,7 +2566,12 @@
             "stability": 20
           },
           "fame": 30,
-          "goalStatus": "completed"
+          "goalResolution": {
+            "ids": [
+              "become_king"
+            ],
+            "status": "completed"
+          }
         },
         "resultText": "{name}は民と貴族の支持を集め、正統な支配者として即位した。",
         "importance": "historic"
@@ -2537,7 +2591,12 @@
             "executed_traitor"
           ],
           "health": -60,
-          "goalStatus": "failed"
+          "goalResolution": {
+            "ids": [
+              "become_king"
+            ],
+            "status": "failed"
+          }
         },
         "resultText": "{name}の陰謀は露見し、反逆者として裁かれた。",
         "importance": "historic"
@@ -2780,8 +2839,7 @@
           "world": {
             "economy": 25
           },
-          "fame": 35,
-          "goalStatus": "completed"
+          "fame": 35
         },
         "resultText": "{name}は王国の財政を左右するほどの経済力を手にした。",
         "importance": "historic"
@@ -2933,7 +2991,12 @@
             "economy": 10
           },
           "fame": 30,
-          "goalStatus": "completed"
+          "goalResolution": {
+            "ids": [
+              "unravel_magic"
+            ],
+            "status": "completed"
+          }
         },
         "resultText": "{name}は平和のための技術革新を成し遂げ、発明家としてその名を残した。",
         "importance": "historic"
@@ -3049,8 +3112,7 @@
           "world": {
             "techLevel": 5
           },
-          "fame": 30,
-          "goalStatus": "completed"
+          "fame": 30
         },
         "resultText": "{name}は生涯を懸け、伝説として語られる一品を完成させた。",
         "importance": "historic"
@@ -3178,8 +3240,7 @@
         "label": "教団の中で地位を高める",
         "baseWeight": 9,
         "traitWeights": {
-          "faith": 0.3,
-          "social": 0.1
+          "faith": 0.3
         },
         "contextWeights": {
           "arc_religious_s1": 14
@@ -3190,7 +3251,10 @@
           ]
         },
         "resultText": "{name}は教団の中で着実に地位を高めていった。",
-        "importance": "major"
+        "importance": "major",
+        "abilityWeights": {
+          "social": 0.1
+        }
       },
       {
         "id": "expose_corruption",
@@ -3252,8 +3316,7 @@
           "world": {
             "religiousInfluence": 20
           },
-          "fame": 30,
-          "goalStatus": "completed"
+          "fame": 30
         },
         "resultText": "{name}は信仰の頂点に立ち、教団を導く指導者となった。",
         "importance": "historic"
@@ -3278,7 +3341,12 @@
             "stability": -10
           },
           "fame": 25,
-          "goalStatus": "completed"
+          "goalResolution": {
+            "ids": [
+              "deny_god"
+            ],
+            "status": "completed"
+          }
         },
         "resultText": "{name}は既存の信仰に反旗を翻し、異端の予言者と呼ばれるようになった。",
         "importance": "historic"
@@ -3296,7 +3364,12 @@
             "executed_heretic"
           ],
           "health": -70,
-          "goalStatus": "failed"
+          "goalResolution": {
+            "ids": [
+              "deny_god"
+            ],
+            "status": "failed"
+          }
         },
         "resultText": "{name}は異端者として断罪され、その生涯を終えた。",
         "importance": "historic"
@@ -3452,7 +3525,12 @@
             "stability": -25
           },
           "fame": 30,
-          "goalStatus": "completed"
+          "goalResolution": {
+            "ids": [
+              "pursue_revenge"
+            ],
+            "status": "completed"
+          }
         },
         "resultText": "{name}は民衆を率いて、地方の支配を打ち倒した。",
         "importance": "historic"
@@ -3470,7 +3548,12 @@
             "executed_rebel"
           ],
           "health": -80,
-          "goalStatus": "failed"
+          "goalResolution": {
+            "ids": [
+              "pursue_revenge"
+            ],
+            "status": "failed"
+          }
         },
         "resultText": "{name}の反乱は鎮圧され、処刑によってその生涯を終えた。",
         "importance": "historic"
@@ -3538,7 +3621,12 @@
           "flagsAdd": [
             "arc_peace_s1"
           ],
-          "goalProgress": 30
+          "goalResolution": {
+            "ids": [
+              "protect_peace"
+            ],
+            "progress": 30
+          }
         },
         "resultText": "{name}は誘いを退け、静かな暮らしを守ることを選んだ。",
         "importance": "major"
@@ -3576,7 +3664,12 @@
           "flagsAdd": [
             "arc_peace_s2"
           ],
-          "goalProgress": 30
+          "goalResolution": {
+            "ids": [
+              "protect_peace"
+            ],
+            "progress": 30
+          }
         },
         "resultText": "{name}は再びの誘惑を退け、平穏な暮らしを守り抜いた。",
         "importance": "major"
@@ -3634,7 +3727,12 @@
           "world": {
             "stability": 10
           },
-          "goalStatus": "completed"
+          "goalResolution": {
+            "ids": [
+              "protect_peace"
+            ],
+            "status": "completed"
+          }
         },
         "resultText": "{name}はあらゆる誘惑を退け、守り抜いた平穏の中で生涯を終えた。",
         "importance": "historic"
@@ -3672,11 +3770,91 @@
           "tagsAdd": [
             "late_awakening"
           ],
-          "goalStatus": "distorted"
+          "goalResolution": {
+            "ids": [
+              "protect_peace"
+            ],
+            "status": "distorted"
+          }
         },
         "resultText": "{name}は長く平穏を選び続けた末に、ついに大きな使命へと踏み出した。",
         "importance": "historic"
       }
+    ]
+  },
+
+  {
+    "id": "goal_check_protect_family", "title": "守り抜いたもの", "category": "goal", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 40, "max": 75 }, "baseWeight": 8,
+    "conditions": { "requiredFlags": ["goal_protect_family"] },
+    "text": "{name}は自らの人生を振り返り、家族との日々に思いを馳せた。",
+    "choices": [
+      { "id": "protected", "label": "家族を守り抜いたと実感する", "baseWeight": 9, "traitWeights": { "family_orientation": 0.4, "loyalty": 0.2 },
+        "contextWeights": { "is_married": 12 },
+        "effects": { "goalResolution": { "ids": ["protect_family"], "status": "completed" } },
+        "resultText": "{name}は家族を守り抜いたという確かな手応えを胸に抱いた。", "importance": "major" },
+      { "id": "could_not_protect", "label": "守れなかった悔いが残る", "baseWeight": 6, "traitWeights": { "caution": -0.1 },
+        "effects": { "goalResolution": { "ids": ["protect_family"], "status": "failed" }, "health": -5 },
+        "resultText": "{name}の胸には、守り切れなかった悔いがいつまでも残った。", "importance": "major" }
+    ]
+  },
+  {
+    "id": "goal_check_world_end", "title": "旅の果てに", "category": "goal", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 40, "max": 75 }, "baseWeight": 7,
+    "conditions": { "requiredFlags": ["goal_see_world_end"] },
+    "text": "{name}は長年追い求めてきた、世界の果てを目指す旅の総仕上げに差し掛かっていた。",
+    "choices": [
+      { "id": "reached_the_end", "label": "ついに世界の果てに辿り着く", "baseWeight": 8, "traitWeights": { "curiosity": 0.4, "persistence": 0.2 },
+        "effects": { "goalResolution": { "ids": ["see_world_end"], "status": "completed" }, "abilities": { "sensitivity": 2 } },
+        "resultText": "{name}はついに、世界の果てと呼べる景色を目にした。", "importance": "major" },
+      { "id": "journey_unfinished", "label": "果てに辿り着く前に旅を終える", "baseWeight": 6, "traitWeights": { "caution": 0.1 },
+        "effects": { "goalResolution": { "ids": ["see_world_end"], "status": "failed" } },
+        "resultText": "{name}の旅は、世界の果てに辿り着く前に終わりを迎えた。", "importance": "major" }
+    ]
+  },
+  {
+    "id": "goal_check_revenge", "title": "復讐の行方", "category": "goal", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 25, "max": 60 }, "baseWeight": 8,
+    "conditions": { "requiredFlags": ["goal_pursue_revenge"] },
+    "text": "{name}は長年胸に抱いてきた復讐を、ついに果たせる機会を迎えた。",
+    "choices": [
+      { "id": "revenge_fulfilled", "label": "ついに復讐を果たす", "baseWeight": 8, "traitWeights": { "persistence": 0.4, "self_interest": 0.2 },
+        "contextWeights": { "sworn_revenge": 12, "cast_a_curse": 8 },
+        "effects": { "goalResolution": { "ids": ["pursue_revenge"], "status": "completed" }, "health": -10 },
+        "resultText": "{name}はついに復讐を果たしたが、その代償に深く傷ついた。", "importance": "major" },
+      { "id": "revenge_hollow", "label": "復讐は虚しく胸に残ったままとなる", "baseWeight": 7, "traitWeights": { "altruism": 0.2 },
+        "effects": { "goalResolution": { "ids": ["pursue_revenge"], "status": "distorted" } },
+        "resultText": "{name}が抱き続けた復讐心は、果たされないまま静かに形を変えていった。", "importance": "major" }
+    ]
+  },
+  {
+    "id": "goal_check_immortality", "title": "不老不死の探求", "category": "goal", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 45, "max": 80 }, "baseWeight": 6,
+    "conditions": { "requiredFlags": ["goal_become_immortal"] },
+    "text": "{name}は長年探し求めてきた不老不死の秘法に、手が届くところまで迫っていた。",
+    "choices": [
+      { "id": "immortality_reached", "label": "不老不死の秘法についに辿り着く", "baseWeight": 4, "traitWeights": { "ambition": 0.3, "curiosity": 0.3 },
+        "contextWeights": { "element_magic_affinity": 15 },
+        "effects": { "goalResolution": { "ids": ["become_immortal"], "status": "completed" }, "abilities": { "luck": 3 } },
+        "resultText": "{name}はついに、不老不死と呼べる境地に手を伸ばした。", "importance": "historic" },
+      { "id": "immortality_denied", "label": "歳月には抗えなかった", "baseWeight": 9, "traitWeights": { "caution": 0.1 },
+        "effects": { "goalResolution": { "ids": ["become_immortal"], "status": "failed" } },
+        "resultText": "{name}の探求は、結局のところ歳月の前に及ばなかった。", "importance": "major" }
+    ]
+  },
+  {
+    "id": "goal_check_return_home", "title": "帰還の願い", "category": "goal", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 30, "max": 70 }, "baseWeight": 8,
+    "conditions": { "requiredFlags": ["goal_return_home"] },
+    "text": "{name}は元の世界へ帰る手がかりを、長い間探し続けてきた。",
+    "choices": [
+      { "id": "found_the_way_home", "label": "元の世界へ帰る道を見つけ出す", "baseWeight": 7, "traitWeights": { "curiosity": 0.2, "persistence": 0.3 },
+        "contextWeights": { "element_return_desire": 18, "element_past_life_memory": 8 },
+        "effects": { "goalResolution": { "ids": ["return_home"], "status": "completed" } },
+        "resultText": "{name}はついに、元の世界へ帰るための道を見つけ出した。", "importance": "historic" },
+      { "id": "never_found_the_way", "label": "帰る道は、ついに見つからなかった", "baseWeight": 8, "traitWeights": { "family_orientation": 0.2 },
+        "effects": { "goalResolution": { "ids": ["return_home"], "status": "distorted" } },
+        "resultText": "{name}は帰る道を見つけられぬまま、この世界で生きていくことを受け入れた。", "importance": "major" }
     ]
   }
 ]

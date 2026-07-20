@@ -38,33 +38,57 @@ export function applyRelationEffect(relations, namePool, relEffect) {
   }
 }
 
-// 生涯目標の形成・進捗・状態変化を扱う。goal: {id, label} を渡すと未設定時のみ新規形成する
-// （既に目標を持つ転生者に対しては上書きしない。目標の変質は goalStatus:'distorted' と
-// 新しい goal を組み合わせて表現する）。
-export function applyGoalEffect(character, worldYear, goalEffect, goalProgressDelta, goalStatus) {
+// 生涯目標の新規形成。goal: {id, label} を渡すと未設定時のみ新規形成する。
+export function applyGoalFormation(character, goalEffect) {
   if (goalEffect && !character.goal) {
     character.goal = {
       id: goalEffect.id, label: goalEffect.label, status: 'active',
       formedAtAge: character.age, progress: 0, resolvedAtAge: null
     };
   }
-  if (character.goal && typeof goalProgressDelta === 'number') {
-    character.goal.progress = clamp(character.goal.progress + goalProgressDelta, 0, 100);
+}
+
+// 生涯目標の進捗・状態変化。goalResolution.ids に現在の character.goal.id が
+// 含まれている場合にのみ適用する。無関係なアーク（例: 目標が「家族を守る」の
+// 転生者が勇者アークの結末に遭遇した場合など）が、たまたま手元にある目標を
+// 誤って達成/失敗扱いにしてしまわないようにするための必須チェック。
+export function applyGoalResolution(character, goalResolution) {
+  if (!goalResolution || !character.goal) return;
+  var ids = goalResolution.ids;
+  if (ids && ids.indexOf(character.goal.id) === -1) return;
+  if (typeof goalResolution.progress === 'number') {
+    character.goal.progress = clamp(character.goal.progress + goalResolution.progress, 0, 100);
   }
-  if (character.goal && goalStatus) {
-    character.goal.status = goalStatus;
+  if (goalResolution.status) {
+    character.goal.status = goalResolution.status;
     character.goal.resolvedAtAge = character.age;
   }
 }
 
 export function applyWorldEffect(world, bounds, worldEffect) {
-  if (!worldEffect) return;
+  if (!worldEffect) return {};
   var lo = (bounds && bounds.min) || 0;
   var hi = (bounds && bounds.max) || 100;
+  var appliedDeltas = {};
   for (var k in worldEffect) {
     if (typeof world[k] === 'number') {
-      world[k] = clamp(world[k] + worldEffect[k], lo, hi);
+      var before = world[k];
+      world[k] = clamp(before + worldEffect[k], lo, hi);
+      appliedDeltas[k] = world[k] - before;
     }
+  }
+  return appliedDeltas;
+}
+
+// 転生者ごとに、自らの行動（イベント効果）によって世界状態へ与えた変化だけを
+// 積算する。世界状態そのものは転生をまたいで持続し、かつ毎年わずかにドリフト
+// (自然変動)するため、そこからの単純な差分では「前世代の遺産」や「乱数による
+// 揺らぎ」まで今の転生者の功績/罪過として誤って人生要約に書いてしまう。
+// ここで積んだ character.worldImpact だけを要約・統計に使うことで、
+// 実際にこの人生のイベントが及ぼした影響だけを追跡できるようにする。
+export function accumulateWorldImpact(character, appliedDeltas) {
+  for (var k in appliedDeltas) {
+    character.worldImpact[k] = (character.worldImpact[k] || 0) + appliedDeltas[k];
   }
 }
 
@@ -97,8 +121,10 @@ export function applyEffects(character, relations, world, worldBounds, namePool,
     });
   }
   if (effects.relation) applyRelationEffect(relations, namePool, effects.relation);
-  if (effects.goal || typeof effects.goalProgress === 'number' || effects.goalStatus) {
-    applyGoalEffect(character, character.age, effects.goal, effects.goalProgress, effects.goalStatus);
+  if (effects.goal) applyGoalFormation(character, effects.goal);
+  if (effects.goalResolution) applyGoalResolution(character, effects.goalResolution);
+  if (effects.world) {
+    var appliedDeltas = applyWorldEffect(world, worldBounds, effects.world);
+    accumulateWorldImpact(character, appliedDeltas);
   }
-  if (effects.world) applyWorldEffect(world, worldBounds, effects.world);
 }

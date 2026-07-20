@@ -4,10 +4,6 @@ import { determineLifeRank, hasEnteredAnyArc, hasReachedArcClimax, hadNothingHap
 
 var MAX_LIFE_YEARS = 130;
 
-// 世界状態のうち「実際に転生者の行動で変動しうる」数値フィールドのみを世界影響の判定に使う。
-// yearEra（暦年）は毎年必ず増えるため対象から除外する。
-var WORLD_IMPACT_FIELDS = ['stability', 'warThreat', 'demonThreat', 'religiousInfluence', 'techLevel', 'economy'];
-
 // UIを介さず、同じゲームエンジンで1人の人生を最後まで実行する。
 // ブラウザの高速シミュレーションパネルと Node の CLI (scripts/simulate-cli.js) の両方から使われる。
 export function simulateOneLife(data) {
@@ -26,9 +22,10 @@ export function simulateOneLife(data) {
     if (result.died) { deathInfo = result.deathInfo; break; }
   }
 
-  var worldImpact = false;
-  WORLD_IMPACT_FIELDS.forEach(function (key) {
-    if (typeof world[key] === 'number' && Math.abs(world[key] - data.initialWorld[key]) >= 12) worldImpact = true;
+  // 自然ドリフトや前の転生者の遺産を含む世界の生の値ではなく、この人生の
+  // イベント効果だけが積算される character.worldImpact を判定に使う。
+  var worldImpact = Object.keys(character.worldImpact).some(function (key) {
+    return Math.abs(character.worldImpact[key]) >= 12;
   });
 
   return {
