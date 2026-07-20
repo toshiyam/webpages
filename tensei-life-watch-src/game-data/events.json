@@ -3856,5 +3856,21 @@
         "effects": { "goalResolution": { "ids": ["return_home"], "status": "distorted" } },
         "resultText": "{name}は帰る道を見つけられぬまま、この世界で生きていくことを受け入れた。", "importance": "major" }
     ]
+  },
+
+  {
+    "id": "goal_check_unravel_magic", "title": "魔法の探求の果てに", "category": "goal", "eventType": "branch", "unique": true,
+    "ageRange": { "min": 30, "max": 70 }, "baseWeight": 8,
+    "conditions": { "requiredFlags": ["goal_unravel_magic"] },
+    "text": "{name}は長年続けてきた魔法の探求が、ひとつの結論に至ろうとしていた。",
+    "choices": [
+      { "id": "magic_unraveled", "label": "ついに魔法の理を解き明かす", "baseWeight": 7, "traitWeights": { "curiosity": 0.4, "persistence": 0.2 },
+        "contextWeights": { "element_magic_affinity": 18, "element_modern_knowledge": 10 },
+        "effects": { "goalResolution": { "ids": ["unravel_magic"], "status": "completed" }, "abilities": { "intelligence": 3 } },
+        "resultText": "{name}はついに、長年追い求めてきた魔法の理を解き明かした。", "importance": "historic" },
+      { "id": "magic_remains_a_mystery", "label": "魔法はついに謎のまま残る", "baseWeight": 9, "traitWeights": { "caution": 0.1 },
+        "effects": { "goalResolution": { "ids": ["unravel_magic"], "status": "failed" } },
+        "resultText": "{name}の探求も及ばず、魔法は結局謎のまま残された。", "importance": "major" }
+    ]
   }
 ]

@@ -62,6 +62,12 @@ export function applyGoalResolution(character, goalResolution) {
   if (goalResolution.status) {
     character.goal.status = goalResolution.status;
     character.goal.resolvedAtAge = character.age;
+    // 「達成」は定義上、進捗100%を意味する。個々のイベントで100まで
+    // 積み上げ忘れても、完遂と未完了の進捗値が矛盾した状態
+    // （例: 状態=達成なのに進捗30%）を作らないようにここで確定させる。
+    if (goalResolution.status === 'completed') {
+      character.goal.progress = 100;
+    }
   }
 }
 

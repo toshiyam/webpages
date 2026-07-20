@@ -452,16 +452,40 @@ async function init() {
     setTimeout(function () {
       var stats = runBatchSimulation(data, 300);
       var pct = function (v) { return Math.round(v * 100) + '%'; };
+      var goalLabelOf = {};
+      data.goals.forEach(function (g) { goalLabelOf[g.id] = g.label; });
+
       var lines = [];
       lines.push('試行回数: ' + stats.trials);
       lines.push('平均寿命: ' + stats.avgLifespan.toFixed(1) + '歳');
       lines.push('結婚率: ' + pct(stats.marriageRate));
-      lines.push('生涯目標の形成率: ' + pct(stats.goalFormationRate));
       lines.push('人生アークへの突入率: ' + pct(stats.arcEntryRate));
       lines.push('アーク最終段への到達率: ' + pct(stats.arcClimaxRate));
-      lines.push('世界へ影響を残した率: ' + pct(stats.worldImpactRate));
       lines.push('ほぼ何も起きない人生: ' + pct(stats.nothingHappenedRate));
       lines.push('未発生イベント: ' + (stats.unfiredEvents.length ? stats.unfiredEvents.join(', ') : 'なし'));
+
+      lines.push('');
+      lines.push('[目標別統計] 形成/完遂/失敗/放棄/変質/未決着(内到達不能)/平均進捗');
+      Object.keys(stats.goalStats).sort().forEach(function (id) {
+        var g = stats.goalStats[id];
+        lines.push(
+          (goalLabelOf[id] || id) + ': ' + g.formed + '/' + g.completed + '/' + g.failed + '/' +
+          g.abandoned + '/' + g.distorted + '/' + g.unresolved + '(' + g.unreachableWhileActive + ')/' +
+          g.avgProgress.toFixed(0)
+        );
+      });
+
+      lines.push('');
+      lines.push('[世界影響統計（自然ドリフト除外）]');
+      lines.push('世界へ影響を残した率: ' + pct(stats.worldImpactStats.rate) +
+        '（正' + stats.worldImpactStats.positiveCount + ' / 負' + stats.worldImpactStats.negativeCount + '）');
+
+      lines.push('');
+      lines.push('[整合性検証]');
+      lines.push('自己テスト: ' + stats.consistency.selfTests.filter(function (t) { return t.passed; }).length +
+        '/' + stats.consistency.selfTests.length + ' PASS');
+      lines.push('合計整合性違反件数: ' + stats.consistency.totalViolationCount + (stats.consistency.totalViolationCount === 0 ? '（OK）' : '（要確認）'));
+
       document.getElementById('simResult').textContent = lines.join('\n');
     }, 30);
   });
