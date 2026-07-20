@@ -32,6 +32,7 @@ function stripModuleSyntax(source) {
 var ENGINE_FILES = [
   'game-engine/rng.js',
   'game-engine/character-generator.js',
+  'game-engine/starting-grants.js',
   'game-engine/event-selector.js',
   'game-engine/decision-engine.js',
   'game-engine/effect-processor.js',
@@ -57,13 +58,19 @@ function buildDataBundleLiteral() {
   var events = read('game-data/events.json').trim();
   var elements = read('game-data/elements.json').trim();
   var goals = read('game-data/goals.json').trim();
+  var items = read('game-data/items.json').trim();
+  var skills = read('game-data/skills.json').trim();
+  var burdens = read('game-data/burdens.json').trim();
   return [
     '  var __TRAITS_JSON__ = ' + traits + ';',
     '  var __OCCUPATIONS_JSON__ = ' + occupations + ';',
     '  var __WORLD_JSON__ = ' + world + ';',
     '  var __EVENTS_JSON__ = ' + events + ';',
     '  var __ELEMENTS_JSON__ = ' + elements + ';',
-    '  var __GOALS_JSON__ = ' + goals + ';'
+    '  var __GOALS_JSON__ = ' + goals + ';',
+    '  var __ITEMS_JSON__ = ' + items + ';',
+    '  var __SKILLS_JSON__ = ' + skills + ';',
+    '  var __BURDENS_JSON__ = ' + burdens + ';'
   ].join('\n');
 }
 
@@ -73,7 +80,7 @@ function buildUiBundle() {
   src = src.replace(
     /async function loadData\(\) \{[\s\S]*?\n\}/,
     'async function loadData() {\n' +
-    '  return buildDataBundle(__TRAITS_JSON__, __OCCUPATIONS_JSON__, __WORLD_JSON__, __EVENTS_JSON__, __ELEMENTS_JSON__, __GOALS_JSON__);\n' +
+    '  return buildDataBundle(__TRAITS_JSON__, __OCCUPATIONS_JSON__, __WORLD_JSON__, __EVENTS_JSON__, __ELEMENTS_JSON__, __GOALS_JSON__, __ITEMS_JSON__, __SKILLS_JSON__, __BURDENS_JSON__);\n' +
     '}'
   );
   return src.trim();
@@ -106,7 +113,7 @@ function buildHtml() {
     .replace('<link rel="stylesheet" href="./web-ui/styles.css">', '<style>\n' + css + '\n</style>')
     .replace('<script type="module" src="./web-ui/main.js"></script>', '<script>\n' + buildScript() + '\n</script>');
 
-  var metaHeader = '<!--\nname: 転生者観測日誌\nversion: 1.1\ntype: single-html-app\nstatus: stable\n-->\n';
+  var metaHeader = '<!--\nname: 転生者観測日誌\nversion: 1.2\ntype: single-html-app\nstatus: stable\n-->\n';
   html = html.replace('<!doctype html>\n', '<!doctype html>\n' + metaHeader);
 
   return html;

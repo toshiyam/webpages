@@ -49,7 +49,46 @@ export function generateCharacter(data) {
     goal: null,
     fame: 0,
     worldImpact: {},
+    startingItem: null,
+    startingSkill: null,
+    burden: null,
+    itemState: {},
+    itemFirstUsedAge: {},
     flags: flags,
+    tags: [],
+    firedUnique: {},
+    eventHistory: {},
+    zeroMoneyStreak: 0
+  };
+}
+
+// 「同一候補・付与内容だけ変える」比較検証のためのヘルパー。
+// 名前・出身・能力・性格・特殊要素は template から引き継ぎ、その他の
+// 状態（年齢・職業・所持金・生涯目標・フラグ・タグ・持込アイテム等）は
+// 完全に初期化した、独立した新しい人生としてシミュレートできる状態を返す。
+export function cloneCharacterTemplate(template) {
+  return {
+    id: template.id + '-' + Math.random().toString(36).slice(2, 8),
+    name: template.name,
+    genderLabel: template.genderLabel,
+    age: 0,
+    region: template.region,
+    occupation: 'unemployed',
+    money: template.money,
+    health: 100,
+    alive: true,
+    abilities: Object.assign({}, template.abilities),
+    traits: Object.assign({}, template.traits),
+    elements: template.elements.slice(),
+    goal: null,
+    fame: 0,
+    worldImpact: {},
+    startingItem: null,
+    startingSkill: null,
+    burden: null,
+    itemState: {},
+    itemFirstUsedAge: {},
+    flags: template.elements.map(function (id) { return 'element_' + id; }),
     tags: [],
     firedUnique: {},
     eventHistory: {},

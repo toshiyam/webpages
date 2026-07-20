@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { buildDataBundle, runBatchSimulation } from '../game-engine/index.js';
+import { buildDataBundle, runBatchSimulation, runGrantComparisonTrial } from '../game-engine/index.js';
 
 var __dirname = dirname(fileURLToPath(import.meta.url));
 var dataDir = join(__dirname, '..', 'game-data');
@@ -19,7 +19,10 @@ var world = loadJson('world.json');
 var events = loadJson('events.json');
 var elements = loadJson('elements.json');
 var goals = loadJson('goals.json');
-var data = buildDataBundle(traits, occupations, world, events, elements, goals);
+var items = loadJson('items.json');
+var skills = loadJson('skills.json');
+var burdens = loadJson('burdens.json');
+var data = buildDataBundle(traits, occupations, world, events, elements, goals, items, skills, burdens);
 
 var trials = parseInt(process.argv[2], 10) || 300;
 var stats = runBatchSimulation(data, trials);
@@ -35,6 +38,12 @@ function pct(v) { return Math.round(v * 100) + '%'; }
 var rankLabels = { legendary: '伝説', disaster: '災厄', peaceful: '平穏', notable: '著名', ordinary: '平凡' };
 var goalLabels = {};
 data.goals.forEach(function (g) { goalLabels[g.id] = g.label; });
+var itemLabels = {};
+data.items.forEach(function (i) { itemLabels[i.id] = i.label; });
+var skillLabels = {};
+data.skills.forEach(function (s) { skillLabels[s.id] = s.label; });
+var burdenLabels = {};
+data.burdens.forEach(function (b) { burdenLabels[b.id] = b.label; });
 
 console.log('試行回数: ' + stats.trials);
 console.log('平均寿命: ' + stats.avgLifespan.toFixed(1) + '歳');
@@ -68,16 +77,44 @@ console.log('項目別平均寄与: ' + Object.keys(stats.worldImpactStats.perFi
   .map(function (k) { return k + ' ' + stats.worldImpactStats.perFieldAvgContribution[k].toFixed(2); })
   .join(' / '));
 
-console.log('\n--- issue#5 整合性検証 ---');
+console.log('\n--- issue#7 転生準備(アイテム/スキル/制約)統計 ---');
+console.log('何も持たずに転生した率: ' + pct(stats.grantStats.noGrantRate));
+console.log('[アイテム] 選択数/使用数(使用率)/平均寿命');
+Object.keys(stats.grantStats.items).sort().forEach(function (id) {
+  var s = stats.grantStats.items[id];
+  var usageRate = s.selected > 0 ? Math.round((s.used / s.selected) * 100) : 0;
+  console.log('  ' + (itemLabels[id] || id) + ': ' + s.selected + '/' + s.used + '(' + usageRate + '%)/' + s.avgLifespan.toFixed(1) + '歳');
+});
+console.log('[スキル] 選択数/平均寿命');
+Object.keys(stats.grantStats.skills).sort().forEach(function (id) {
+  var s = stats.grantStats.skills[id];
+  console.log('  ' + (skillLabels[id] || id) + ': ' + s.selected + '/' + s.avgLifespan.toFixed(1) + '歳');
+});
+console.log('[制約] 選択数/平均寿命');
+Object.keys(stats.grantStats.burdens).sort().forEach(function (id) {
+  var s = stats.grantStats.burdens[id];
+  console.log('  ' + (burdenLabels[id] || id) + ': ' + s.selected + '/' + s.avgLifespan.toFixed(1) + '歳');
+});
+
+console.log('\n--- issue#5/#7 整合性検証 ---');
 console.log('自己テスト: ' + stats.consistency.selfTests.filter(function (t) { return t.passed; }).length + '/' + stats.consistency.selfTests.length + ' PASS' +
   (stats.consistency.selfTestsAllPassed ? '' : '  !! FAILED: ' + stats.consistency.selfTests.filter(function (t) { return !t.passed; }).map(function (t) { return t.name; }).join(', ')));
 console.log('静的チェック - traitWeights内の能力IDキー: ' + stats.consistency.staticChecks.abilityKeysInTraitWeights.length + '件');
 console.log('静的チェック - ids未指定のgoalResolution: ' + stats.consistency.staticChecks.goalResolutionWithoutIds.length + '件');
 console.log('人生ごとの検証 - 進捗100%未満で完遂した人生: ' + stats.consistency.goalProgressViolations.length + '件');
 console.log('合計整合性違反件数: ' + stats.consistency.totalViolationCount + '件' + (stats.consistency.totalViolationCount === 0 ? '（OK）' : '  !! 要修正'));
-if (Object.keys(stats.consistency.unreachableGoalResolution).length > 0) {
-  console.log('参考: 決着イベントに一度も到達できなかった目標（未決着のうち）: ' +
-    Object.keys(stats.consistency.unreachableGoalResolution)
-      .map(function (id) { return (goalLabels[id] || id) + ' ' + stats.consistency.unreachableGoalResolution[id] + '件'; })
-      .join(' / '));
-}
+
+console.log('\n--- issue#7 同一候補・付与内容だけを変えた比較試験（各50試行） ---');
+var comparisonTargets = [
+  { label: '封印された指輪(なし)', grants: { itemId: 'none', burdenId: 'cursed_fate' } },
+  { label: '封印された指輪(あり)', grants: { itemId: 'sealed_ring', burdenId: 'cursed_fate' } },
+  { label: '家族写真(なし)', grants: { itemId: 'none' } },
+  { label: '家族写真(あり)', grants: { itemId: 'family_photo' } }
+];
+var comparison = runGrantComparisonTrial(data, comparisonTargets, 50);
+console.log('候補: ' + comparison.templateName);
+Object.keys(comparison.variants).forEach(function (label) {
+  var v = comparison.variants[label];
+  console.log('  ' + label + ': アーク到達率' + pct(v.arcClimaxRate) + ' 平均寿命' + v.avgLifespan.toFixed(1) + '歳' +
+    (v.arcClimaxRate > 0.8 ? '  !! 80%超過' : ''));
+});

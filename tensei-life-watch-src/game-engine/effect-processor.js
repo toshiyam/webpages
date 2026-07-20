@@ -1,4 +1,5 @@
 import { clamp, pick, randInt, uid } from './rng.js';
+import { consumeItem, markItemUsed } from './starting-grants.js';
 
 var MAX_RELATIONS = 9;
 
@@ -133,4 +134,6 @@ export function applyEffects(character, relations, world, worldBounds, namePool,
     var appliedDeltas = applyWorldEffect(world, worldBounds, effects.world);
     accumulateWorldImpact(character, appliedDeltas);
   }
+  if (effects.consumeItem) consumeItem(character, effects.consumeItem);
+  if (effects.markItemUsed) markItemUsed(character, effects.markItemUsed);
 }

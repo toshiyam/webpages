@@ -14,6 +14,7 @@ export function mortalityChance(character, occupationRisk) {
   var risk = occupationRisk[character.occupation];
   if (risk) base += risk * (character.flags.indexOf('dangerous_quest_taken') >= 0 ? 1.6 : 1);
   if (character.zeroMoneyStreak >= 4) base += 0.06;
+  if (character.flags.indexOf('burden_short_lived') >= 0) base += 0.01;
   return clamp(base, 0, 1);
 }
 

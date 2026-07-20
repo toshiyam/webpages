@@ -30,15 +30,44 @@
 
   <section id="screenStart">
     <div class="card">
-      <h2>転生の準備 <span class="sub">新しい転生者を送り込む</span></h2>
-      <div id="candidateBox"></div>
-      <div class="btnrow single">
-        <button class="primary" id="startBtn" type="button">この人物で転生を開始</button>
-      </div>
+      <h2>候補者の概要 <span class="sub">新しい転生者を送り込む</span></h2>
+      <div id="candidateOverviewBox"></div>
       <div class="btnrow single">
         <button class="secondary" id="rerollBtn" type="button">別の人物を見る</button>
       </div>
     </div>
+    <div class="card">
+      <h2>特殊要素・性格・能力</h2>
+      <div id="candidateDetailBox"></div>
+    </div>
+
+    <div class="card">
+      <h2>転生準備 <span class="sub">持込アイテム・初期スキル・制約を、それぞれ最大1つまで選べる</span></h2>
+      <details class="prepgroup" open>
+        <summary>持込アイテム<span class="prepcurrent" id="itemCurrentLabel"></span></summary>
+        <div class="preplist" id="itemChoiceList"></div>
+      </details>
+      <details class="prepgroup">
+        <summary>初期スキル<span class="prepcurrent" id="skillCurrentLabel"></span></summary>
+        <div class="preplist" id="skillChoiceList"></div>
+      </details>
+      <details class="prepgroup">
+        <summary>制約・代償（任意）<span class="prepcurrent" id="burdenCurrentLabel"></span></summary>
+        <div class="preplist" id="burdenChoiceList"></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>選択内容の確認</h2>
+      <div id="grantSummary"></div>
+    </div>
+
+    <div class="card">
+      <div class="btnrow single">
+        <button class="primary" id="startBtn" type="button">この人物で転生を開始</button>
+      </div>
+    </div>
+
     <div class="card" id="pastLivesCard" hidden>
       <h2>これまでの転生 <span class="sub" id="pastLivesCount"></span></h2>
       <div class="pastlives" id="pastLivesList"></div>
@@ -76,6 +105,12 @@
       <div class="relchips" id="elementChips"></div>
       <div class="empty" id="elementEmpty" hidden>特別な要素は宿っていない。</div>
       <div class="rowline" style="margin-top:8px"><span class="k">生涯目標</span><span class="v" id="goalLine">未形成</span></div>
+    </div>
+    <div class="card">
+      <h2>転生準備の持込</h2>
+      <div class="rowline"><span class="k">持込アイテム</span><span class="v" id="ovItem">なし</span></div>
+      <div class="rowline"><span class="k">初期スキル</span><span class="v" id="ovSkill">なし</span></div>
+      <div class="rowline"><span class="k">制約</span><span class="v" id="ovBurden">なし</span></div>
     </div>
     <div class="card">
       <h2>人間関係 <span class="sub" id="relCount"></span></h2>
