@@ -102,9 +102,44 @@ function worldImpactPhrase(character) {
   return 'その生涯を通じて、' + parts.join('、') + '。';
 }
 
-// LLMを使わず、死因・実績タグ・生涯目標・特殊要素・世界への影響・支配的な性格から
-// テンプレート文を組み合わせて人生要約を生成する（イベントログと状態のみを情報源とする）。
-export function generateSummary(character, relations, deathInfo, occupations, traitsDef, deathCauseLabels) {
+// 転生準備で選んだ持込アイテムについて、実際に使われたかどうかまで含めて
+// 一文にする。「与えたものが期待どおり使われるとは限らない」ことを、
+// 死亡時要約からも読み取れるようにするための処理。
+function startingItemPhrase(character, name, itemsDef) {
+  if (!character.startingItem || !itemsDef) return null;
+  var item = itemsDef.filter(function (i) { return i.id === character.startingItem; })[0];
+  var label = item ? item.label : character.startingItem;
+  var firstUsedAge = character.itemFirstUsedAge ? character.itemFirstUsedAge[character.startingItem] : undefined;
+  var itemState = character.itemState ? character.itemState[character.startingItem] : undefined;
+
+  if (firstUsedAge === undefined) {
+    return name + 'は「' + label + '」を持って転生したが、生涯一度も使うことはなかった。';
+  }
+  if (itemState && itemState.consumed) {
+    return name + 'は「' + label + '」を' + firstUsedAge + '歳の時に初めて役立て、最後には使い切った。';
+  }
+  return name + 'は「' + label + '」を' + firstUsedAge + '歳の時に役立てた。';
+}
+
+function startingSkillPhrase(character, name, skillsDef) {
+  if (!character.startingSkill || !skillsDef) return null;
+  var skill = skillsDef.filter(function (s) { return s.id === character.startingSkill; })[0];
+  var label = skill ? skill.label : character.startingSkill;
+  return name + 'は「' + label + '」の心得を持って転生した。';
+}
+
+function burdenPhrase(character, name, burdensDef) {
+  if (!character.burden || !burdensDef) return null;
+  var burden = burdensDef.filter(function (b) { return b.id === character.burden; })[0];
+  var label = burden ? burden.label : character.burden;
+  return name + 'は「' + label + '」という定めを背負って転生した。';
+}
+
+// LLMを使わず、死因・実績タグ・生涯目標・特殊要素・転生準備の持込・世界への影響・
+// 支配的な性格からテンプレート文を組み合わせて人生要約を生成する
+// （イベントログと状態のみを情報源とする）。itemsDef/skillsDef/burdensDef は
+// game-data/items.json,skills.json,burdens.json 相当の配列で、省略時はその項目を省く。
+export function generateSummary(character, relations, deathInfo, occupations, traitsDef, deathCauseLabels, itemsDef, skillsDef, burdensDef) {
   var name = character.name;
   var parts = [];
   parts.push(name + 'は' + character.age + '歳で、' + deathCauseLabels[deathInfo.cause] + 'によりその生涯を閉じた。');
@@ -114,6 +149,13 @@ export function generateSummary(character, relations, deathInfo, occupations, tr
     var elementLabels = character.elements.map(function (id) { return ELEMENT_PHRASES[id] || id; });
     parts.push(name + 'は「' + elementLabels.join('」「') + '」を宿して転生した。');
   }
+
+  var burdenLine = burdenPhrase(character, name, burdensDef);
+  if (burdenLine) parts.push(burdenLine);
+  var itemLine = startingItemPhrase(character, name, itemsDef);
+  if (itemLine) parts.push(itemLine);
+  var skillLine = startingSkillPhrase(character, name, skillsDef);
+  if (skillLine) parts.push(skillLine);
 
   if (character.goal) {
     var phrase = GOAL_STATUS_PHRASES[character.goal.status] || GOAL_STATUS_PHRASES.active;

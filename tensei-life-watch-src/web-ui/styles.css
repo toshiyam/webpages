@@ -109,4 +109,25 @@ button.small.active { background: var(--accent); color: #1a1424; border-color: v
 details.simpanel summary { cursor: pointer; font-size: 0.82rem; color: var(--muted); }
 .simresult { font-size: 0.78rem; color: var(--muted); margin-top: 8px; white-space: pre-wrap; }
 
+details.prepgroup { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px; background: var(--panel-soft); }
+details.prepgroup:last-of-type { margin-bottom: 0; }
+details.prepgroup summary { cursor: pointer; font-weight: 700; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+details.prepgroup summary .prepcurrent { font-weight: 400; font-size: 0.76rem; color: var(--accent); }
+.preplist { display: grid; gap: 8px; margin-top: 10px; }
+.prepcard {
+  display: block; width: 100%; text-align: left; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel); color: var(--text); padding: 10px 12px; font: inherit;
+}
+.prepcard .pc-title { font-weight: 700; font-size: 0.88rem; display: flex; justify-content: space-between; gap: 8px; }
+.prepcard .pc-desc { font-size: 0.78rem; color: var(--muted); margin-top: 3px; }
+.prepcard .pc-benefit { font-size: 0.76rem; color: var(--accent); margin-top: 5px; }
+.prepcard .pc-risk { font-size: 0.76rem; color: var(--danger); margin-top: 3px; }
+.prepcard .pc-note { font-size: 0.72rem; color: var(--muted); margin-top: 5px; font-style: italic; }
+.prepcard.active { border-color: var(--accent); background: var(--accent-soft); }
+.prepcard.active .pc-title::after { content: "選択中"; font-size: 0.7rem; font-weight: 800; color: var(--accent); }
+.prepcard.locked { opacity: 0.5; }
+.prepcard:disabled { cursor: not-allowed; }
+
+.summarygrid { display: grid; gap: 6px; }
+
 footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margin-top: 18px; }

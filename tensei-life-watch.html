@@ -1,7 +1,7 @@
 <!doctype html>
 <!--
 name: 転生者観測日誌
-version: 1.1
+version: 1.2
 type: single-html-app
 status: stable
 -->
@@ -123,6 +123,27 @@ button.small.active { background: var(--accent); color: #1a1424; border-color: v
 details.simpanel summary { cursor: pointer; font-size: 0.82rem; color: var(--muted); }
 .simresult { font-size: 0.78rem; color: var(--muted); margin-top: 8px; white-space: pre-wrap; }
 
+details.prepgroup { border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px; background: var(--panel-soft); }
+details.prepgroup:last-of-type { margin-bottom: 0; }
+details.prepgroup summary { cursor: pointer; font-weight: 700; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+details.prepgroup summary .prepcurrent { font-weight: 400; font-size: 0.76rem; color: var(--accent); }
+.preplist { display: grid; gap: 8px; margin-top: 10px; }
+.prepcard {
+  display: block; width: 100%; text-align: left; border: 1px solid var(--line); border-radius: 12px;
+  background: var(--panel); color: var(--text); padding: 10px 12px; font: inherit;
+}
+.prepcard .pc-title { font-weight: 700; font-size: 0.88rem; display: flex; justify-content: space-between; gap: 8px; }
+.prepcard .pc-desc { font-size: 0.78rem; color: var(--muted); margin-top: 3px; }
+.prepcard .pc-benefit { font-size: 0.76rem; color: var(--accent); margin-top: 5px; }
+.prepcard .pc-risk { font-size: 0.76rem; color: var(--danger); margin-top: 3px; }
+.prepcard .pc-note { font-size: 0.72rem; color: var(--muted); margin-top: 5px; font-style: italic; }
+.prepcard.active { border-color: var(--accent); background: var(--accent-soft); }
+.prepcard.active .pc-title::after { content: "選択中"; font-size: 0.7rem; font-weight: 800; color: var(--accent); }
+.prepcard.locked { opacity: 0.5; }
+.prepcard:disabled { cursor: not-allowed; }
+
+.summarygrid { display: grid; gap: 6px; }
+
 footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margin-top: 18px; }
 </style>
 </head>
@@ -149,15 +170,44 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
 
   <section id="screenStart">
     <div class="card">
-      <h2>転生の準備 <span class="sub">新しい転生者を送り込む</span></h2>
-      <div id="candidateBox"></div>
-      <div class="btnrow single">
-        <button class="primary" id="startBtn" type="button">この人物で転生を開始</button>
-      </div>
+      <h2>候補者の概要 <span class="sub">新しい転生者を送り込む</span></h2>
+      <div id="candidateOverviewBox"></div>
       <div class="btnrow single">
         <button class="secondary" id="rerollBtn" type="button">別の人物を見る</button>
       </div>
     </div>
+    <div class="card">
+      <h2>特殊要素・性格・能力</h2>
+      <div id="candidateDetailBox"></div>
+    </div>
+
+    <div class="card">
+      <h2>転生準備 <span class="sub">持込アイテム・初期スキル・制約を、それぞれ最大1つまで選べる</span></h2>
+      <details class="prepgroup" open>
+        <summary>持込アイテム<span class="prepcurrent" id="itemCurrentLabel"></span></summary>
+        <div class="preplist" id="itemChoiceList"></div>
+      </details>
+      <details class="prepgroup">
+        <summary>初期スキル<span class="prepcurrent" id="skillCurrentLabel"></span></summary>
+        <div class="preplist" id="skillChoiceList"></div>
+      </details>
+      <details class="prepgroup">
+        <summary>制約・代償（任意）<span class="prepcurrent" id="burdenCurrentLabel"></span></summary>
+        <div class="preplist" id="burdenChoiceList"></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2>選択内容の確認</h2>
+      <div id="grantSummary"></div>
+    </div>
+
+    <div class="card">
+      <div class="btnrow single">
+        <button class="primary" id="startBtn" type="button">この人物で転生を開始</button>
+      </div>
+    </div>
+
     <div class="card" id="pastLivesCard" hidden>
       <h2>これまでの転生 <span class="sub" id="pastLivesCount"></span></h2>
       <div class="pastlives" id="pastLivesList"></div>
@@ -195,6 +245,12 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
       <div class="relchips" id="elementChips"></div>
       <div class="empty" id="elementEmpty" hidden>特別な要素は宿っていない。</div>
       <div class="rowline" style="margin-top:8px"><span class="k">生涯目標</span><span class="v" id="goalLine">未形成</span></div>
+    </div>
+    <div class="card">
+      <h2>転生準備の持込</h2>
+      <div class="rowline"><span class="k">持込アイテム</span><span class="v" id="ovItem">なし</span></div>
+      <div class="rowline"><span class="k">初期スキル</span><span class="v" id="ovSkill">なし</span></div>
+      <div class="rowline"><span class="k">制約</span><span class="v" id="ovBurden">なし</span></div>
     </div>
     <div class="card">
       <h2>人間関係 <span class="sub" id="relCount"></span></h2>
@@ -542,7 +598,11 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           ]
         },
         "resultText": "{name}は読み書きと教養を身につけた。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "item_modern_textbook": 10,
+          "skill_literacy": 8
+        }
       },
       {
         "id": "skip_lessons",
@@ -812,7 +872,9 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           "family_orientation": -0.2
         },
         "contextWeights": {
-          "suited_artisan": 10
+          "suited_artisan": 10,
+          "item_multi_tool_knife": 8,
+          "skill_basic_smithing": 8
         },
         "effects": {
           "occupation": "apprentice",
@@ -1040,7 +1102,8 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           "caution": -0.2
         },
         "contextWeights": {
-          "suited_adventurer": 12
+          "suited_adventurer": 12,
+          "item_multi_tool_knife": 6
         },
         "effects": {
           "occupation": "adventurer",
@@ -1222,7 +1285,8 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           "self_interest": 0.2
         },
         "contextWeights": {
-          "suited_merchant": 12
+          "suited_merchant": 12,
+          "item_modern_textbook": 6
         },
         "effects": {
           "occupation": "merchant",
@@ -1281,7 +1345,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           ]
         },
         "resultText": "{name}は持てる金すべてを商談に注ぎ込んだ。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "skill_negotiation": 6
+        }
       },
       {
         "id": "safe_bet",
@@ -1389,7 +1456,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           "money": 6
         },
         "resultText": "{name}は昇進を勝ち取った。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "skill_mnemonics": 5
+        }
       },
       {
         "id": "stay",
@@ -1523,7 +1593,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           }
         },
         "resultText": "{name}は苦しみながらも相手を許した。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "skill_negotiation": 6
+        }
       },
       {
         "id": "cut_ties",
@@ -1867,7 +1940,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           ]
         },
         "resultText": "{name}は危険を顧みず立ち向かった。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "item_multi_tool_knife": 5
+        }
       },
       {
         "id": "flee_monster",
@@ -1878,9 +1954,16 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           "family_orientation": 0.2
         },
         "effects": {},
-        "resultText": "{name}は難を避け、安全な場所へ逃れた。"
+        "resultText": "{name}は難を避け、安全な場所へ逃れた。",
+        "contextWeights": {
+          "skill_camping": 8,
+          "skill_danger_sense": 8
+        }
       }
-    ]
+    ],
+    "weightContextBonus": {
+      "burden_monster_targeted": 18
+    }
   },
   {
     "id": "adv_treasure_rumor",
@@ -1908,7 +1991,12 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           "health": -4,
           "money": 10
         },
-        "resultText": "{name}は噂を頼りに探索へ出て、いくらかの財を得た。"
+        "resultText": "{name}は噂を頼りに探索へ出て、いくらかの財を得た。",
+        "contextWeights": {
+          "item_multi_tool_knife": 6,
+          "item_compass": 6,
+          "skill_camping": 6
+        }
       },
       {
         "id": "ignore_rumor",
@@ -1943,7 +2031,8 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           "caution": 0.2
         },
         "contextWeights": {
-          "low_money": -6
+          "low_money": -6,
+          "skill_first_aid": 8
         },
         "effects": {
           "health": 6,
@@ -1962,6 +2051,32 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           "health": -10
         },
         "resultText": "{name}は治療を受けられず、病に苦しんだ。"
+      },
+      {
+        "id": "use_medical_kit_for_others",
+        "label": "医療箱を使い、人々を救う",
+        "baseWeight": 6,
+        "traitWeights": {
+          "altruism": 0.4
+        },
+        "effects": {
+          "consumeItem": "medical_kit",
+          "fame": 8,
+          "tagsAdd": [
+            "used_kit_for_others"
+          ],
+          "relation": {
+            "add": {
+              "type": "friend",
+              "role": "恩人と慕う友人"
+            }
+          }
+        },
+        "resultText": "{name}は自分のためではなく、病に苦しむ人々のために医療箱を使った。",
+        "importance": "major",
+        "requiredFlags": [
+          "item_medical_kit"
+        ]
       }
     ]
   },
@@ -1997,7 +2112,11 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
         "effects": {
           "health": -6
         },
-        "resultText": "{name}は落ち着いて事態を切り抜けた。"
+        "resultText": "{name}は落ち着いて事態を切り抜けた。",
+        "contextWeights": {
+          "skill_first_aid": 8,
+          "skill_danger_sense": 8
+        }
       },
       {
         "id": "panic",
@@ -2044,9 +2163,17 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
             "past_life_awareness"
           ]
         },
-        "resultText": "{name}は説明のつかないその記憶を、そっと胸にしまった。"
+        "resultText": "{name}は説明のつかないその記憶を、そっと胸にしまった。",
+        "contextWeights": {
+          "skill_mnemonics": 10
+        }
       }
-    ]
+    ],
+    "conditions": {
+      "excludedFlags": [
+        "burden_forgetfulness"
+      ]
+    }
   },
   {
     "id": "reinc_strange_luck",
@@ -2161,7 +2288,8 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
         },
         "contextWeights": {
           "element_demon_mark": 25,
-          "element_cursed_soul": 12
+          "element_cursed_soul": 12,
+          "burden_cursed_fate": 8
         },
         "effects": {
           "goal": {
@@ -2187,7 +2315,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           }
         },
         "resultText": "{name}は「家族を守る」ことを、生涯の目標に定めた。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "item_family_photo": 10
+        }
       },
       {
         "id": "see_world_end",
@@ -2252,7 +2383,8 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           "self_interest": 0.2
         },
         "contextWeights": {
-          "element_cursed_soul": 18
+          "element_cursed_soul": 18,
+          "burden_cursed_fate": 6
         },
         "effects": {
           "goal": {
@@ -2292,7 +2424,9 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
         },
         "contextWeights": {
           "element_return_desire": 25,
-          "element_past_life_memory": 10
+          "element_past_life_memory": 10,
+          "item_family_photo": 8,
+          "burden_forgetfulness": -10
         },
         "effects": {
           "goal": {
@@ -2318,7 +2452,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           }
         },
         "resultText": "{name}は「平穏な生活を守る」ことを、生涯の目標に定めた。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "item_family_photo": 8
+        }
       }
     ]
   },
@@ -2350,7 +2487,8 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
         },
         "contextWeights": {
           "goal_defeat_demon_lord": 15,
-          "goal_become_hero": 15
+          "goal_become_hero": 15,
+          "skill_mana_sense": 8
         },
         "effects": {
           "flagsAdd": [
@@ -2521,7 +2659,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           }
         },
         "resultText": "{name}は力に溺れ、かつての志を見失っていった。",
-        "importance": "historic"
+        "importance": "historic",
+        "contextWeights": {
+          "burden_cursed_fate": 8
+        }
       }
     ]
   },
@@ -2556,7 +2697,8 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           "element_demon_mark": 22,
           "element_cursed_soul": 14,
           "betrayed_once": 10,
-          "goal_become_demon_lord": 20
+          "goal_become_demon_lord": 20,
+          "burden_cursed_fate": 10
         },
         "effects": {
           "flagsAdd": [
@@ -2583,7 +2725,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           ],
           "fame": 2
         },
-        "resultText": "{name}は闇の誘いをはっきりと拒んだ。"
+        "resultText": "{name}は闇の誘いをはっきりと拒んだ。",
+        "contextWeights": {
+          "skill_mana_sense": 6
+        }
       }
     ]
   },
@@ -3163,7 +3308,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           }
         },
         "resultText": "{name}は誠実な商いを重ね、着実に商業帝国を築いていった。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "skill_negotiation": 6
+        }
       }
     ]
   },
@@ -3289,7 +3437,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           }
         },
         "resultText": "{name}は着実に、安全な技術改良を重ねていった。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "item_modern_textbook": 6
+        }
       }
     ]
   },
@@ -3421,7 +3572,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           ]
         },
         "resultText": "{name}は生涯を懸けた一品の制作に挑み始めた。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "skill_basic_smithing": 6
+        }
       },
       {
         "id": "stay_content",
@@ -3489,7 +3643,8 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
         "traitWeights": {},
         "contextWeights": {
           "arc_artisan_s2": 8,
-          "element_cursed_soul": 18
+          "element_cursed_soul": 18,
+          "burden_cursed_fate": 10
         },
         "effects": {
           "tagsAdd": [
@@ -3980,7 +4135,8 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
         },
         "contextWeights": {
           "goal_protect_peace": 20,
-          "arc_hero_rejected": 10
+          "arc_hero_rejected": 10,
+          "item_family_photo": 8
         },
         "effects": {
           "flagsAdd": [
@@ -4147,95 +4303,559 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
       }
     ]
   },
-
   {
-    "id": "goal_check_protect_family", "title": "守り抜いたもの", "category": "goal", "eventType": "branch", "unique": true,
-    "ageRange": { "min": 40, "max": 75 }, "baseWeight": 8,
-    "conditions": { "requiredFlags": ["goal_protect_family"] },
+    "id": "goal_check_protect_family",
+    "title": "守り抜いたもの",
+    "category": "goal",
+    "eventType": "branch",
+    "unique": true,
+    "ageRange": {
+      "min": 40,
+      "max": 75
+    },
+    "baseWeight": 8,
+    "conditions": {
+      "requiredFlags": [
+        "goal_protect_family"
+      ]
+    },
     "text": "{name}は自らの人生を振り返り、家族との日々に思いを馳せた。",
     "choices": [
-      { "id": "protected", "label": "家族を守り抜いたと実感する", "baseWeight": 9, "traitWeights": { "family_orientation": 0.4, "loyalty": 0.2 },
-        "contextWeights": { "is_married": 12 },
-        "effects": { "goalResolution": { "ids": ["protect_family"], "status": "completed" } },
-        "resultText": "{name}は家族を守り抜いたという確かな手応えを胸に抱いた。", "importance": "major" },
-      { "id": "could_not_protect", "label": "守れなかった悔いが残る", "baseWeight": 6, "traitWeights": { "caution": -0.1 },
-        "effects": { "goalResolution": { "ids": ["protect_family"], "status": "failed" }, "health": -5 },
-        "resultText": "{name}の胸には、守り切れなかった悔いがいつまでも残った。", "importance": "major" }
+      {
+        "id": "protected",
+        "label": "家族を守り抜いたと実感する",
+        "baseWeight": 9,
+        "traitWeights": {
+          "family_orientation": 0.4,
+          "loyalty": 0.2
+        },
+        "contextWeights": {
+          "is_married": 12,
+          "item_family_photo": 10
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "protect_family"
+            ],
+            "status": "completed"
+          }
+        },
+        "resultText": "{name}は家族を守り抜いたという確かな手応えを胸に抱いた。",
+        "importance": "major"
+      },
+      {
+        "id": "could_not_protect",
+        "label": "守れなかった悔いが残る",
+        "baseWeight": 6,
+        "traitWeights": {
+          "caution": -0.1
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "protect_family"
+            ],
+            "status": "failed"
+          },
+          "health": -5
+        },
+        "resultText": "{name}の胸には、守り切れなかった悔いがいつまでも残った。",
+        "importance": "major"
+      }
     ]
   },
   {
-    "id": "goal_check_world_end", "title": "旅の果てに", "category": "goal", "eventType": "branch", "unique": true,
-    "ageRange": { "min": 40, "max": 75 }, "baseWeight": 7,
-    "conditions": { "requiredFlags": ["goal_see_world_end"] },
+    "id": "goal_check_world_end",
+    "title": "旅の果てに",
+    "category": "goal",
+    "eventType": "branch",
+    "unique": true,
+    "ageRange": {
+      "min": 40,
+      "max": 75
+    },
+    "baseWeight": 7,
+    "conditions": {
+      "requiredFlags": [
+        "goal_see_world_end"
+      ]
+    },
     "text": "{name}は長年追い求めてきた、世界の果てを目指す旅の総仕上げに差し掛かっていた。",
     "choices": [
-      { "id": "reached_the_end", "label": "ついに世界の果てに辿り着く", "baseWeight": 8, "traitWeights": { "curiosity": 0.4, "persistence": 0.2 },
-        "effects": { "goalResolution": { "ids": ["see_world_end"], "status": "completed" }, "abilities": { "sensitivity": 2 } },
-        "resultText": "{name}はついに、世界の果てと呼べる景色を目にした。", "importance": "major" },
-      { "id": "journey_unfinished", "label": "果てに辿り着く前に旅を終える", "baseWeight": 6, "traitWeights": { "caution": 0.1 },
-        "effects": { "goalResolution": { "ids": ["see_world_end"], "status": "failed" } },
-        "resultText": "{name}の旅は、世界の果てに辿り着く前に終わりを迎えた。", "importance": "major" }
+      {
+        "id": "reached_the_end",
+        "label": "ついに世界の果てに辿り着く",
+        "baseWeight": 8,
+        "traitWeights": {
+          "curiosity": 0.4,
+          "persistence": 0.2
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "see_world_end"
+            ],
+            "status": "completed"
+          },
+          "abilities": {
+            "sensitivity": 2
+          }
+        },
+        "resultText": "{name}はついに、世界の果てと呼べる景色を目にした。",
+        "importance": "major",
+        "contextWeights": {
+          "item_compass": 12,
+          "skill_camping": 6
+        }
+      },
+      {
+        "id": "journey_unfinished",
+        "label": "果てに辿り着く前に旅を終える",
+        "baseWeight": 6,
+        "traitWeights": {
+          "caution": 0.1
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "see_world_end"
+            ],
+            "status": "failed"
+          }
+        },
+        "resultText": "{name}の旅は、世界の果てに辿り着く前に終わりを迎えた。",
+        "importance": "major"
+      }
     ]
   },
   {
-    "id": "goal_check_revenge", "title": "復讐の行方", "category": "goal", "eventType": "branch", "unique": true,
-    "ageRange": { "min": 25, "max": 60 }, "baseWeight": 8,
-    "conditions": { "requiredFlags": ["goal_pursue_revenge"] },
+    "id": "goal_check_revenge",
+    "title": "復讐の行方",
+    "category": "goal",
+    "eventType": "branch",
+    "unique": true,
+    "ageRange": {
+      "min": 25,
+      "max": 60
+    },
+    "baseWeight": 8,
+    "conditions": {
+      "requiredFlags": [
+        "goal_pursue_revenge"
+      ]
+    },
     "text": "{name}は長年胸に抱いてきた復讐を、ついに果たせる機会を迎えた。",
     "choices": [
-      { "id": "revenge_fulfilled", "label": "ついに復讐を果たす", "baseWeight": 8, "traitWeights": { "persistence": 0.4, "self_interest": 0.2 },
-        "contextWeights": { "sworn_revenge": 12, "cast_a_curse": 8 },
-        "effects": { "goalResolution": { "ids": ["pursue_revenge"], "status": "completed" }, "health": -10 },
-        "resultText": "{name}はついに復讐を果たしたが、その代償に深く傷ついた。", "importance": "major" },
-      { "id": "revenge_hollow", "label": "復讐は虚しく胸に残ったままとなる", "baseWeight": 7, "traitWeights": { "altruism": 0.2 },
-        "effects": { "goalResolution": { "ids": ["pursue_revenge"], "status": "distorted" } },
-        "resultText": "{name}が抱き続けた復讐心は、果たされないまま静かに形を変えていった。", "importance": "major" }
+      {
+        "id": "revenge_fulfilled",
+        "label": "ついに復讐を果たす",
+        "baseWeight": 8,
+        "traitWeights": {
+          "persistence": 0.4,
+          "self_interest": 0.2
+        },
+        "contextWeights": {
+          "sworn_revenge": 12,
+          "cast_a_curse": 8
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "pursue_revenge"
+            ],
+            "status": "completed"
+          },
+          "health": -10
+        },
+        "resultText": "{name}はついに復讐を果たしたが、その代償に深く傷ついた。",
+        "importance": "major"
+      },
+      {
+        "id": "revenge_hollow",
+        "label": "復讐は虚しく胸に残ったままとなる",
+        "baseWeight": 7,
+        "traitWeights": {
+          "altruism": 0.2
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "pursue_revenge"
+            ],
+            "status": "distorted"
+          }
+        },
+        "resultText": "{name}が抱き続けた復讐心は、果たされないまま静かに形を変えていった。",
+        "importance": "major"
+      }
     ]
   },
   {
-    "id": "goal_check_immortality", "title": "不老不死の探求", "category": "goal", "eventType": "branch", "unique": true,
-    "ageRange": { "min": 45, "max": 80 }, "baseWeight": 6,
-    "conditions": { "requiredFlags": ["goal_become_immortal"] },
+    "id": "goal_check_immortality",
+    "title": "不老不死の探求",
+    "category": "goal",
+    "eventType": "branch",
+    "unique": true,
+    "ageRange": {
+      "min": 45,
+      "max": 80
+    },
+    "baseWeight": 6,
+    "conditions": {
+      "requiredFlags": [
+        "goal_become_immortal"
+      ]
+    },
     "text": "{name}は長年探し求めてきた不老不死の秘法に、手が届くところまで迫っていた。",
     "choices": [
-      { "id": "immortality_reached", "label": "不老不死の秘法についに辿り着く", "baseWeight": 4, "traitWeights": { "ambition": 0.3, "curiosity": 0.3 },
-        "contextWeights": { "element_magic_affinity": 15 },
-        "effects": { "goalResolution": { "ids": ["become_immortal"], "status": "completed" }, "abilities": { "luck": 3 } },
-        "resultText": "{name}はついに、不老不死と呼べる境地に手を伸ばした。", "importance": "historic" },
-      { "id": "immortality_denied", "label": "歳月には抗えなかった", "baseWeight": 9, "traitWeights": { "caution": 0.1 },
-        "effects": { "goalResolution": { "ids": ["become_immortal"], "status": "failed" } },
-        "resultText": "{name}の探求は、結局のところ歳月の前に及ばなかった。", "importance": "major" }
+      {
+        "id": "immortality_reached",
+        "label": "不老不死の秘法についに辿り着く",
+        "baseWeight": 4,
+        "traitWeights": {
+          "ambition": 0.3,
+          "curiosity": 0.3
+        },
+        "contextWeights": {
+          "element_magic_affinity": 15
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "become_immortal"
+            ],
+            "status": "completed"
+          },
+          "abilities": {
+            "luck": 3
+          }
+        },
+        "resultText": "{name}はついに、不老不死と呼べる境地に手を伸ばした。",
+        "importance": "historic"
+      },
+      {
+        "id": "immortality_denied",
+        "label": "歳月には抗えなかった",
+        "baseWeight": 9,
+        "traitWeights": {
+          "caution": 0.1
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "become_immortal"
+            ],
+            "status": "failed"
+          }
+        },
+        "resultText": "{name}の探求は、結局のところ歳月の前に及ばなかった。",
+        "importance": "major"
+      }
     ]
   },
   {
-    "id": "goal_check_return_home", "title": "帰還の願い", "category": "goal", "eventType": "branch", "unique": true,
-    "ageRange": { "min": 30, "max": 70 }, "baseWeight": 8,
-    "conditions": { "requiredFlags": ["goal_return_home"] },
+    "id": "goal_check_return_home",
+    "title": "帰還の願い",
+    "category": "goal",
+    "eventType": "branch",
+    "unique": true,
+    "ageRange": {
+      "min": 30,
+      "max": 70
+    },
+    "baseWeight": 8,
+    "conditions": {
+      "requiredFlags": [
+        "goal_return_home"
+      ]
+    },
     "text": "{name}は元の世界へ帰る手がかりを、長い間探し続けてきた。",
     "choices": [
-      { "id": "found_the_way_home", "label": "元の世界へ帰る道を見つけ出す", "baseWeight": 7, "traitWeights": { "curiosity": 0.2, "persistence": 0.3 },
-        "contextWeights": { "element_return_desire": 18, "element_past_life_memory": 8 },
-        "effects": { "goalResolution": { "ids": ["return_home"], "status": "completed" } },
-        "resultText": "{name}はついに、元の世界へ帰るための道を見つけ出した。", "importance": "historic" },
-      { "id": "never_found_the_way", "label": "帰る道は、ついに見つからなかった", "baseWeight": 8, "traitWeights": { "family_orientation": 0.2 },
-        "effects": { "goalResolution": { "ids": ["return_home"], "status": "distorted" } },
-        "resultText": "{name}は帰る道を見つけられぬまま、この世界で生きていくことを受け入れた。", "importance": "major" }
+      {
+        "id": "found_the_way_home",
+        "label": "元の世界へ帰る道を見つけ出す",
+        "baseWeight": 7,
+        "traitWeights": {
+          "curiosity": 0.2,
+          "persistence": 0.3
+        },
+        "contextWeights": {
+          "element_return_desire": 18,
+          "element_past_life_memory": 8,
+          "item_family_photo": 8,
+          "skill_mnemonics": 6,
+          "burden_forgetfulness": -15
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "return_home"
+            ],
+            "status": "completed"
+          }
+        },
+        "resultText": "{name}はついに、元の世界へ帰るための道を見つけ出した。",
+        "importance": "historic"
+      },
+      {
+        "id": "never_found_the_way",
+        "label": "帰る道は、ついに見つからなかった",
+        "baseWeight": 8,
+        "traitWeights": {
+          "family_orientation": 0.2
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "return_home"
+            ],
+            "status": "distorted"
+          }
+        },
+        "resultText": "{name}は帰る道を見つけられぬまま、この世界で生きていくことを受け入れた。",
+        "importance": "major"
+      }
     ]
   },
-
   {
-    "id": "goal_check_unravel_magic", "title": "魔法の探求の果てに", "category": "goal", "eventType": "branch", "unique": true,
-    "ageRange": { "min": 30, "max": 70 }, "baseWeight": 8,
-    "conditions": { "requiredFlags": ["goal_unravel_magic"] },
+    "id": "goal_check_unravel_magic",
+    "title": "魔法の探求の果てに",
+    "category": "goal",
+    "eventType": "branch",
+    "unique": true,
+    "ageRange": {
+      "min": 30,
+      "max": 70
+    },
+    "baseWeight": 8,
+    "conditions": {
+      "requiredFlags": [
+        "goal_unravel_magic"
+      ]
+    },
     "text": "{name}は長年続けてきた魔法の探求が、ひとつの結論に至ろうとしていた。",
     "choices": [
-      { "id": "magic_unraveled", "label": "ついに魔法の理を解き明かす", "baseWeight": 7, "traitWeights": { "curiosity": 0.4, "persistence": 0.2 },
-        "contextWeights": { "element_magic_affinity": 18, "element_modern_knowledge": 10 },
-        "effects": { "goalResolution": { "ids": ["unravel_magic"], "status": "completed" }, "abilities": { "intelligence": 3 } },
-        "resultText": "{name}はついに、長年追い求めてきた魔法の理を解き明かした。", "importance": "historic" },
-      { "id": "magic_remains_a_mystery", "label": "魔法はついに謎のまま残る", "baseWeight": 9, "traitWeights": { "caution": 0.1 },
-        "effects": { "goalResolution": { "ids": ["unravel_magic"], "status": "failed" } },
-        "resultText": "{name}の探求も及ばず、魔法は結局謎のまま残された。", "importance": "major" }
+      {
+        "id": "magic_unraveled",
+        "label": "ついに魔法の理を解き明かす",
+        "baseWeight": 7,
+        "traitWeights": {
+          "curiosity": 0.4,
+          "persistence": 0.2
+        },
+        "contextWeights": {
+          "element_magic_affinity": 18,
+          "element_modern_knowledge": 10,
+          "item_modern_textbook": 10,
+          "skill_literacy": 8,
+          "skill_mana_sense": 6
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "unravel_magic"
+            ],
+            "status": "completed"
+          },
+          "abilities": {
+            "intelligence": 3
+          }
+        },
+        "resultText": "{name}はついに、長年追い求めてきた魔法の理を解き明かした。",
+        "importance": "historic"
+      },
+      {
+        "id": "magic_remains_a_mystery",
+        "label": "魔法はついに謎のまま残る",
+        "baseWeight": 9,
+        "traitWeights": {
+          "caution": 0.1
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "unravel_magic"
+            ],
+            "status": "failed"
+          }
+        },
+        "resultText": "{name}の探求も及ばず、魔法は結局謎のまま残された。",
+        "importance": "major"
+      }
+    ]
+  },
+  {
+    "id": "item_sealed_ring_awakening",
+    "title": "指輪の封印",
+    "category": "item",
+    "eventType": "branch",
+    "unique": true,
+    "ageRange": {
+      "min": 12,
+      "max": 50
+    },
+    "baseWeight": 10,
+    "conditions": {
+      "requiredFlags": [
+        "item_sealed_ring"
+      ]
+    },
+    "text": "{name}が持ち込んだ封印の指輪が、身につけた者の意志に応えるように熱を帯び始めた。",
+    "choices": [
+      {
+        "id": "embrace_ring_power",
+        "label": "指輪の力に触れる",
+        "baseWeight": 8,
+        "traitWeights": {
+          "curiosity": 0.3,
+          "self_interest": 0.2
+        },
+        "contextWeights": {
+          "element_demon_mark": 15,
+          "element_cursed_soul": 12
+        },
+        "effects": {
+          "markItemUsed": "sealed_ring",
+          "flagsAdd": [
+            "arc_demon_s1",
+            "item_sealed_ring_awakened"
+          ],
+          "world": {
+            "demonThreat": 8
+          }
+        },
+        "resultText": "{name}は封印を解き、指輪に秘められた禁忌の力に触れてしまった。",
+        "importance": "major"
+      },
+      {
+        "id": "leave_ring_sealed",
+        "label": "指輪を封印したままにする",
+        "baseWeight": 11,
+        "traitWeights": {
+          "caution": 0.3,
+          "faith": 0.1
+        },
+        "effects": {
+          "markItemUsed": "sealed_ring"
+        },
+        "resultText": "{name}は指輪の力を恐れ、封印を解かないまま持ち続けた。",
+        "importance": "major"
+      }
+    ]
+  },
+  {
+    "id": "item_silver_purse_targeted",
+    "title": "狙われた銀貨袋",
+    "category": "item",
+    "eventType": "normal",
+    "ageRange": {
+      "min": 12,
+      "max": 60
+    },
+    "baseWeight": 9,
+    "minGapYears": 4,
+    "conditions": {
+      "requiredFlags": [
+        "item_silver_purse"
+      ],
+      "excludedFlags": [
+        "item_silver_purse_lost"
+      ]
+    },
+    "text": "{name}が持ち込んだ銀貨袋の噂を聞きつけ、盗賊や詐欺師が近づいてきた。",
+    "choices": [
+      {
+        "id": "defend_purse",
+        "label": "策を講じて財を守る",
+        "baseWeight": 9,
+        "traitWeights": {
+          "caution": 0.3,
+          "persistence": 0.2
+        },
+        "contextWeights": {
+          "skill_negotiation": 10,
+          "skill_danger_sense": 8
+        },
+        "effects": {
+          "markItemUsed": "silver_purse"
+        },
+        "resultText": "{name}は用心深く立ち回り、狙われた財を守り切った。"
+      },
+      {
+        "id": "lose_purse",
+        "label": "まんまと財を奪われる",
+        "baseWeight": 8,
+        "traitWeights": {
+          "caution": -0.1
+        },
+        "effects": {
+          "markItemUsed": "silver_purse",
+          "money": -15,
+          "flagsAdd": [
+            "item_silver_purse_lost"
+          ],
+          "flagsRemove": [
+            "item_silver_purse"
+          ]
+        },
+        "resultText": "{name}は狙われていた銀貨袋を、まんまと奪われてしまった。"
+      }
+    ]
+  },
+  {
+    "id": "item_nameless_seed_harvest",
+    "title": "名もなき種子の実り",
+    "category": "item",
+    "eventType": "normal",
+    "unique": true,
+    "ageRange": {
+      "min": 14,
+      "max": 60
+    },
+    "baseWeight": 9,
+    "conditions": {
+      "requiredFlags": [
+        "item_nameless_seed"
+      ],
+      "occupations": [
+        "farmer",
+        "unemployed"
+      ]
+    },
+    "text": "{name}は持ち込んだ名もなき種子を、試しに土へ蒔いてみることにした。",
+    "choices": [
+      {
+        "id": "bountiful_harvest",
+        "label": "豊かな実りをもたらす",
+        "baseWeight": 9,
+        "traitWeights": {
+          "persistence": 0.2,
+          "family_orientation": 0.2
+        },
+        "effects": {
+          "markItemUsed": "nameless_seed",
+          "money": 15,
+          "health": 3,
+          "tagsAdd": [
+            "blessed_harvest"
+          ]
+        },
+        "resultText": "{name}が蒔いた名もなき種子は、思いがけないほど豊かな実りをもたらした。",
+        "importance": "major"
+      },
+      {
+        "id": "poor_harvest",
+        "label": "実りは乏しいままだった",
+        "baseWeight": 7,
+        "traitWeights": {
+          "caution": 0.1
+        },
+        "effects": {
+          "markItemUsed": "nameless_seed"
+        },
+        "resultText": "{name}が蒔いた種子は、これといった実りをもたらさなかった。"
+      }
     ]
   }
 ];
@@ -4268,6 +4888,92 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
     { "id": "become_immortal", "label": "不老不死になる", "traitWeights": { "ambition": 0.3, "curiosity": 0.3 }, "contextWeights": { "element_magic_affinity": 12 } },
     { "id": "return_home", "label": "元の世界へ帰る", "traitWeights": { "caution": 0.2 }, "contextWeights": { "element_return_desire": 25, "element_past_life_memory": 10 } },
     { "id": "protect_peace", "label": "平穏な生活を守る", "traitWeights": { "caution": 0.4, "family_orientation": 0.3 }, "contextWeights": {} }
+  ]
+};
+  var __ITEMS_JSON__ = {
+  "items": [
+    {
+      "id": "multi_tool_knife", "label": "万能ナイフ",
+      "description": "何にでも使える頑丈な小刀。", "benefit": "職人仕事や野外での行動を助ける。", "risk": "特になし。",
+      "requiresBurden": false
+    },
+    {
+      "id": "medical_kit", "label": "医療箱",
+      "description": "傷薬と包帯が入った小さな箱。使うたびに中身が減っていく。", "benefit": "病気や怪我の場面で治療を助ける（使用回数3回）。", "risk": "使い切れば、以後は普通の治療しか受けられない。",
+      "requiresBurden": false, "usesRemaining": 3
+    },
+    {
+      "id": "modern_textbook", "label": "現代の教本",
+      "description": "前世の知識が詰まった一冊の書物。", "benefit": "学問・技術・商いに関わる場面で理解を助ける。", "risk": "特になし。",
+      "requiresBurden": false
+    },
+    {
+      "id": "compass", "label": "方位磁針",
+      "description": "どんな場所でも正しい方角を示す道具。", "benefit": "探索や、世界の果てを目指す旅を助ける。", "risk": "特になし。",
+      "requiresBurden": false
+    },
+    {
+      "id": "family_photo", "label": "家族写真",
+      "description": "前世の家族が写った、色あせた一枚の写真。", "benefit": "家族を思う気持ちや、平穏・帰還への意志を強める。", "risk": "特になし。",
+      "requiresBurden": false
+    },
+    {
+      "id": "silver_purse", "label": "銀貨袋",
+      "description": "ずしりと重い銀貨の入った袋。", "benefit": "転生直後の所持金が増える。", "risk": "裕福さを狙われ、盗賊や詐欺師に狙われやすくなる。",
+      "requiresBurden": true, "startingMoneyBonus": 20
+    },
+    {
+      "id": "sealed_ring", "label": "封印された指輪",
+      "description": "禁忌の力を内に秘めた指輪。", "benefit": "魔に関わる特別な道が開ける。", "risk": "触れた者は、闇の力に魅入られる危険を負う。",
+      "requiresBurden": true
+    },
+    {
+      "id": "nameless_seed", "label": "名もなき種子",
+      "description": "どんな土地でもよく育つという、素性の知れない種。", "benefit": "農業や開拓、飢饉への備えを助ける。", "risk": "特になし。",
+      "requiresBurden": false
+    }
+  ]
+};
+  var __SKILLS_JSON__ = {
+  "skills": [
+    { "id": "first_aid", "label": "応急手当", "description": "怪我や病気への初歩的な対処法を身につけている。", "benefit": "病気・事故の場面で治療や対処を助ける。" },
+    { "id": "literacy", "label": "読み書き", "description": "文字の読み書きを一通り習得している。", "benefit": "学問・魔法研究・商いの場面を助ける。" },
+    { "id": "negotiation", "label": "交渉術", "description": "人と駆け引きし、折り合いをつける術に長けている。", "benefit": "商談や対立の場面で有利に働く。" },
+    { "id": "camping", "label": "野営術", "description": "野外で安全に寝泊まりする技術を持っている。", "benefit": "探索や危険からの回避を助ける。" },
+    { "id": "basic_smithing", "label": "鍛冶の基礎", "description": "金属を鍛える基礎的な技術を心得ている。", "benefit": "鍛冶・技術革新に関わる場面を助ける。" },
+    { "id": "mana_sense", "label": "魔力感知", "description": "目に見えない魔力の流れを感じ取れる。", "benefit": "魔・信仰・勇者や魔王に関わる場面を助ける。" },
+    { "id": "danger_sense", "label": "危機察知", "description": "危険が迫ると、いち早く気配で気づく。", "benefit": "事故や襲撃の場面で被害を抑えやすくする。" },
+    { "id": "mnemonics", "label": "記憶術", "description": "物事を忘れにくく、正確に思い出す訓練を積んでいる。", "benefit": "前世の記憶や、帰還・出世に関わる場面を助ける。" }
+  ]
+};
+  var __BURDENS_JSON__ = {
+  "burdens": [
+    {
+      "id": "frail_body", "label": "虚弱体質",
+      "description": "生まれつき体が弱い。", "risk": "健康を崩しやすく、生涯を通じて不利になりやすい。",
+      "startingHealth": 70
+    },
+    {
+      "id": "short_lived", "label": "短命",
+      "description": "この体には、長くは生きられない定めがある。", "risk": "年齢を問わず、死の危険が常につきまとう。"
+    },
+    {
+      "id": "forgetfulness", "label": "忘却",
+      "description": "前世の記憶をほとんど持たない。", "risk": "前世由来の出来事や、元の世界への手がかりに気づきにくい。"
+    },
+    {
+      "id": "cursed_fate", "label": "呪われた運命",
+      "description": "生まれながらに不吉な運命を背負っている。", "risk": "災厄や闇に関わる出来事に巻き込まれやすい。"
+    },
+    {
+      "id": "poor_birth", "label": "貧困出生",
+      "description": "貧しい家に生まれ落ちた。", "risk": "転生直後の所持金が少ない。",
+      "startingMoney": [0, 5]
+    },
+    {
+      "id": "monster_targeted", "label": "魔物に狙われる",
+      "description": "なぜか魔物に狙われやすい気配をまとっている。", "risk": "魔物の襲撃に遭う頻度が高くなる。"
+    }
   ]
 };
 
@@ -4367,12 +5073,147 @@ function generateCharacter(data) {
     goal: null,
     fame: 0,
     worldImpact: {},
+    startingItem: null,
+    startingSkill: null,
+    burden: null,
+    itemState: {},
+    itemFirstUsedAge: {},
     flags: flags,
     tags: [],
     firedUnique: {},
     eventHistory: {},
     zeroMoneyStreak: 0
   };
+}
+
+// 「同一候補・付与内容だけ変える」比較検証のためのヘルパー。
+// 名前・出身・能力・性格・特殊要素は template から引き継ぎ、その他の
+// 状態（年齢・職業・所持金・生涯目標・フラグ・タグ・持込アイテム等）は
+// 完全に初期化した、独立した新しい人生としてシミュレートできる状態を返す。
+function cloneCharacterTemplate(template) {
+  return {
+    id: template.id + '-' + Math.random().toString(36).slice(2, 8),
+    name: template.name,
+    genderLabel: template.genderLabel,
+    age: 0,
+    region: template.region,
+    occupation: 'unemployed',
+    money: template.money,
+    health: 100,
+    alive: true,
+    abilities: Object.assign({}, template.abilities),
+    traits: Object.assign({}, template.traits),
+    elements: template.elements.slice(),
+    goal: null,
+    fame: 0,
+    worldImpact: {},
+    startingItem: null,
+    startingSkill: null,
+    burden: null,
+    itemState: {},
+    itemFirstUsedAge: {},
+    flags: template.elements.map(function (id) { return 'element_' + id; }),
+    tags: [],
+    firedUnique: {},
+    eventHistory: {},
+    zeroMoneyStreak: 0
+  };
+}
+
+  /* ---- game-engine/starting-grants.js ---- */
+// 転生準備フェーズで選んだ持込アイテム・初期スキル・制約を転生者へ適用する。
+// grants: { itemId, skillId, burdenId } （それぞれ null または 'none' で「なし」）
+//
+// アイテム・スキル・制約は character.flags に 'item_<id>' / 'skill_<id>' /
+// 'burden_<id>' として載るだけで、既存の contextWeights / requiredFlags /
+// excludedFlags / weightContextBonus の仕組みだけからイベント条件・選択肢
+// 補正・発生頻度へ影響できる。新しい条件構文はほぼ増やさない。
+function findItem(data, itemId) {
+  return (data.items || []).filter(function (i) { return i.id === itemId; })[0] || null;
+}
+function findSkill(data, skillId) {
+  return (data.skills || []).filter(function (s) { return s.id === skillId; })[0] || null;
+}
+function findBurden(data, burdenId) {
+  return (data.burdens || []).filter(function (b) { return b.id === burdenId; })[0] || null;
+}
+
+// 強力な持込（requiresBurden: true）は、制約を1つ選んでいなければ選択できない。
+// UIだけでなくエンジン側でも強制することで、不正な組み合わせの保存データが
+// 作られても無効化できるようにする。
+function isItemSelectable(item, burdenId) {
+  if (!item) return true;
+  if (!item.requiresBurden) return true;
+  return !!burdenId && burdenId !== 'none';
+}
+
+function applyStartingGrants(character, data, grants) {
+  var itemId = grants && grants.itemId;
+  var skillId = grants && grants.skillId;
+  var burdenId = grants && grants.burdenId;
+
+  if (burdenId && burdenId !== 'none') {
+    var burden = findBurden(data, burdenId);
+    if (burden) {
+      character.burden = burden.id;
+      if (character.flags.indexOf('burden_' + burden.id) === -1) character.flags.push('burden_' + burden.id);
+      if (typeof burden.startingHealth === 'number') {
+        character.health = burden.startingHealth;
+      }
+      if (Array.isArray(burden.startingMoney)) {
+        character.money = randInt(burden.startingMoney[0], burden.startingMoney[1]);
+      }
+    }
+  }
+
+  if (itemId && itemId !== 'none') {
+    var item = findItem(data, itemId);
+    if (item && isItemSelectable(item, character.burden)) {
+      character.startingItem = item.id;
+      if (character.flags.indexOf('item_' + item.id) === -1) character.flags.push('item_' + item.id);
+      if (typeof item.usesRemaining === 'number') {
+        character.itemState[item.id] = { usesRemaining: item.usesRemaining, consumed: false };
+      }
+      if (typeof item.startingMoneyBonus === 'number') {
+        character.money += item.startingMoneyBonus;
+      }
+    }
+  }
+
+  if (skillId && skillId !== 'none') {
+    var skill = findSkill(data, skillId);
+    if (skill) {
+      character.startingSkill = skill.id;
+      if (character.flags.indexOf('skill_' + skill.id) === -1) character.flags.push('skill_' + skill.id);
+    }
+  }
+}
+
+// 消耗品の使用を記録する。初めて使った年齢を character.itemFirstUsedAge に残し、
+// 残り使用回数が尽きたら 'item_<id>' フラグを外して 'item_<id>_used_up' を立てる
+// （以降のイベントは「持っている」前提の補正を受けなくなる）。
+function consumeItem(character, itemId) {
+  markItemUsed(character, itemId);
+  var state = character.itemState && character.itemState[itemId];
+  if (!state || state.consumed) return;
+  state.usesRemaining = Math.max(0, (state.usesRemaining || 0) - 1);
+  if (state.usesRemaining === 0) {
+    state.consumed = true;
+    var idx = character.flags.indexOf('item_' + itemId);
+    if (idx >= 0) character.flags.splice(idx, 1);
+    if (character.flags.indexOf('item_' + itemId + '_used_up') === -1) {
+      character.flags.push('item_' + itemId + '_used_up');
+    }
+  }
+}
+
+// 消耗はしないが「初めて意味のある場面で使われた」ことだけを記録する
+// （封印指輪を解いた、種子を蒔いた等、一度きりの明確な使用イベント向け）。
+function markItemUsed(character, itemId) {
+  if (!character.itemFirstUsedAge) character.itemFirstUsedAge = {};
+  if (character.itemFirstUsedAge[itemId] === undefined) {
+    character.itemFirstUsedAge[itemId] = character.age;
+  }
 }
 
   /* ---- game-engine/event-selector.js ---- */
@@ -4436,10 +5277,24 @@ function filterEligibleEvents(events, character, ctx, worldYear) {
   return events.filter(function (evt) { return eventEligible(evt, character, ctx, worldYear); });
 }
 
+// evt.weightContextBonus は「このイベント自体が選ばれる頻度」への補正
+// （choice.contextWeights が「選ばれた後、どの選択肢になるか」への補正なのに対し、
+// こちらは「そもそもこのイベントが今年選ばれやすいか」を左右する）。
+// 例: 魔物に狙われる制約を持つ転生者は、魔物襲撃イベント自体の発生頻度が上がる。
+function eventSelectionWeight(evt, ctx) {
+  var w = evt.baseWeight || 1;
+  if (evt.weightContextBonus) {
+    for (var k in evt.weightContextBonus) {
+      if (ctx[k]) w += evt.weightContextBonus[k];
+    }
+  }
+  return Math.max(0.1, w);
+}
+
 function pickEvent(events, character, ctx, worldYear) {
   var eligible = filterEligibleEvents(events, character, ctx, worldYear);
   if (eligible.length === 0) return null;
-  return weightedPick(eligible, function (evt) { return (evt.baseWeight || 1) + rand(0, 5); });
+  return weightedPick(eligible, function (evt) { return eventSelectionWeight(evt, ctx) + rand(0, 5); });
 }
 
   /* ---- game-engine/decision-engine.js ---- */
@@ -4474,8 +5329,27 @@ function scoreChoice(choice, character, ctx) {
   return Math.max(0.5, score);
 }
 
+// choice.requiredFlags / excludedFlags は「選択肢そのものを解禁/封印する」ための
+// 必須条件（contextWeights とは異なり、満たさない場合はスコアに関わらず選ばれない）。
+// 例えば「医療箱を使って人々を救う」という選択肢は、医療箱を持たない転生者には
+// そもそも選べてはならない。contextWeights だけでは baseWeight 分の確率で
+// 選ばれてしまうため、真に選択肢を解禁するにはこちらを使う。
+function isChoiceUnlocked(choice, ctx) {
+  if (choice.requiredFlags && !choice.requiredFlags.every(function (f) { return ctx[f]; })) return false;
+  if (choice.excludedFlags && choice.excludedFlags.some(function (f) { return ctx[f]; })) return false;
+  return true;
+}
+
+function unlockedChoices(evt, ctx) {
+  var unlocked = evt.choices.filter(function (c) { return isChoiceUnlocked(c, ctx); });
+  // 解禁条件付きの選択肢しか無いイベント定義は本来避けるべきだが、
+  // 万一すべて封印された場合でもクラッシュしないよう全選択肢へフォールバックする。
+  return unlocked.length > 0 ? unlocked : evt.choices;
+}
+
 function pickChoice(evt, character, ctx) {
-  return weightedPick(evt.choices, function (c) { return scoreChoice(c, character, ctx); });
+  var candidates = unlockedChoices(evt, ctx);
+  return weightedPick(candidates, function (c) { return scoreChoice(c, character, ctx); });
 }
 
   /* ---- game-engine/effect-processor.js ---- */
@@ -4612,6 +5486,8 @@ function applyEffects(character, relations, world, worldBounds, namePool, effect
     var appliedDeltas = applyWorldEffect(world, worldBounds, effects.world);
     accumulateWorldImpact(character, appliedDeltas);
   }
+  if (effects.consumeItem) consumeItem(character, effects.consumeItem);
+  if (effects.markItemUsed) markItemUsed(character, effects.markItemUsed);
 }
 
   /* ---- game-engine/mortality.js ---- */
@@ -4629,6 +5505,7 @@ function mortalityChance(character, occupationRisk) {
   var risk = occupationRisk[character.occupation];
   if (risk) base += risk * (character.flags.indexOf('dangerous_quest_taken') >= 0 ? 1.6 : 1);
   if (character.zeroMoneyStreak >= 4) base += 0.06;
+  if (character.flags.indexOf('burden_short_lived') >= 0) base += 0.01;
   return clamp(base, 0, 1);
 }
 
@@ -4999,9 +5876,44 @@ function worldImpactPhrase(character) {
   return 'その生涯を通じて、' + parts.join('、') + '。';
 }
 
-// LLMを使わず、死因・実績タグ・生涯目標・特殊要素・世界への影響・支配的な性格から
-// テンプレート文を組み合わせて人生要約を生成する（イベントログと状態のみを情報源とする）。
-function generateSummary(character, relations, deathInfo, occupations, traitsDef, deathCauseLabels) {
+// 転生準備で選んだ持込アイテムについて、実際に使われたかどうかまで含めて
+// 一文にする。「与えたものが期待どおり使われるとは限らない」ことを、
+// 死亡時要約からも読み取れるようにするための処理。
+function startingItemPhrase(character, name, itemsDef) {
+  if (!character.startingItem || !itemsDef) return null;
+  var item = itemsDef.filter(function (i) { return i.id === character.startingItem; })[0];
+  var label = item ? item.label : character.startingItem;
+  var firstUsedAge = character.itemFirstUsedAge ? character.itemFirstUsedAge[character.startingItem] : undefined;
+  var itemState = character.itemState ? character.itemState[character.startingItem] : undefined;
+
+  if (firstUsedAge === undefined) {
+    return name + 'は「' + label + '」を持って転生したが、生涯一度も使うことはなかった。';
+  }
+  if (itemState && itemState.consumed) {
+    return name + 'は「' + label + '」を' + firstUsedAge + '歳の時に初めて役立て、最後には使い切った。';
+  }
+  return name + 'は「' + label + '」を' + firstUsedAge + '歳の時に役立てた。';
+}
+
+function startingSkillPhrase(character, name, skillsDef) {
+  if (!character.startingSkill || !skillsDef) return null;
+  var skill = skillsDef.filter(function (s) { return s.id === character.startingSkill; })[0];
+  var label = skill ? skill.label : character.startingSkill;
+  return name + 'は「' + label + '」の心得を持って転生した。';
+}
+
+function burdenPhrase(character, name, burdensDef) {
+  if (!character.burden || !burdensDef) return null;
+  var burden = burdensDef.filter(function (b) { return b.id === character.burden; })[0];
+  var label = burden ? burden.label : character.burden;
+  return name + 'は「' + label + '」という定めを背負って転生した。';
+}
+
+// LLMを使わず、死因・実績タグ・生涯目標・特殊要素・転生準備の持込・世界への影響・
+// 支配的な性格からテンプレート文を組み合わせて人生要約を生成する
+// （イベントログと状態のみを情報源とする）。itemsDef/skillsDef/burdensDef は
+// game-data/items.json,skills.json,burdens.json 相当の配列で、省略時はその項目を省く。
+function generateSummary(character, relations, deathInfo, occupations, traitsDef, deathCauseLabels, itemsDef, skillsDef, burdensDef) {
   var name = character.name;
   var parts = [];
   parts.push(name + 'は' + character.age + '歳で、' + deathCauseLabels[deathInfo.cause] + 'によりその生涯を閉じた。');
@@ -5011,6 +5923,13 @@ function generateSummary(character, relations, deathInfo, occupations, traitsDef
     var elementLabels = character.elements.map(function (id) { return ELEMENT_PHRASES[id] || id; });
     parts.push(name + 'は「' + elementLabels.join('」「') + '」を宿して転生した。');
   }
+
+  var burdenLine = burdenPhrase(character, name, burdensDef);
+  if (burdenLine) parts.push(burdenLine);
+  var itemLine = startingItemPhrase(character, name, itemsDef);
+  if (itemLine) parts.push(itemLine);
+  var skillLine = startingSkillPhrase(character, name, skillsDef);
+  if (skillLine) parts.push(skillLine);
 
   if (character.goal) {
     var phrase = GOAL_STATUS_PHRASES[character.goal.status] || GOAL_STATUS_PHRASES.active;
@@ -5042,7 +5961,7 @@ function generateSummary(character, relations, deathInfo, occupations, traitsDef
   /* ---- game-engine/load-data.js ---- */
 // game-data/*.json を1つの data バンドルへ正規化する。
 // ブラウザ（fetch）・Node（fs）どちらから読み込んだJSONを渡しても同じ形に揃える。
-function buildDataBundle(traitsJson, occupationsJson, worldJson, eventsJson, elementsJson, goalsJson) {
+function buildDataBundle(traitsJson, occupationsJson, worldJson, eventsJson, elementsJson, goalsJson, itemsJson, skillsJson, burdensJson) {
   return {
     abilities: traitsJson.abilities,
     traits: traitsJson.traits,
@@ -5060,12 +5979,16 @@ function buildDataBundle(traitsJson, occupationsJson, worldJson, eventsJson, ele
     events: eventsJson,
     elements: elementsJson.elements,
     elementSecondaryChance: elementsJson.secondaryChance,
-    goals: goalsJson.goals
+    goals: goalsJson.goals,
+    items: (itemsJson && itemsJson.items) || [],
+    skills: (skillsJson && skillsJson.skills) || [],
+    burdens: (burdensJson && burdensJson.burdens) || []
   };
 }
 
   /* ---- game-engine/simulate.js ---- */
 var MAX_LIFE_YEARS = 130;
+var NONE_GRANT_CHANCE = 0.5;
 
 // 各イベントが、どの生涯目標を決着させ得るか（goalResolution.ids）のマップを作る。
 // 「目標形成後に対応イベントが一度も候補にならない目標」を検出するのに使う。
@@ -5084,12 +6007,20 @@ function buildGoalResolutionEventMap(events) {
   return map;
 }
 
-// UIを介さず、同じゲームエンジンで1人の人生を最後まで実行する。
-// ブラウザの高速シミュレーションパネルと Node の CLI (scripts/simulate-cli.js) の両方から使われる。
-// goalResolutionEventMap を渡すと、生涯目標の決着イベントが一度でも候補に
-// なったかどうか（到達可能性）も追跡する。
-function simulateOneLife(data, goalResolutionEventMap) {
-  var character = generateCharacter(data);
+// バッチ検証のためだけに、多様なプレイヤーの選び方を模して転生準備の
+// 付与内容をランダムに決める（実際のゲームでは常にプレイヤーの選択）。
+// 各カテゴリとも約半数は「なし」を選ぶという想定で確率を単純化している。
+function pickRandomGrants(data) {
+  var burdenId = Math.random() < NONE_GRANT_CHANCE ? null : pick(data.burdens).id;
+  var itemCandidates = (data.items || []).filter(function (i) { return isItemSelectable(i, burdenId); });
+  var itemId = (itemCandidates.length > 0 && Math.random() >= NONE_GRANT_CHANCE) ? pick(itemCandidates).id : null;
+  var skillId = (data.skills && data.skills.length > 0 && Math.random() >= NONE_GRANT_CHANCE) ? pick(data.skills).id : null;
+  return { itemId: itemId, skillId: skillId, burdenId: burdenId };
+}
+
+// 1人の人生を、誕生から死亡まで最後まで実行する（DOM非依存の共通ループ）。
+// character はあらかじめ生成・転生準備適用済みのものを渡す。
+function runLife(character, data, goalResolutionEventMap) {
   var relations = [];
   var world = Object.assign({}, data.initialWorld);
   var gameState = { character: character, relations: relations, world: world };
@@ -5122,6 +6053,10 @@ function simulateOneLife(data, goalResolutionEventMap) {
     goalResolutionReachable = resolverIds.some(function (id) { return eligibleEverSeen[id]; });
   }
 
+  var itemUsed = character.startingItem
+    ? (character.itemFirstUsedAge[character.startingItem] !== undefined)
+    : null;
+
   return {
     lifespan: character.age,
     occupation: character.occupation,
@@ -5139,15 +6074,31 @@ function simulateOneLife(data, goalResolutionEventMap) {
     worldImpactByField: character.worldImpact,
     nothingHappened: hadNothingHappen(character),
     goalProgressViolation: findGoalProgressViolation(character),
+    startingItem: character.startingItem,
+    startingSkill: character.startingSkill,
+    burden: character.burden,
+    itemUsed: itemUsed,
     eventCounts: eventCounts
   };
+}
+
+// UIを介さず、同じゲームエンジンで1人の人生を最後まで実行する。
+// ブラウザの高速シミュレーションパネルと Node の CLI (scripts/simulate-cli.js) の両方から使われる。
+// goalResolutionEventMap を渡すと、生涯目標の決着イベントが一度でも候補に
+// なったかどうか（到達可能性）も追跡する。
+// grants を省略すると、バランス検証のために付与内容をランダムに決める。
+function simulateOneLife(data, goalResolutionEventMap, grants) {
+  var character = generateCharacter(data);
+  applyStartingGrants(character, data, grants || pickRandomGrants(data));
+  return runLife(character, data, goalResolutionEventMap);
 }
 
 var WORLD_FIELDS = ['stability', 'warThreat', 'demonThreat', 'religiousInfluence', 'techLevel', 'economy'];
 
 // バランス検証: 複数人生を高速実行し、平均寿命・職業到達率・死因分布・結婚率・
 // 目標別統計・人生アーク突入率／到達率・世界影響統計・人生ランク分布・
-// 整合性違反・各イベントの発生回数（=未発生イベントの検出にも使える）を集計する。
+// 転生準備(アイテム/スキル/制約)別統計・整合性違反・各イベントの発生回数
+// （=未発生イベントの検出にも使える）を集計する。
 function runBatchSimulation(data, n) {
   var goalResolutionEventMap = buildGoalResolutionEventMap(data.events);
   var results = [];
@@ -5175,6 +6126,24 @@ function runBatchSimulation(data, n) {
     return goalStats[id];
   }
 
+  // 転生準備別統計: 選択率・(アイテムのみ)使用率・平均寿命・人生ランク分布
+  var itemStats = {};
+  function itemBucket(id) {
+    if (!itemStats[id]) itemStats[id] = { selected: 0, used: 0, lifespanTotal: 0, rankCounts: {} };
+    return itemStats[id];
+  }
+  var skillStats = {};
+  function skillBucket(id) {
+    if (!skillStats[id]) skillStats[id] = { selected: 0, lifespanTotal: 0, rankCounts: {} };
+    return skillStats[id];
+  }
+  var burdenStats = {};
+  function burdenBucket(id) {
+    if (!burdenStats[id]) burdenStats[id] = { selected: 0, lifespanTotal: 0, rankCounts: {} };
+    return burdenStats[id];
+  }
+  var noGrantCount = 0;
+
   // 世界影響統計: 項目別の平均寄与（自然ドリフトは含まない。character.worldImpact のみ）と正負の人数
   var worldFieldTotals = {};
   WORLD_FIELDS.forEach(function (f) { worldFieldTotals[f] = 0; });
@@ -5192,6 +6161,27 @@ function runBatchSimulation(data, n) {
     if (r.worldImpact) worldImpactCount += 1;
     if (r.nothingHappened) nothingHappenedCount += 1;
     if (r.goalProgressViolation) goalProgressViolations.push(r.goalProgressViolation);
+    if (!r.startingItem && !r.startingSkill && !r.burden) noGrantCount += 1;
+
+    if (r.startingItem) {
+      var ib = itemBucket(r.startingItem);
+      ib.selected += 1;
+      ib.lifespanTotal += r.lifespan;
+      ib.rankCounts[r.lifeRank] = (ib.rankCounts[r.lifeRank] || 0) + 1;
+      if (r.itemUsed) ib.used += 1;
+    }
+    if (r.startingSkill) {
+      var sb = skillBucket(r.startingSkill);
+      sb.selected += 1;
+      sb.lifespanTotal += r.lifespan;
+      sb.rankCounts[r.lifeRank] = (sb.rankCounts[r.lifeRank] || 0) + 1;
+    }
+    if (r.burden) {
+      var bb = burdenBucket(r.burden);
+      bb.selected += 1;
+      bb.lifespanTotal += r.lifespan;
+      bb.rankCounts[r.lifeRank] = (bb.rankCounts[r.lifeRank] || 0) + 1;
+    }
 
     if (r.goal) {
       var bucket = goalBucket(r.goal.id);
@@ -5224,6 +6214,13 @@ function runBatchSimulation(data, n) {
     b.avgProgress = b.formed > 0 ? b.progressTotal / b.formed : 0;
     delete b.progressTotal;
   });
+  [itemStats, skillStats, burdenStats].forEach(function (statMap) {
+    Object.keys(statMap).forEach(function (id) {
+      var b = statMap[id];
+      b.avgLifespan = b.selected > 0 ? b.lifespanTotal / b.selected : 0;
+      delete b.lifespanTotal;
+    });
+  });
 
   var worldFieldAvg = {};
   WORLD_FIELDS.forEach(function (f) { worldFieldAvg[f] = worldFieldTotals[f] / n; });
@@ -5255,6 +6252,12 @@ function runBatchSimulation(data, n) {
     eventTotals: eventTotals,
     unfiredEvents: unfiredEvents,
     goalStats: goalStats,
+    grantStats: {
+      noGrantRate: noGrantCount / n,
+      items: itemStats,
+      skills: skillStats,
+      burdens: burdenStats
+    },
     worldImpactStats: {
       rate: worldImpactCount / n,
       perFieldAvgContribution: worldFieldAvg,
@@ -5276,12 +6279,47 @@ function runBatchSimulation(data, n) {
   };
 }
 
+// 「同一候補・付与内容だけ変える」比較試験。能力・性格・特殊要素が全く同じ
+// 候補者テンプレートを1体だけ用意し、各付与パターンごとに独立した乱数で
+// trialsPerVariant 回ずつ人生を再生する。付与内容以外の初期条件を完全に
+// 固定した上での統計比較になるため、「単一の付与要素だけで特定のアーク
+// 到達率が異常に高くなっていないか」の検証に使う。
+function runGrantComparisonTrial(data, grantVariants, trialsPerVariant) {
+  var goalResolutionEventMap = buildGoalResolutionEventMap(data.events);
+  var template = generateCharacter(data);
+  var report = {};
+
+  grantVariants.forEach(function (variant) {
+    var arcClimaxCount = 0;
+    var lifespanTotal = 0;
+    var rankCounts = {};
+
+    for (var i = 0; i < trialsPerVariant; i++) {
+      var character = cloneCharacterTemplate(template);
+      applyStartingGrants(character, data, variant.grants || {});
+      var r = runLife(character, data, goalResolutionEventMap);
+      if (r.reachedArcClimax) arcClimaxCount += 1;
+      lifespanTotal += r.lifespan;
+      rankCounts[r.lifeRank] = (rankCounts[r.lifeRank] || 0) + 1;
+    }
+
+    report[variant.label] = {
+      trials: trialsPerVariant,
+      arcClimaxRate: arcClimaxCount / trialsPerVariant,
+      avgLifespan: lifespanTotal / trialsPerVariant,
+      rankCounts: rankCounts
+    };
+  });
+
+  return { templateName: template.name, variants: report };
+}
+
 // escapeHtml は game-engine に無いため、ここでのみ小さく定義する（描画専用のUIヘルパー）。
 function esc(s) {
   return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; });
 }
 
-var SCHEMA_VERSION = 3;
+var SCHEMA_VERSION = 4;
 var STORAGE_KEY = 'tenseiLifeWatch:v1';
 var MAX_OFFLINE_YEARS = 300;
 
@@ -5313,11 +6351,15 @@ async function loadJson(path) {
 }
 
 async function loadData() {
-  return buildDataBundle(__TRAITS_JSON__, __OCCUPATIONS_JSON__, __WORLD_JSON__, __EVENTS_JSON__, __ELEMENTS_JSON__, __GOALS_JSON__);
+  return buildDataBundle(__TRAITS_JSON__, __OCCUPATIONS_JSON__, __WORLD_JSON__, __EVENTS_JSON__, __ELEMENTS_JSON__, __GOALS_JSON__, __ITEMS_JSON__, __SKILLS_JSON__, __BURDENS_JSON__);
 }
 
 function freshWorld() {
   return Object.assign({}, data.initialWorld);
+}
+
+function freshPendingGrants() {
+  return { itemId: null, skillId: null, burdenId: null };
 }
 
 function freshState() {
@@ -5326,6 +6368,7 @@ function freshState() {
     world: freshWorld(),
     character: null,
     candidate: generateCharacter(data),
+    pendingGrants: freshPendingGrants(),
     relations: [],
     log: [],
     lifetimeCount: 0,
@@ -5335,14 +6378,20 @@ function freshState() {
   };
 }
 
-// schemaVersion 1 (要素/生涯目標/世界状態の拡張前) や 2 (worldImpact集計の
-// 追加前) の保存データを、新しいフィールドを補いながら壊さずに引き継ぐ。
+// schemaVersion 1 (要素/生涯目標/世界状態の拡張前)、2 (worldImpact集計の追加前)、
+// 3 (転生準備フェーズの追加前) の保存データを、新しいフィールドを補いながら
+// 壊さずに引き継ぐ。
 function migrateCharacter(character) {
   if (!character) return character;
   if (!Array.isArray(character.elements)) character.elements = [];
   if (character.goal === undefined) character.goal = null;
   if (typeof character.fame !== 'number') character.fame = 0;
   if (!character.worldImpact || typeof character.worldImpact !== 'object') character.worldImpact = {};
+  if (character.startingItem === undefined) character.startingItem = null;
+  if (character.startingSkill === undefined) character.startingSkill = null;
+  if (character.burden === undefined) character.burden = null;
+  if (!character.itemState || typeof character.itemState !== 'object') character.itemState = {};
+  if (!character.itemFirstUsedAge || typeof character.itemFirstUsedAge !== 'object') character.itemFirstUsedAge = {};
   return character;
 }
 
@@ -5355,10 +6404,11 @@ function migrateWorld(world) {
 }
 
 function migrateState(raw) {
-  if (raw.schemaVersion === 1 || raw.schemaVersion === 2) {
+  if (raw.schemaVersion >= 1 && raw.schemaVersion < SCHEMA_VERSION) {
     migrateCharacter(raw.character);
     migrateCharacter(raw.candidate);
     migrateWorld(raw.world);
+    if (!raw.pendingGrants) raw.pendingGrants = freshPendingGrants();
     raw.schemaVersion = SCHEMA_VERSION;
   }
   return raw;
@@ -5366,7 +6416,7 @@ function migrateState(raw) {
 
 function sanitizeLoaded(raw) {
   if (!raw || typeof raw !== 'object') return null;
-  if (raw.schemaVersion !== SCHEMA_VERSION && raw.schemaVersion !== 1 && raw.schemaVersion !== 2) return null;
+  if (typeof raw.schemaVersion !== 'number' || raw.schemaVersion < 1 || raw.schemaVersion > SCHEMA_VERSION) return null;
   try {
     raw = migrateState(raw);
     if (raw.character) {
@@ -5391,6 +6441,7 @@ function loadState() {
   var sanitized = sanitizeLoaded(raw);
   if (!sanitized) return freshState();
   if (!sanitized.candidate) sanitized.candidate = generateCharacter(data);
+  if (!sanitized.pendingGrants) sanitized.pendingGrants = freshPendingGrants();
   if (!sanitized.pastLives) sanitized.pastLives = [];
   if (typeof sanitized.speedIndex !== 'number') sanitized.speedIndex = 1;
   return sanitized;
@@ -5438,6 +6489,7 @@ function catchUpOffline() {
 }
 
 function startLife() {
+  applyStartingGrants(state.candidate, data, state.pendingGrants);
   state.character = state.candidate;
   state.relations = [];
   state.log = [{
@@ -5454,7 +6506,8 @@ function finishLife(deathInfo) {
   isPlaying = false;
   stopTimer();
   var summary = generateSummary(
-    state.character, state.relations, deathInfo, data.occupations, data.traits, data.deathCauseLabels
+    state.character, state.relations, deathInfo, data.occupations, data.traits, data.deathCauseLabels,
+    data.items, data.skills, data.burdens
   );
   state.pastLives.unshift({
     name: state.character.name, age: state.character.age,
@@ -5464,6 +6517,7 @@ function finishLife(deathInfo) {
   state.lastDeathSummary = summary;
   state.lastDeathInfo = deathInfo;
   state.candidate = generateCharacter(data);
+  state.pendingGrants = freshPendingGrants();
   state.character.alive = false;
   saveState();
   renderAll();
@@ -5489,6 +6543,7 @@ function advanceOneYear() {
 
 function rerollCandidate() {
   state.candidate = generateCharacter(data);
+  state.pendingGrants = freshPendingGrants();
   saveState();
   renderStart();
 }
@@ -5502,6 +6557,34 @@ function startTimer() {
     if (!isPlaying) return;
     advanceOneYear();
   }, SPEEDS[state.speedIndex].yearMs);
+}
+
+/* ---- 転生準備（アイテム/スキル/制約）選択 ---- */
+
+function selectItem(itemId) {
+  var next = state.pendingGrants.itemId === itemId ? null : itemId;
+  if (next) {
+    var item = data.items.filter(function (i) { return i.id === next; })[0];
+    if (!isItemSelectable(item, state.pendingGrants.burdenId)) return; // 制約未選択のため選べない
+  }
+  state.pendingGrants.itemId = next;
+  saveState();
+  renderStart();
+}
+function selectSkill(skillId) {
+  state.pendingGrants.skillId = state.pendingGrants.skillId === skillId ? null : skillId;
+  saveState();
+  renderStart();
+}
+function selectBurden(burdenId) {
+  state.pendingGrants.burdenId = state.pendingGrants.burdenId === burdenId ? null : burdenId;
+  // 制約を外したことで選択中のアイテムが選べなくなる場合は、選択を解除する。
+  if (state.pendingGrants.itemId) {
+    var item = data.items.filter(function (i) { return i.id === state.pendingGrants.itemId; })[0];
+    if (!isItemSelectable(item, state.pendingGrants.burdenId)) state.pendingGrants.itemId = null;
+  }
+  saveState();
+  renderStart();
 }
 
 /* ---- 描画 ---- */
@@ -5546,20 +6629,82 @@ function renderAll() {
   }
 }
 
+function prepCardHtml(def, kind, selectedId, locked) {
+  var isActive = selectedId === def.id;
+  var classes = 'prepcard' + (isActive ? ' active' : '') + (locked ? ' locked' : '');
+  var html = '<button type="button" class="' + classes + '" data-' + kind + '="' + esc(def.id) + '"' + (locked ? ' disabled' : '') + '>';
+  html += '<div class="pc-title"><span>' + esc(def.label) + '</span></div>';
+  html += '<div class="pc-desc">' + esc(def.description) + '</div>';
+  if (def.benefit) html += '<div class="pc-benefit">恩恵: ' + esc(def.benefit) + '</div>';
+  if (def.risk && def.risk !== '特になし。') html += '<div class="pc-risk">注意: ' + esc(def.risk) + '</div>';
+  if (locked) html += '<div class="pc-note">※ 制約を1つ選ぶと持ち込めるようになる</div>';
+  html += '</button>';
+  return html;
+}
+
+function noneCardHtml(kind, selectedId, label) {
+  var isActive = !selectedId;
+  return '<button type="button" class="prepcard' + (isActive ? ' active' : '') + '" data-' + kind + '="none">' +
+    '<div class="pc-title"><span>' + esc(label || 'なし') + '</span></div>' +
+    '<div class="pc-desc">何も持ち込まない。</div>' +
+    '</button>';
+}
+
+function renderPrepSection() {
+  var grants = state.pendingGrants;
+
+  var itemHtml = noneCardHtml('item', grants.itemId, '持ち込まない');
+  itemHtml += data.items.map(function (item) {
+    var locked = !isItemSelectable(item, grants.burdenId);
+    return prepCardHtml(item, 'item', grants.itemId, locked);
+  }).join('');
+  document.getElementById('itemChoiceList').innerHTML = itemHtml;
+
+  var skillHtml = noneCardHtml('skill', grants.skillId, '身につけない');
+  skillHtml += data.skills.map(function (skill) { return prepCardHtml(skill, 'skill', grants.skillId, false); }).join('');
+  document.getElementById('skillChoiceList').innerHTML = skillHtml;
+
+  var burdenHtml = noneCardHtml('burden', grants.burdenId, '背負わない');
+  burdenHtml += data.burdens.map(function (b) { return prepCardHtml(b, 'burden', grants.burdenId, false); }).join('');
+  document.getElementById('burdenChoiceList').innerHTML = burdenHtml;
+
+  var itemLabel = grants.itemId ? (data.items.filter(function (i) { return i.id === grants.itemId; })[0] || {}).label : 'なし';
+  var skillLabel = grants.skillId ? (data.skills.filter(function (s) { return s.id === grants.skillId; })[0] || {}).label : 'なし';
+  var burdenLabel = grants.burdenId ? (data.burdens.filter(function (b) { return b.id === grants.burdenId; })[0] || {}).label : 'なし';
+  document.getElementById('itemCurrentLabel').textContent = itemLabel || 'なし';
+  document.getElementById('skillCurrentLabel').textContent = skillLabel || 'なし';
+  document.getElementById('burdenCurrentLabel').textContent = burdenLabel || 'なし';
+
+  document.getElementById('grantSummary').innerHTML =
+    '<div class="rowline"><span class="k">持込アイテム</span><span class="v">' + esc(itemLabel || 'なし') + '</span></div>' +
+    '<div class="rowline"><span class="k">初期スキル</span><span class="v">' + esc(skillLabel || 'なし') + '</span></div>' +
+    '<div class="rowline"><span class="k">制約</span><span class="v">' + esc(burdenLabel || 'なし') + '</span></div>';
+}
+
 function renderStart() {
   var c = state.candidate;
-  var html = '';
-  html += '<div class="rowline"><span class="k">名前</span><span class="v">' + esc(c.name) + '（' + c.genderLabel + '）</span></div>';
-  html += '<div class="rowline"><span class="k">出身</span><span class="v">' + esc(c.region) + '</span></div>';
-  html += '<div class="barlist" style="margin-top:10px">';
-  data.abilities.forEach(function (a) { html += abilityBarHtml(a, c.abilities[a.id]); });
-  html += '</div><div class="traitgrid" style="margin-top:10px">';
+  var overviewHtml = '';
+  overviewHtml += '<div class="rowline"><span class="k">名前</span><span class="v">' + esc(c.name) + '（' + c.genderLabel + '）</span></div>';
+  overviewHtml += '<div class="rowline"><span class="k">出身</span><span class="v">' + esc(c.region) + '</span></div>';
+  document.getElementById('candidateOverviewBox').innerHTML = overviewHtml;
+
+  var detailHtml = '';
+  if (c.elements.length > 0) {
+    detailHtml += '<div class="relchips" style="margin-bottom:10px">' + c.elements.map(function (id) {
+      return '<span class="chip"><b>' + esc(ELEMENT_LABELS[id] || id) + '</b></span>';
+    }).join('') + '</div>';
+  }
+  detailHtml += '<div class="barlist">';
+  data.abilities.forEach(function (a) { detailHtml += abilityBarHtml(a, c.abilities[a.id]); });
+  detailHtml += '</div><div class="traitgrid" style="margin-top:10px">';
   data.traits.forEach(function (t) {
     var v = c.traits[t.id];
-    html += '<div class="t' + (v >= 70 ? ' hi' : '') + '"><span>' + t.label + '</span><span class="tv">' + v + '</span></div>';
+    detailHtml += '<div class="t' + (v >= 70 ? ' hi' : '') + '"><span>' + t.label + '</span><span class="tv">' + v + '</span></div>';
   });
-  html += '</div>';
-  document.getElementById('candidateBox').innerHTML = html;
+  detailHtml += '</div>';
+  document.getElementById('candidateDetailBox').innerHTML = detailHtml;
+
+  renderPrepSection();
 
   var pastCard = document.getElementById('pastLivesCard');
   if (state.pastLives.length > 0) {
@@ -5607,6 +6752,14 @@ function renderObserve() {
     ? c.goal.label + '（' + (GOAL_STATUS_LABELS[c.goal.status] || c.goal.status) + '・進捗' + c.goal.progress + '）'
     : '未形成';
 
+  document.getElementById('ovItem').textContent = itemStatusText(c);
+  document.getElementById('ovSkill').textContent = c.startingSkill
+    ? (data.skills.filter(function (s) { return s.id === c.startingSkill; })[0] || {}).label || c.startingSkill
+    : 'なし';
+  document.getElementById('ovBurden').textContent = c.burden
+    ? (data.burdens.filter(function (b) { return b.id === c.burden; })[0] || {}).label || c.burden
+    : 'なし';
+
   document.getElementById('relCount').textContent = '（' + state.relations.length + '人）';
   var relEmpty = document.getElementById('relEmpty');
   if (state.relations.length === 0) {
@@ -5628,6 +6781,23 @@ function renderObserve() {
   document.getElementById('speedRow').innerHTML = SPEEDS.map(function (s, i) {
     return '<button class="small' + (i === state.speedIndex ? ' active' : '') + '" data-speed="' + i + '" type="button">' + s.label + '</button>';
   }).join('');
+}
+
+function itemStatusText(c) {
+  if (!c.startingItem) return 'なし';
+  var item = data.items.filter(function (i) { return i.id === c.startingItem; })[0];
+  var label = item ? item.label : c.startingItem;
+  var firstUsedAge = c.itemFirstUsedAge[c.startingItem];
+  var itemState = c.itemState[c.startingItem];
+  if (itemState) {
+    if (itemState.consumed) return label + '（使い切った）';
+    if (firstUsedAge !== undefined) return label + '（残り' + itemState.usesRemaining + '回・' + firstUsedAge + '歳で初使用）';
+    return label + '（残り' + itemState.usesRemaining + '回・未使用）';
+  }
+  if (firstUsedAge !== undefined) {
+    return label + '（' + firstUsedAge + '歳の時に活用）';
+  }
+  return label + '（未使用）';
 }
 
 function renderLog() {
@@ -5685,6 +6855,22 @@ async function init() {
     renderObserve();
   });
 
+  document.getElementById('itemChoiceList').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-item]');
+    if (!btn || btn.disabled) return;
+    selectItem(btn.getAttribute('data-item'));
+  });
+  document.getElementById('skillChoiceList').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-skill]');
+    if (!btn) return;
+    selectSkill(btn.getAttribute('data-skill'));
+  });
+  document.getElementById('burdenChoiceList').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-burden]');
+    if (!btn) return;
+    selectBurden(btn.getAttribute('data-burden'));
+  });
+
   document.getElementById('speedRow').addEventListener('click', function (e) {
     var btn = e.target.closest('[data-speed]');
     if (!btn) return;
@@ -5721,6 +6907,8 @@ async function init() {
       var pct = function (v) { return Math.round(v * 100) + '%'; };
       var goalLabelOf = {};
       data.goals.forEach(function (g) { goalLabelOf[g.id] = g.label; });
+      var itemLabelOf = {};
+      data.items.forEach(function (i) { itemLabelOf[i.id] = i.label; });
 
       var lines = [];
       lines.push('試行回数: ' + stats.trials);
@@ -5740,6 +6928,15 @@ async function init() {
           g.abandoned + '/' + g.distorted + '/' + g.unresolved + '(' + g.unreachableWhileActive + ')/' +
           g.avgProgress.toFixed(0)
         );
+      });
+
+      lines.push('');
+      lines.push('[転生準備] 何も持たずに転生した率: ' + pct(stats.grantStats.noGrantRate));
+      lines.push('[アイテム] 選択/使用(使用率)');
+      Object.keys(stats.grantStats.items).sort().forEach(function (id) {
+        var s = stats.grantStats.items[id];
+        var rate = s.selected > 0 ? Math.round((s.used / s.selected) * 100) : 0;
+        lines.push('  ' + (itemLabelOf[id] || id) + ': ' + s.selected + '/' + s.used + '(' + rate + '%)');
       });
 
       lines.push('');

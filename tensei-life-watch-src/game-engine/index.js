@@ -1,5 +1,6 @@
 export * from './rng.js';
 export * from './character-generator.js';
+export * from './starting-grants.js';
 export * from './event-selector.js';
 export * from './decision-engine.js';
 export * from './effect-processor.js';

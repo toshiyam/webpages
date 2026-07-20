@@ -1,0 +1,30 @@
+{
+  "burdens": [
+    {
+      "id": "frail_body", "label": "虚弱体質",
+      "description": "生まれつき体が弱い。", "risk": "健康を崩しやすく、生涯を通じて不利になりやすい。",
+      "startingHealth": 70
+    },
+    {
+      "id": "short_lived", "label": "短命",
+      "description": "この体には、長くは生きられない定めがある。", "risk": "年齢を問わず、死の危険が常につきまとう。"
+    },
+    {
+      "id": "forgetfulness", "label": "忘却",
+      "description": "前世の記憶をほとんど持たない。", "risk": "前世由来の出来事や、元の世界への手がかりに気づきにくい。"
+    },
+    {
+      "id": "cursed_fate", "label": "呪われた運命",
+      "description": "生まれながらに不吉な運命を背負っている。", "risk": "災厄や闇に関わる出来事に巻き込まれやすい。"
+    },
+    {
+      "id": "poor_birth", "label": "貧困出生",
+      "description": "貧しい家に生まれ落ちた。", "risk": "転生直後の所持金が少ない。",
+      "startingMoney": [0, 5]
+    },
+    {
+      "id": "monster_targeted", "label": "魔物に狙われる",
+      "description": "なぜか魔物に狙われやすい気配をまとっている。", "risk": "魔物の襲撃に遭う頻度が高くなる。"
+    }
+  ]
+}

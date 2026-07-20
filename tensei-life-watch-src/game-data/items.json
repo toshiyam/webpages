@@ -1,0 +1,44 @@
+{
+  "items": [
+    {
+      "id": "multi_tool_knife", "label": "万能ナイフ",
+      "description": "何にでも使える頑丈な小刀。", "benefit": "職人仕事や野外での行動を助ける。", "risk": "特になし。",
+      "requiresBurden": false
+    },
+    {
+      "id": "medical_kit", "label": "医療箱",
+      "description": "傷薬と包帯が入った小さな箱。使うたびに中身が減っていく。", "benefit": "病気や怪我の場面で治療を助ける（使用回数3回）。", "risk": "使い切れば、以後は普通の治療しか受けられない。",
+      "requiresBurden": false, "usesRemaining": 3
+    },
+    {
+      "id": "modern_textbook", "label": "現代の教本",
+      "description": "前世の知識が詰まった一冊の書物。", "benefit": "学問・技術・商いに関わる場面で理解を助ける。", "risk": "特になし。",
+      "requiresBurden": false
+    },
+    {
+      "id": "compass", "label": "方位磁針",
+      "description": "どんな場所でも正しい方角を示す道具。", "benefit": "探索や、世界の果てを目指す旅を助ける。", "risk": "特になし。",
+      "requiresBurden": false
+    },
+    {
+      "id": "family_photo", "label": "家族写真",
+      "description": "前世の家族が写った、色あせた一枚の写真。", "benefit": "家族を思う気持ちや、平穏・帰還への意志を強める。", "risk": "特になし。",
+      "requiresBurden": false
+    },
+    {
+      "id": "silver_purse", "label": "銀貨袋",
+      "description": "ずしりと重い銀貨の入った袋。", "benefit": "転生直後の所持金が増える。", "risk": "裕福さを狙われ、盗賊や詐欺師に狙われやすくなる。",
+      "requiresBurden": true, "startingMoneyBonus": 20
+    },
+    {
+      "id": "sealed_ring", "label": "封印された指輪",
+      "description": "禁忌の力を内に秘めた指輪。", "benefit": "魔に関わる特別な道が開ける。", "risk": "触れた者は、闇の力に魅入られる危険を負う。",
+      "requiresBurden": true
+    },
+    {
+      "id": "nameless_seed", "label": "名もなき種子",
+      "description": "どんな土地でもよく育つという、素性の知れない種。", "benefit": "農業や開拓、飢饉への備えを助ける。", "risk": "特になし。",
+      "requiresBurden": false
+    }
+  ]
+}

@@ -31,6 +31,25 @@ export function scoreChoice(choice, character, ctx) {
   return Math.max(0.5, score);
 }
 
+// choice.requiredFlags / excludedFlags は「選択肢そのものを解禁/封印する」ための
+// 必須条件（contextWeights とは異なり、満たさない場合はスコアに関わらず選ばれない）。
+// 例えば「医療箱を使って人々を救う」という選択肢は、医療箱を持たない転生者には
+// そもそも選べてはならない。contextWeights だけでは baseWeight 分の確率で
+// 選ばれてしまうため、真に選択肢を解禁するにはこちらを使う。
+export function isChoiceUnlocked(choice, ctx) {
+  if (choice.requiredFlags && !choice.requiredFlags.every(function (f) { return ctx[f]; })) return false;
+  if (choice.excludedFlags && choice.excludedFlags.some(function (f) { return ctx[f]; })) return false;
+  return true;
+}
+
+export function unlockedChoices(evt, ctx) {
+  var unlocked = evt.choices.filter(function (c) { return isChoiceUnlocked(c, ctx); });
+  // 解禁条件付きの選択肢しか無いイベント定義は本来避けるべきだが、
+  // 万一すべて封印された場合でもクラッシュしないよう全選択肢へフォールバックする。
+  return unlocked.length > 0 ? unlocked : evt.choices;
+}
+
 export function pickChoice(evt, character, ctx) {
-  return weightedPick(evt.choices, function (c) { return scoreChoice(c, character, ctx); });
+  var candidates = unlockedChoices(evt, ctx);
+  return weightedPick(candidates, function (c) { return scoreChoice(c, character, ctx); });
 }

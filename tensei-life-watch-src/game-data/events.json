@@ -177,7 +177,11 @@
           ]
         },
         "resultText": "{name}は読み書きと教養を身につけた。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "item_modern_textbook": 10,
+          "skill_literacy": 8
+        }
       },
       {
         "id": "skip_lessons",
@@ -447,7 +451,9 @@
           "family_orientation": -0.2
         },
         "contextWeights": {
-          "suited_artisan": 10
+          "suited_artisan": 10,
+          "item_multi_tool_knife": 8,
+          "skill_basic_smithing": 8
         },
         "effects": {
           "occupation": "apprentice",
@@ -675,7 +681,8 @@
           "caution": -0.2
         },
         "contextWeights": {
-          "suited_adventurer": 12
+          "suited_adventurer": 12,
+          "item_multi_tool_knife": 6
         },
         "effects": {
           "occupation": "adventurer",
@@ -857,7 +864,8 @@
           "self_interest": 0.2
         },
         "contextWeights": {
-          "suited_merchant": 12
+          "suited_merchant": 12,
+          "item_modern_textbook": 6
         },
         "effects": {
           "occupation": "merchant",
@@ -916,7 +924,10 @@
           ]
         },
         "resultText": "{name}は持てる金すべてを商談に注ぎ込んだ。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "skill_negotiation": 6
+        }
       },
       {
         "id": "safe_bet",
@@ -1024,7 +1035,10 @@
           "money": 6
         },
         "resultText": "{name}は昇進を勝ち取った。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "skill_mnemonics": 5
+        }
       },
       {
         "id": "stay",
@@ -1158,7 +1172,10 @@
           }
         },
         "resultText": "{name}は苦しみながらも相手を許した。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "skill_negotiation": 6
+        }
       },
       {
         "id": "cut_ties",
@@ -1502,7 +1519,10 @@
           ]
         },
         "resultText": "{name}は危険を顧みず立ち向かった。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "item_multi_tool_knife": 5
+        }
       },
       {
         "id": "flee_monster",
@@ -1513,9 +1533,16 @@
           "family_orientation": 0.2
         },
         "effects": {},
-        "resultText": "{name}は難を避け、安全な場所へ逃れた。"
+        "resultText": "{name}は難を避け、安全な場所へ逃れた。",
+        "contextWeights": {
+          "skill_camping": 8,
+          "skill_danger_sense": 8
+        }
       }
-    ]
+    ],
+    "weightContextBonus": {
+      "burden_monster_targeted": 18
+    }
   },
   {
     "id": "adv_treasure_rumor",
@@ -1543,7 +1570,12 @@
           "health": -4,
           "money": 10
         },
-        "resultText": "{name}は噂を頼りに探索へ出て、いくらかの財を得た。"
+        "resultText": "{name}は噂を頼りに探索へ出て、いくらかの財を得た。",
+        "contextWeights": {
+          "item_multi_tool_knife": 6,
+          "item_compass": 6,
+          "skill_camping": 6
+        }
       },
       {
         "id": "ignore_rumor",
@@ -1578,7 +1610,8 @@
           "caution": 0.2
         },
         "contextWeights": {
-          "low_money": -6
+          "low_money": -6,
+          "skill_first_aid": 8
         },
         "effects": {
           "health": 6,
@@ -1597,6 +1630,32 @@
           "health": -10
         },
         "resultText": "{name}は治療を受けられず、病に苦しんだ。"
+      },
+      {
+        "id": "use_medical_kit_for_others",
+        "label": "医療箱を使い、人々を救う",
+        "baseWeight": 6,
+        "traitWeights": {
+          "altruism": 0.4
+        },
+        "effects": {
+          "consumeItem": "medical_kit",
+          "fame": 8,
+          "tagsAdd": [
+            "used_kit_for_others"
+          ],
+          "relation": {
+            "add": {
+              "type": "friend",
+              "role": "恩人と慕う友人"
+            }
+          }
+        },
+        "resultText": "{name}は自分のためではなく、病に苦しむ人々のために医療箱を使った。",
+        "importance": "major",
+        "requiredFlags": [
+          "item_medical_kit"
+        ]
       }
     ]
   },
@@ -1632,7 +1691,11 @@
         "effects": {
           "health": -6
         },
-        "resultText": "{name}は落ち着いて事態を切り抜けた。"
+        "resultText": "{name}は落ち着いて事態を切り抜けた。",
+        "contextWeights": {
+          "skill_first_aid": 8,
+          "skill_danger_sense": 8
+        }
       },
       {
         "id": "panic",
@@ -1679,9 +1742,17 @@
             "past_life_awareness"
           ]
         },
-        "resultText": "{name}は説明のつかないその記憶を、そっと胸にしまった。"
+        "resultText": "{name}は説明のつかないその記憶を、そっと胸にしまった。",
+        "contextWeights": {
+          "skill_mnemonics": 10
+        }
       }
-    ]
+    ],
+    "conditions": {
+      "excludedFlags": [
+        "burden_forgetfulness"
+      ]
+    }
   },
   {
     "id": "reinc_strange_luck",
@@ -1796,7 +1867,8 @@
         },
         "contextWeights": {
           "element_demon_mark": 25,
-          "element_cursed_soul": 12
+          "element_cursed_soul": 12,
+          "burden_cursed_fate": 8
         },
         "effects": {
           "goal": {
@@ -1822,7 +1894,10 @@
           }
         },
         "resultText": "{name}は「家族を守る」ことを、生涯の目標に定めた。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "item_family_photo": 10
+        }
       },
       {
         "id": "see_world_end",
@@ -1887,7 +1962,8 @@
           "self_interest": 0.2
         },
         "contextWeights": {
-          "element_cursed_soul": 18
+          "element_cursed_soul": 18,
+          "burden_cursed_fate": 6
         },
         "effects": {
           "goal": {
@@ -1927,7 +2003,9 @@
         },
         "contextWeights": {
           "element_return_desire": 25,
-          "element_past_life_memory": 10
+          "element_past_life_memory": 10,
+          "item_family_photo": 8,
+          "burden_forgetfulness": -10
         },
         "effects": {
           "goal": {
@@ -1953,7 +2031,10 @@
           }
         },
         "resultText": "{name}は「平穏な生活を守る」ことを、生涯の目標に定めた。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "item_family_photo": 8
+        }
       }
     ]
   },
@@ -1985,7 +2066,8 @@
         },
         "contextWeights": {
           "goal_defeat_demon_lord": 15,
-          "goal_become_hero": 15
+          "goal_become_hero": 15,
+          "skill_mana_sense": 8
         },
         "effects": {
           "flagsAdd": [
@@ -2156,7 +2238,10 @@
           }
         },
         "resultText": "{name}は力に溺れ、かつての志を見失っていった。",
-        "importance": "historic"
+        "importance": "historic",
+        "contextWeights": {
+          "burden_cursed_fate": 8
+        }
       }
     ]
   },
@@ -2191,7 +2276,8 @@
           "element_demon_mark": 22,
           "element_cursed_soul": 14,
           "betrayed_once": 10,
-          "goal_become_demon_lord": 20
+          "goal_become_demon_lord": 20,
+          "burden_cursed_fate": 10
         },
         "effects": {
           "flagsAdd": [
@@ -2218,7 +2304,10 @@
           ],
           "fame": 2
         },
-        "resultText": "{name}は闇の誘いをはっきりと拒んだ。"
+        "resultText": "{name}は闇の誘いをはっきりと拒んだ。",
+        "contextWeights": {
+          "skill_mana_sense": 6
+        }
       }
     ]
   },
@@ -2798,7 +2887,10 @@
           }
         },
         "resultText": "{name}は誠実な商いを重ね、着実に商業帝国を築いていった。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "skill_negotiation": 6
+        }
       }
     ]
   },
@@ -2924,7 +3016,10 @@
           }
         },
         "resultText": "{name}は着実に、安全な技術改良を重ねていった。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "item_modern_textbook": 6
+        }
       }
     ]
   },
@@ -3056,7 +3151,10 @@
           ]
         },
         "resultText": "{name}は生涯を懸けた一品の制作に挑み始めた。",
-        "importance": "major"
+        "importance": "major",
+        "contextWeights": {
+          "skill_basic_smithing": 6
+        }
       },
       {
         "id": "stay_content",
@@ -3124,7 +3222,8 @@
         "traitWeights": {},
         "contextWeights": {
           "arc_artisan_s2": 8,
-          "element_cursed_soul": 18
+          "element_cursed_soul": 18,
+          "burden_cursed_fate": 10
         },
         "effects": {
           "tagsAdd": [
@@ -3615,7 +3714,8 @@
         },
         "contextWeights": {
           "goal_protect_peace": 20,
-          "arc_hero_rejected": 10
+          "arc_hero_rejected": 10,
+          "item_family_photo": 8
         },
         "effects": {
           "flagsAdd": [
@@ -3782,95 +3882,559 @@
       }
     ]
   },
-
   {
-    "id": "goal_check_protect_family", "title": "守り抜いたもの", "category": "goal", "eventType": "branch", "unique": true,
-    "ageRange": { "min": 40, "max": 75 }, "baseWeight": 8,
-    "conditions": { "requiredFlags": ["goal_protect_family"] },
+    "id": "goal_check_protect_family",
+    "title": "守り抜いたもの",
+    "category": "goal",
+    "eventType": "branch",
+    "unique": true,
+    "ageRange": {
+      "min": 40,
+      "max": 75
+    },
+    "baseWeight": 8,
+    "conditions": {
+      "requiredFlags": [
+        "goal_protect_family"
+      ]
+    },
     "text": "{name}は自らの人生を振り返り、家族との日々に思いを馳せた。",
     "choices": [
-      { "id": "protected", "label": "家族を守り抜いたと実感する", "baseWeight": 9, "traitWeights": { "family_orientation": 0.4, "loyalty": 0.2 },
-        "contextWeights": { "is_married": 12 },
-        "effects": { "goalResolution": { "ids": ["protect_family"], "status": "completed" } },
-        "resultText": "{name}は家族を守り抜いたという確かな手応えを胸に抱いた。", "importance": "major" },
-      { "id": "could_not_protect", "label": "守れなかった悔いが残る", "baseWeight": 6, "traitWeights": { "caution": -0.1 },
-        "effects": { "goalResolution": { "ids": ["protect_family"], "status": "failed" }, "health": -5 },
-        "resultText": "{name}の胸には、守り切れなかった悔いがいつまでも残った。", "importance": "major" }
+      {
+        "id": "protected",
+        "label": "家族を守り抜いたと実感する",
+        "baseWeight": 9,
+        "traitWeights": {
+          "family_orientation": 0.4,
+          "loyalty": 0.2
+        },
+        "contextWeights": {
+          "is_married": 12,
+          "item_family_photo": 10
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "protect_family"
+            ],
+            "status": "completed"
+          }
+        },
+        "resultText": "{name}は家族を守り抜いたという確かな手応えを胸に抱いた。",
+        "importance": "major"
+      },
+      {
+        "id": "could_not_protect",
+        "label": "守れなかった悔いが残る",
+        "baseWeight": 6,
+        "traitWeights": {
+          "caution": -0.1
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "protect_family"
+            ],
+            "status": "failed"
+          },
+          "health": -5
+        },
+        "resultText": "{name}の胸には、守り切れなかった悔いがいつまでも残った。",
+        "importance": "major"
+      }
     ]
   },
   {
-    "id": "goal_check_world_end", "title": "旅の果てに", "category": "goal", "eventType": "branch", "unique": true,
-    "ageRange": { "min": 40, "max": 75 }, "baseWeight": 7,
-    "conditions": { "requiredFlags": ["goal_see_world_end"] },
+    "id": "goal_check_world_end",
+    "title": "旅の果てに",
+    "category": "goal",
+    "eventType": "branch",
+    "unique": true,
+    "ageRange": {
+      "min": 40,
+      "max": 75
+    },
+    "baseWeight": 7,
+    "conditions": {
+      "requiredFlags": [
+        "goal_see_world_end"
+      ]
+    },
     "text": "{name}は長年追い求めてきた、世界の果てを目指す旅の総仕上げに差し掛かっていた。",
     "choices": [
-      { "id": "reached_the_end", "label": "ついに世界の果てに辿り着く", "baseWeight": 8, "traitWeights": { "curiosity": 0.4, "persistence": 0.2 },
-        "effects": { "goalResolution": { "ids": ["see_world_end"], "status": "completed" }, "abilities": { "sensitivity": 2 } },
-        "resultText": "{name}はついに、世界の果てと呼べる景色を目にした。", "importance": "major" },
-      { "id": "journey_unfinished", "label": "果てに辿り着く前に旅を終える", "baseWeight": 6, "traitWeights": { "caution": 0.1 },
-        "effects": { "goalResolution": { "ids": ["see_world_end"], "status": "failed" } },
-        "resultText": "{name}の旅は、世界の果てに辿り着く前に終わりを迎えた。", "importance": "major" }
+      {
+        "id": "reached_the_end",
+        "label": "ついに世界の果てに辿り着く",
+        "baseWeight": 8,
+        "traitWeights": {
+          "curiosity": 0.4,
+          "persistence": 0.2
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "see_world_end"
+            ],
+            "status": "completed"
+          },
+          "abilities": {
+            "sensitivity": 2
+          }
+        },
+        "resultText": "{name}はついに、世界の果てと呼べる景色を目にした。",
+        "importance": "major",
+        "contextWeights": {
+          "item_compass": 12,
+          "skill_camping": 6
+        }
+      },
+      {
+        "id": "journey_unfinished",
+        "label": "果てに辿り着く前に旅を終える",
+        "baseWeight": 6,
+        "traitWeights": {
+          "caution": 0.1
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "see_world_end"
+            ],
+            "status": "failed"
+          }
+        },
+        "resultText": "{name}の旅は、世界の果てに辿り着く前に終わりを迎えた。",
+        "importance": "major"
+      }
     ]
   },
   {
-    "id": "goal_check_revenge", "title": "復讐の行方", "category": "goal", "eventType": "branch", "unique": true,
-    "ageRange": { "min": 25, "max": 60 }, "baseWeight": 8,
-    "conditions": { "requiredFlags": ["goal_pursue_revenge"] },
+    "id": "goal_check_revenge",
+    "title": "復讐の行方",
+    "category": "goal",
+    "eventType": "branch",
+    "unique": true,
+    "ageRange": {
+      "min": 25,
+      "max": 60
+    },
+    "baseWeight": 8,
+    "conditions": {
+      "requiredFlags": [
+        "goal_pursue_revenge"
+      ]
+    },
     "text": "{name}は長年胸に抱いてきた復讐を、ついに果たせる機会を迎えた。",
     "choices": [
-      { "id": "revenge_fulfilled", "label": "ついに復讐を果たす", "baseWeight": 8, "traitWeights": { "persistence": 0.4, "self_interest": 0.2 },
-        "contextWeights": { "sworn_revenge": 12, "cast_a_curse": 8 },
-        "effects": { "goalResolution": { "ids": ["pursue_revenge"], "status": "completed" }, "health": -10 },
-        "resultText": "{name}はついに復讐を果たしたが、その代償に深く傷ついた。", "importance": "major" },
-      { "id": "revenge_hollow", "label": "復讐は虚しく胸に残ったままとなる", "baseWeight": 7, "traitWeights": { "altruism": 0.2 },
-        "effects": { "goalResolution": { "ids": ["pursue_revenge"], "status": "distorted" } },
-        "resultText": "{name}が抱き続けた復讐心は、果たされないまま静かに形を変えていった。", "importance": "major" }
+      {
+        "id": "revenge_fulfilled",
+        "label": "ついに復讐を果たす",
+        "baseWeight": 8,
+        "traitWeights": {
+          "persistence": 0.4,
+          "self_interest": 0.2
+        },
+        "contextWeights": {
+          "sworn_revenge": 12,
+          "cast_a_curse": 8
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "pursue_revenge"
+            ],
+            "status": "completed"
+          },
+          "health": -10
+        },
+        "resultText": "{name}はついに復讐を果たしたが、その代償に深く傷ついた。",
+        "importance": "major"
+      },
+      {
+        "id": "revenge_hollow",
+        "label": "復讐は虚しく胸に残ったままとなる",
+        "baseWeight": 7,
+        "traitWeights": {
+          "altruism": 0.2
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "pursue_revenge"
+            ],
+            "status": "distorted"
+          }
+        },
+        "resultText": "{name}が抱き続けた復讐心は、果たされないまま静かに形を変えていった。",
+        "importance": "major"
+      }
     ]
   },
   {
-    "id": "goal_check_immortality", "title": "不老不死の探求", "category": "goal", "eventType": "branch", "unique": true,
-    "ageRange": { "min": 45, "max": 80 }, "baseWeight": 6,
-    "conditions": { "requiredFlags": ["goal_become_immortal"] },
+    "id": "goal_check_immortality",
+    "title": "不老不死の探求",
+    "category": "goal",
+    "eventType": "branch",
+    "unique": true,
+    "ageRange": {
+      "min": 45,
+      "max": 80
+    },
+    "baseWeight": 6,
+    "conditions": {
+      "requiredFlags": [
+        "goal_become_immortal"
+      ]
+    },
     "text": "{name}は長年探し求めてきた不老不死の秘法に、手が届くところまで迫っていた。",
     "choices": [
-      { "id": "immortality_reached", "label": "不老不死の秘法についに辿り着く", "baseWeight": 4, "traitWeights": { "ambition": 0.3, "curiosity": 0.3 },
-        "contextWeights": { "element_magic_affinity": 15 },
-        "effects": { "goalResolution": { "ids": ["become_immortal"], "status": "completed" }, "abilities": { "luck": 3 } },
-        "resultText": "{name}はついに、不老不死と呼べる境地に手を伸ばした。", "importance": "historic" },
-      { "id": "immortality_denied", "label": "歳月には抗えなかった", "baseWeight": 9, "traitWeights": { "caution": 0.1 },
-        "effects": { "goalResolution": { "ids": ["become_immortal"], "status": "failed" } },
-        "resultText": "{name}の探求は、結局のところ歳月の前に及ばなかった。", "importance": "major" }
+      {
+        "id": "immortality_reached",
+        "label": "不老不死の秘法についに辿り着く",
+        "baseWeight": 4,
+        "traitWeights": {
+          "ambition": 0.3,
+          "curiosity": 0.3
+        },
+        "contextWeights": {
+          "element_magic_affinity": 15
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "become_immortal"
+            ],
+            "status": "completed"
+          },
+          "abilities": {
+            "luck": 3
+          }
+        },
+        "resultText": "{name}はついに、不老不死と呼べる境地に手を伸ばした。",
+        "importance": "historic"
+      },
+      {
+        "id": "immortality_denied",
+        "label": "歳月には抗えなかった",
+        "baseWeight": 9,
+        "traitWeights": {
+          "caution": 0.1
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "become_immortal"
+            ],
+            "status": "failed"
+          }
+        },
+        "resultText": "{name}の探求は、結局のところ歳月の前に及ばなかった。",
+        "importance": "major"
+      }
     ]
   },
   {
-    "id": "goal_check_return_home", "title": "帰還の願い", "category": "goal", "eventType": "branch", "unique": true,
-    "ageRange": { "min": 30, "max": 70 }, "baseWeight": 8,
-    "conditions": { "requiredFlags": ["goal_return_home"] },
+    "id": "goal_check_return_home",
+    "title": "帰還の願い",
+    "category": "goal",
+    "eventType": "branch",
+    "unique": true,
+    "ageRange": {
+      "min": 30,
+      "max": 70
+    },
+    "baseWeight": 8,
+    "conditions": {
+      "requiredFlags": [
+        "goal_return_home"
+      ]
+    },
     "text": "{name}は元の世界へ帰る手がかりを、長い間探し続けてきた。",
     "choices": [
-      { "id": "found_the_way_home", "label": "元の世界へ帰る道を見つけ出す", "baseWeight": 7, "traitWeights": { "curiosity": 0.2, "persistence": 0.3 },
-        "contextWeights": { "element_return_desire": 18, "element_past_life_memory": 8 },
-        "effects": { "goalResolution": { "ids": ["return_home"], "status": "completed" } },
-        "resultText": "{name}はついに、元の世界へ帰るための道を見つけ出した。", "importance": "historic" },
-      { "id": "never_found_the_way", "label": "帰る道は、ついに見つからなかった", "baseWeight": 8, "traitWeights": { "family_orientation": 0.2 },
-        "effects": { "goalResolution": { "ids": ["return_home"], "status": "distorted" } },
-        "resultText": "{name}は帰る道を見つけられぬまま、この世界で生きていくことを受け入れた。", "importance": "major" }
+      {
+        "id": "found_the_way_home",
+        "label": "元の世界へ帰る道を見つけ出す",
+        "baseWeight": 7,
+        "traitWeights": {
+          "curiosity": 0.2,
+          "persistence": 0.3
+        },
+        "contextWeights": {
+          "element_return_desire": 18,
+          "element_past_life_memory": 8,
+          "item_family_photo": 8,
+          "skill_mnemonics": 6,
+          "burden_forgetfulness": -15
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "return_home"
+            ],
+            "status": "completed"
+          }
+        },
+        "resultText": "{name}はついに、元の世界へ帰るための道を見つけ出した。",
+        "importance": "historic"
+      },
+      {
+        "id": "never_found_the_way",
+        "label": "帰る道は、ついに見つからなかった",
+        "baseWeight": 8,
+        "traitWeights": {
+          "family_orientation": 0.2
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "return_home"
+            ],
+            "status": "distorted"
+          }
+        },
+        "resultText": "{name}は帰る道を見つけられぬまま、この世界で生きていくことを受け入れた。",
+        "importance": "major"
+      }
     ]
   },
-
   {
-    "id": "goal_check_unravel_magic", "title": "魔法の探求の果てに", "category": "goal", "eventType": "branch", "unique": true,
-    "ageRange": { "min": 30, "max": 70 }, "baseWeight": 8,
-    "conditions": { "requiredFlags": ["goal_unravel_magic"] },
+    "id": "goal_check_unravel_magic",
+    "title": "魔法の探求の果てに",
+    "category": "goal",
+    "eventType": "branch",
+    "unique": true,
+    "ageRange": {
+      "min": 30,
+      "max": 70
+    },
+    "baseWeight": 8,
+    "conditions": {
+      "requiredFlags": [
+        "goal_unravel_magic"
+      ]
+    },
     "text": "{name}は長年続けてきた魔法の探求が、ひとつの結論に至ろうとしていた。",
     "choices": [
-      { "id": "magic_unraveled", "label": "ついに魔法の理を解き明かす", "baseWeight": 7, "traitWeights": { "curiosity": 0.4, "persistence": 0.2 },
-        "contextWeights": { "element_magic_affinity": 18, "element_modern_knowledge": 10 },
-        "effects": { "goalResolution": { "ids": ["unravel_magic"], "status": "completed" }, "abilities": { "intelligence": 3 } },
-        "resultText": "{name}はついに、長年追い求めてきた魔法の理を解き明かした。", "importance": "historic" },
-      { "id": "magic_remains_a_mystery", "label": "魔法はついに謎のまま残る", "baseWeight": 9, "traitWeights": { "caution": 0.1 },
-        "effects": { "goalResolution": { "ids": ["unravel_magic"], "status": "failed" } },
-        "resultText": "{name}の探求も及ばず、魔法は結局謎のまま残された。", "importance": "major" }
+      {
+        "id": "magic_unraveled",
+        "label": "ついに魔法の理を解き明かす",
+        "baseWeight": 7,
+        "traitWeights": {
+          "curiosity": 0.4,
+          "persistence": 0.2
+        },
+        "contextWeights": {
+          "element_magic_affinity": 18,
+          "element_modern_knowledge": 10,
+          "item_modern_textbook": 10,
+          "skill_literacy": 8,
+          "skill_mana_sense": 6
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "unravel_magic"
+            ],
+            "status": "completed"
+          },
+          "abilities": {
+            "intelligence": 3
+          }
+        },
+        "resultText": "{name}はついに、長年追い求めてきた魔法の理を解き明かした。",
+        "importance": "historic"
+      },
+      {
+        "id": "magic_remains_a_mystery",
+        "label": "魔法はついに謎のまま残る",
+        "baseWeight": 9,
+        "traitWeights": {
+          "caution": 0.1
+        },
+        "effects": {
+          "goalResolution": {
+            "ids": [
+              "unravel_magic"
+            ],
+            "status": "failed"
+          }
+        },
+        "resultText": "{name}の探求も及ばず、魔法は結局謎のまま残された。",
+        "importance": "major"
+      }
+    ]
+  },
+  {
+    "id": "item_sealed_ring_awakening",
+    "title": "指輪の封印",
+    "category": "item",
+    "eventType": "branch",
+    "unique": true,
+    "ageRange": {
+      "min": 12,
+      "max": 50
+    },
+    "baseWeight": 10,
+    "conditions": {
+      "requiredFlags": [
+        "item_sealed_ring"
+      ]
+    },
+    "text": "{name}が持ち込んだ封印の指輪が、身につけた者の意志に応えるように熱を帯び始めた。",
+    "choices": [
+      {
+        "id": "embrace_ring_power",
+        "label": "指輪の力に触れる",
+        "baseWeight": 8,
+        "traitWeights": {
+          "curiosity": 0.3,
+          "self_interest": 0.2
+        },
+        "contextWeights": {
+          "element_demon_mark": 15,
+          "element_cursed_soul": 12
+        },
+        "effects": {
+          "markItemUsed": "sealed_ring",
+          "flagsAdd": [
+            "arc_demon_s1",
+            "item_sealed_ring_awakened"
+          ],
+          "world": {
+            "demonThreat": 8
+          }
+        },
+        "resultText": "{name}は封印を解き、指輪に秘められた禁忌の力に触れてしまった。",
+        "importance": "major"
+      },
+      {
+        "id": "leave_ring_sealed",
+        "label": "指輪を封印したままにする",
+        "baseWeight": 11,
+        "traitWeights": {
+          "caution": 0.3,
+          "faith": 0.1
+        },
+        "effects": {
+          "markItemUsed": "sealed_ring"
+        },
+        "resultText": "{name}は指輪の力を恐れ、封印を解かないまま持ち続けた。",
+        "importance": "major"
+      }
+    ]
+  },
+  {
+    "id": "item_silver_purse_targeted",
+    "title": "狙われた銀貨袋",
+    "category": "item",
+    "eventType": "normal",
+    "ageRange": {
+      "min": 12,
+      "max": 60
+    },
+    "baseWeight": 9,
+    "minGapYears": 4,
+    "conditions": {
+      "requiredFlags": [
+        "item_silver_purse"
+      ],
+      "excludedFlags": [
+        "item_silver_purse_lost"
+      ]
+    },
+    "text": "{name}が持ち込んだ銀貨袋の噂を聞きつけ、盗賊や詐欺師が近づいてきた。",
+    "choices": [
+      {
+        "id": "defend_purse",
+        "label": "策を講じて財を守る",
+        "baseWeight": 9,
+        "traitWeights": {
+          "caution": 0.3,
+          "persistence": 0.2
+        },
+        "contextWeights": {
+          "skill_negotiation": 10,
+          "skill_danger_sense": 8
+        },
+        "effects": {
+          "markItemUsed": "silver_purse"
+        },
+        "resultText": "{name}は用心深く立ち回り、狙われた財を守り切った。"
+      },
+      {
+        "id": "lose_purse",
+        "label": "まんまと財を奪われる",
+        "baseWeight": 8,
+        "traitWeights": {
+          "caution": -0.1
+        },
+        "effects": {
+          "markItemUsed": "silver_purse",
+          "money": -15,
+          "flagsAdd": [
+            "item_silver_purse_lost"
+          ],
+          "flagsRemove": [
+            "item_silver_purse"
+          ]
+        },
+        "resultText": "{name}は狙われていた銀貨袋を、まんまと奪われてしまった。"
+      }
+    ]
+  },
+  {
+    "id": "item_nameless_seed_harvest",
+    "title": "名もなき種子の実り",
+    "category": "item",
+    "eventType": "normal",
+    "unique": true,
+    "ageRange": {
+      "min": 14,
+      "max": 60
+    },
+    "baseWeight": 9,
+    "conditions": {
+      "requiredFlags": [
+        "item_nameless_seed"
+      ],
+      "occupations": [
+        "farmer",
+        "unemployed"
+      ]
+    },
+    "text": "{name}は持ち込んだ名もなき種子を、試しに土へ蒔いてみることにした。",
+    "choices": [
+      {
+        "id": "bountiful_harvest",
+        "label": "豊かな実りをもたらす",
+        "baseWeight": 9,
+        "traitWeights": {
+          "persistence": 0.2,
+          "family_orientation": 0.2
+        },
+        "effects": {
+          "markItemUsed": "nameless_seed",
+          "money": 15,
+          "health": 3,
+          "tagsAdd": [
+            "blessed_harvest"
+          ]
+        },
+        "resultText": "{name}が蒔いた名もなき種子は、思いがけないほど豊かな実りをもたらした。",
+        "importance": "major"
+      },
+      {
+        "id": "poor_harvest",
+        "label": "実りは乏しいままだった",
+        "baseWeight": 7,
+        "traitWeights": {
+          "caution": 0.1
+        },
+        "effects": {
+          "markItemUsed": "nameless_seed"
+        },
+        "resultText": "{name}が蒔いた種子は、これといった実りをもたらさなかった。"
+      }
     ]
   }
 ]

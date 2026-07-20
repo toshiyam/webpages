@@ -60,8 +60,22 @@ export function filterEligibleEvents(events, character, ctx, worldYear) {
   return events.filter(function (evt) { return eventEligible(evt, character, ctx, worldYear); });
 }
 
+// evt.weightContextBonus は「このイベント自体が選ばれる頻度」への補正
+// （choice.contextWeights が「選ばれた後、どの選択肢になるか」への補正なのに対し、
+// こちらは「そもそもこのイベントが今年選ばれやすいか」を左右する）。
+// 例: 魔物に狙われる制約を持つ転生者は、魔物襲撃イベント自体の発生頻度が上がる。
+function eventSelectionWeight(evt, ctx) {
+  var w = evt.baseWeight || 1;
+  if (evt.weightContextBonus) {
+    for (var k in evt.weightContextBonus) {
+      if (ctx[k]) w += evt.weightContextBonus[k];
+    }
+  }
+  return Math.max(0.1, w);
+}
+
 export function pickEvent(events, character, ctx, worldYear) {
   var eligible = filterEligibleEvents(events, character, ctx, worldYear);
   if (eligible.length === 0) return null;
-  return weightedPick(eligible, function (evt) { return (evt.baseWeight || 1) + rand(0, 5); });
+  return weightedPick(eligible, function (evt) { return eventSelectionWeight(evt, ctx) + rand(0, 5); });
 }

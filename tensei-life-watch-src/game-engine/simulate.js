@@ -1,10 +1,13 @@
-import { generateCharacter } from './character-generator.js';
+import { generateCharacter, cloneCharacterTemplate } from './character-generator.js';
+import { applyStartingGrants, isItemSelectable } from './starting-grants.js';
 import { simulateYear } from './time-processor.js';
 import { determineLifeRank, hasEnteredAnyArc, hasReachedArcClimax, hadNothingHappen } from './life-rank.js';
 import { buildContextSet, filterEligibleEvents } from './event-selector.js';
 import { findGoalProgressViolation, runStaticConsistencyChecks, runGoalResolutionSelfTests } from './consistency.js';
+import { pick } from './rng.js';
 
 var MAX_LIFE_YEARS = 130;
+var NONE_GRANT_CHANCE = 0.5;
 
 // 各イベントが、どの生涯目標を決着させ得るか（goalResolution.ids）のマップを作る。
 // 「目標形成後に対応イベントが一度も候補にならない目標」を検出するのに使う。
@@ -23,12 +26,20 @@ function buildGoalResolutionEventMap(events) {
   return map;
 }
 
-// UIを介さず、同じゲームエンジンで1人の人生を最後まで実行する。
-// ブラウザの高速シミュレーションパネルと Node の CLI (scripts/simulate-cli.js) の両方から使われる。
-// goalResolutionEventMap を渡すと、生涯目標の決着イベントが一度でも候補に
-// なったかどうか（到達可能性）も追跡する。
-export function simulateOneLife(data, goalResolutionEventMap) {
-  var character = generateCharacter(data);
+// バッチ検証のためだけに、多様なプレイヤーの選び方を模して転生準備の
+// 付与内容をランダムに決める（実際のゲームでは常にプレイヤーの選択）。
+// 各カテゴリとも約半数は「なし」を選ぶという想定で確率を単純化している。
+function pickRandomGrants(data) {
+  var burdenId = Math.random() < NONE_GRANT_CHANCE ? null : pick(data.burdens).id;
+  var itemCandidates = (data.items || []).filter(function (i) { return isItemSelectable(i, burdenId); });
+  var itemId = (itemCandidates.length > 0 && Math.random() >= NONE_GRANT_CHANCE) ? pick(itemCandidates).id : null;
+  var skillId = (data.skills && data.skills.length > 0 && Math.random() >= NONE_GRANT_CHANCE) ? pick(data.skills).id : null;
+  return { itemId: itemId, skillId: skillId, burdenId: burdenId };
+}
+
+// 1人の人生を、誕生から死亡まで最後まで実行する（DOM非依存の共通ループ）。
+// character はあらかじめ生成・転生準備適用済みのものを渡す。
+function runLife(character, data, goalResolutionEventMap) {
   var relations = [];
   var world = Object.assign({}, data.initialWorld);
   var gameState = { character: character, relations: relations, world: world };
@@ -61,6 +72,10 @@ export function simulateOneLife(data, goalResolutionEventMap) {
     goalResolutionReachable = resolverIds.some(function (id) { return eligibleEverSeen[id]; });
   }
 
+  var itemUsed = character.startingItem
+    ? (character.itemFirstUsedAge[character.startingItem] !== undefined)
+    : null;
+
   return {
     lifespan: character.age,
     occupation: character.occupation,
@@ -78,15 +93,31 @@ export function simulateOneLife(data, goalResolutionEventMap) {
     worldImpactByField: character.worldImpact,
     nothingHappened: hadNothingHappen(character),
     goalProgressViolation: findGoalProgressViolation(character),
+    startingItem: character.startingItem,
+    startingSkill: character.startingSkill,
+    burden: character.burden,
+    itemUsed: itemUsed,
     eventCounts: eventCounts
   };
+}
+
+// UIを介さず、同じゲームエンジンで1人の人生を最後まで実行する。
+// ブラウザの高速シミュレーションパネルと Node の CLI (scripts/simulate-cli.js) の両方から使われる。
+// goalResolutionEventMap を渡すと、生涯目標の決着イベントが一度でも候補に
+// なったかどうか（到達可能性）も追跡する。
+// grants を省略すると、バランス検証のために付与内容をランダムに決める。
+export function simulateOneLife(data, goalResolutionEventMap, grants) {
+  var character = generateCharacter(data);
+  applyStartingGrants(character, data, grants || pickRandomGrants(data));
+  return runLife(character, data, goalResolutionEventMap);
 }
 
 var WORLD_FIELDS = ['stability', 'warThreat', 'demonThreat', 'religiousInfluence', 'techLevel', 'economy'];
 
 // バランス検証: 複数人生を高速実行し、平均寿命・職業到達率・死因分布・結婚率・
 // 目標別統計・人生アーク突入率／到達率・世界影響統計・人生ランク分布・
-// 整合性違反・各イベントの発生回数（=未発生イベントの検出にも使える）を集計する。
+// 転生準備(アイテム/スキル/制約)別統計・整合性違反・各イベントの発生回数
+// （=未発生イベントの検出にも使える）を集計する。
 export function runBatchSimulation(data, n) {
   var goalResolutionEventMap = buildGoalResolutionEventMap(data.events);
   var results = [];
@@ -114,6 +145,24 @@ export function runBatchSimulation(data, n) {
     return goalStats[id];
   }
 
+  // 転生準備別統計: 選択率・(アイテムのみ)使用率・平均寿命・人生ランク分布
+  var itemStats = {};
+  function itemBucket(id) {
+    if (!itemStats[id]) itemStats[id] = { selected: 0, used: 0, lifespanTotal: 0, rankCounts: {} };
+    return itemStats[id];
+  }
+  var skillStats = {};
+  function skillBucket(id) {
+    if (!skillStats[id]) skillStats[id] = { selected: 0, lifespanTotal: 0, rankCounts: {} };
+    return skillStats[id];
+  }
+  var burdenStats = {};
+  function burdenBucket(id) {
+    if (!burdenStats[id]) burdenStats[id] = { selected: 0, lifespanTotal: 0, rankCounts: {} };
+    return burdenStats[id];
+  }
+  var noGrantCount = 0;
+
   // 世界影響統計: 項目別の平均寄与（自然ドリフトは含まない。character.worldImpact のみ）と正負の人数
   var worldFieldTotals = {};
   WORLD_FIELDS.forEach(function (f) { worldFieldTotals[f] = 0; });
@@ -131,6 +180,27 @@ export function runBatchSimulation(data, n) {
     if (r.worldImpact) worldImpactCount += 1;
     if (r.nothingHappened) nothingHappenedCount += 1;
     if (r.goalProgressViolation) goalProgressViolations.push(r.goalProgressViolation);
+    if (!r.startingItem && !r.startingSkill && !r.burden) noGrantCount += 1;
+
+    if (r.startingItem) {
+      var ib = itemBucket(r.startingItem);
+      ib.selected += 1;
+      ib.lifespanTotal += r.lifespan;
+      ib.rankCounts[r.lifeRank] = (ib.rankCounts[r.lifeRank] || 0) + 1;
+      if (r.itemUsed) ib.used += 1;
+    }
+    if (r.startingSkill) {
+      var sb = skillBucket(r.startingSkill);
+      sb.selected += 1;
+      sb.lifespanTotal += r.lifespan;
+      sb.rankCounts[r.lifeRank] = (sb.rankCounts[r.lifeRank] || 0) + 1;
+    }
+    if (r.burden) {
+      var bb = burdenBucket(r.burden);
+      bb.selected += 1;
+      bb.lifespanTotal += r.lifespan;
+      bb.rankCounts[r.lifeRank] = (bb.rankCounts[r.lifeRank] || 0) + 1;
+    }
 
     if (r.goal) {
       var bucket = goalBucket(r.goal.id);
@@ -163,6 +233,13 @@ export function runBatchSimulation(data, n) {
     b.avgProgress = b.formed > 0 ? b.progressTotal / b.formed : 0;
     delete b.progressTotal;
   });
+  [itemStats, skillStats, burdenStats].forEach(function (statMap) {
+    Object.keys(statMap).forEach(function (id) {
+      var b = statMap[id];
+      b.avgLifespan = b.selected > 0 ? b.lifespanTotal / b.selected : 0;
+      delete b.lifespanTotal;
+    });
+  });
 
   var worldFieldAvg = {};
   WORLD_FIELDS.forEach(function (f) { worldFieldAvg[f] = worldFieldTotals[f] / n; });
@@ -194,6 +271,12 @@ export function runBatchSimulation(data, n) {
     eventTotals: eventTotals,
     unfiredEvents: unfiredEvents,
     goalStats: goalStats,
+    grantStats: {
+      noGrantRate: noGrantCount / n,
+      items: itemStats,
+      skills: skillStats,
+      burdens: burdenStats
+    },
     worldImpactStats: {
       rate: worldImpactCount / n,
       perFieldAvgContribution: worldFieldAvg,
@@ -213,4 +296,39 @@ export function runBatchSimulation(data, n) {
         selfTests.filter(function (t) { return !t.passed; }).length
     }
   };
+}
+
+// 「同一候補・付与内容だけ変える」比較試験。能力・性格・特殊要素が全く同じ
+// 候補者テンプレートを1体だけ用意し、各付与パターンごとに独立した乱数で
+// trialsPerVariant 回ずつ人生を再生する。付与内容以外の初期条件を完全に
+// 固定した上での統計比較になるため、「単一の付与要素だけで特定のアーク
+// 到達率が異常に高くなっていないか」の検証に使う。
+export function runGrantComparisonTrial(data, grantVariants, trialsPerVariant) {
+  var goalResolutionEventMap = buildGoalResolutionEventMap(data.events);
+  var template = generateCharacter(data);
+  var report = {};
+
+  grantVariants.forEach(function (variant) {
+    var arcClimaxCount = 0;
+    var lifespanTotal = 0;
+    var rankCounts = {};
+
+    for (var i = 0; i < trialsPerVariant; i++) {
+      var character = cloneCharacterTemplate(template);
+      applyStartingGrants(character, data, variant.grants || {});
+      var r = runLife(character, data, goalResolutionEventMap);
+      if (r.reachedArcClimax) arcClimaxCount += 1;
+      lifespanTotal += r.lifespan;
+      rankCounts[r.lifeRank] = (rankCounts[r.lifeRank] || 0) + 1;
+    }
+
+    report[variant.label] = {
+      trials: trialsPerVariant,
+      arcClimaxRate: arcClimaxCount / trialsPerVariant,
+      avgLifespan: lifespanTotal / trialsPerVariant,
+      rankCounts: rankCounts
+    };
+  });
+
+  return { templateName: template.name, variants: report };
 }

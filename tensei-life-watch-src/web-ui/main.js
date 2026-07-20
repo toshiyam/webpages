@@ -1,5 +1,6 @@
 import {
-  buildDataBundle, generateCharacter, simulateYear, generateSummary, runBatchSimulation
+  buildDataBundle, generateCharacter, simulateYear, generateSummary, runBatchSimulation,
+  applyStartingGrants, isItemSelectable
 } from '../game-engine/index.js';
 
 // escapeHtml は game-engine に無いため、ここでのみ小さく定義する（描画専用のUIヘルパー）。
@@ -7,7 +8,7 @@ function esc(s) {
   return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; });
 }
 
-var SCHEMA_VERSION = 3;
+var SCHEMA_VERSION = 4;
 var STORAGE_KEY = 'tenseiLifeWatch:v1';
 var MAX_OFFLINE_YEARS = 300;
 
@@ -46,11 +47,18 @@ async function loadData() {
   var events = await loadJson(new URL('events.json', base));
   var elements = await loadJson(new URL('elements.json', base));
   var goals = await loadJson(new URL('goals.json', base));
-  return buildDataBundle(traits, occupations, world, events, elements, goals);
+  var items = await loadJson(new URL('items.json', base));
+  var skills = await loadJson(new URL('skills.json', base));
+  var burdens = await loadJson(new URL('burdens.json', base));
+  return buildDataBundle(traits, occupations, world, events, elements, goals, items, skills, burdens);
 }
 
 function freshWorld() {
   return Object.assign({}, data.initialWorld);
+}
+
+function freshPendingGrants() {
+  return { itemId: null, skillId: null, burdenId: null };
 }
 
 function freshState() {
@@ -59,6 +67,7 @@ function freshState() {
     world: freshWorld(),
     character: null,
     candidate: generateCharacter(data),
+    pendingGrants: freshPendingGrants(),
     relations: [],
     log: [],
     lifetimeCount: 0,
@@ -68,14 +77,20 @@ function freshState() {
   };
 }
 
-// schemaVersion 1 (要素/生涯目標/世界状態の拡張前) や 2 (worldImpact集計の
-// 追加前) の保存データを、新しいフィールドを補いながら壊さずに引き継ぐ。
+// schemaVersion 1 (要素/生涯目標/世界状態の拡張前)、2 (worldImpact集計の追加前)、
+// 3 (転生準備フェーズの追加前) の保存データを、新しいフィールドを補いながら
+// 壊さずに引き継ぐ。
 function migrateCharacter(character) {
   if (!character) return character;
   if (!Array.isArray(character.elements)) character.elements = [];
   if (character.goal === undefined) character.goal = null;
   if (typeof character.fame !== 'number') character.fame = 0;
   if (!character.worldImpact || typeof character.worldImpact !== 'object') character.worldImpact = {};
+  if (character.startingItem === undefined) character.startingItem = null;
+  if (character.startingSkill === undefined) character.startingSkill = null;
+  if (character.burden === undefined) character.burden = null;
+  if (!character.itemState || typeof character.itemState !== 'object') character.itemState = {};
+  if (!character.itemFirstUsedAge || typeof character.itemFirstUsedAge !== 'object') character.itemFirstUsedAge = {};
   return character;
 }
 
@@ -88,10 +103,11 @@ function migrateWorld(world) {
 }
 
 function migrateState(raw) {
-  if (raw.schemaVersion === 1 || raw.schemaVersion === 2) {
+  if (raw.schemaVersion >= 1 && raw.schemaVersion < SCHEMA_VERSION) {
     migrateCharacter(raw.character);
     migrateCharacter(raw.candidate);
     migrateWorld(raw.world);
+    if (!raw.pendingGrants) raw.pendingGrants = freshPendingGrants();
     raw.schemaVersion = SCHEMA_VERSION;
   }
   return raw;
@@ -99,7 +115,7 @@ function migrateState(raw) {
 
 function sanitizeLoaded(raw) {
   if (!raw || typeof raw !== 'object') return null;
-  if (raw.schemaVersion !== SCHEMA_VERSION && raw.schemaVersion !== 1 && raw.schemaVersion !== 2) return null;
+  if (typeof raw.schemaVersion !== 'number' || raw.schemaVersion < 1 || raw.schemaVersion > SCHEMA_VERSION) return null;
   try {
     raw = migrateState(raw);
     if (raw.character) {
@@ -124,6 +140,7 @@ function loadState() {
   var sanitized = sanitizeLoaded(raw);
   if (!sanitized) return freshState();
   if (!sanitized.candidate) sanitized.candidate = generateCharacter(data);
+  if (!sanitized.pendingGrants) sanitized.pendingGrants = freshPendingGrants();
   if (!sanitized.pastLives) sanitized.pastLives = [];
   if (typeof sanitized.speedIndex !== 'number') sanitized.speedIndex = 1;
   return sanitized;
@@ -171,6 +188,7 @@ function catchUpOffline() {
 }
 
 function startLife() {
+  applyStartingGrants(state.candidate, data, state.pendingGrants);
   state.character = state.candidate;
   state.relations = [];
   state.log = [{
@@ -187,7 +205,8 @@ function finishLife(deathInfo) {
   isPlaying = false;
   stopTimer();
   var summary = generateSummary(
-    state.character, state.relations, deathInfo, data.occupations, data.traits, data.deathCauseLabels
+    state.character, state.relations, deathInfo, data.occupations, data.traits, data.deathCauseLabels,
+    data.items, data.skills, data.burdens
   );
   state.pastLives.unshift({
     name: state.character.name, age: state.character.age,
@@ -197,6 +216,7 @@ function finishLife(deathInfo) {
   state.lastDeathSummary = summary;
   state.lastDeathInfo = deathInfo;
   state.candidate = generateCharacter(data);
+  state.pendingGrants = freshPendingGrants();
   state.character.alive = false;
   saveState();
   renderAll();
@@ -222,6 +242,7 @@ function advanceOneYear() {
 
 function rerollCandidate() {
   state.candidate = generateCharacter(data);
+  state.pendingGrants = freshPendingGrants();
   saveState();
   renderStart();
 }
@@ -235,6 +256,34 @@ function startTimer() {
     if (!isPlaying) return;
     advanceOneYear();
   }, SPEEDS[state.speedIndex].yearMs);
+}
+
+/* ---- 転生準備（アイテム/スキル/制約）選択 ---- */
+
+function selectItem(itemId) {
+  var next = state.pendingGrants.itemId === itemId ? null : itemId;
+  if (next) {
+    var item = data.items.filter(function (i) { return i.id === next; })[0];
+    if (!isItemSelectable(item, state.pendingGrants.burdenId)) return; // 制約未選択のため選べない
+  }
+  state.pendingGrants.itemId = next;
+  saveState();
+  renderStart();
+}
+function selectSkill(skillId) {
+  state.pendingGrants.skillId = state.pendingGrants.skillId === skillId ? null : skillId;
+  saveState();
+  renderStart();
+}
+function selectBurden(burdenId) {
+  state.pendingGrants.burdenId = state.pendingGrants.burdenId === burdenId ? null : burdenId;
+  // 制約を外したことで選択中のアイテムが選べなくなる場合は、選択を解除する。
+  if (state.pendingGrants.itemId) {
+    var item = data.items.filter(function (i) { return i.id === state.pendingGrants.itemId; })[0];
+    if (!isItemSelectable(item, state.pendingGrants.burdenId)) state.pendingGrants.itemId = null;
+  }
+  saveState();
+  renderStart();
 }
 
 /* ---- 描画 ---- */
@@ -279,20 +328,82 @@ function renderAll() {
   }
 }
 
+function prepCardHtml(def, kind, selectedId, locked) {
+  var isActive = selectedId === def.id;
+  var classes = 'prepcard' + (isActive ? ' active' : '') + (locked ? ' locked' : '');
+  var html = '<button type="button" class="' + classes + '" data-' + kind + '="' + esc(def.id) + '"' + (locked ? ' disabled' : '') + '>';
+  html += '<div class="pc-title"><span>' + esc(def.label) + '</span></div>';
+  html += '<div class="pc-desc">' + esc(def.description) + '</div>';
+  if (def.benefit) html += '<div class="pc-benefit">恩恵: ' + esc(def.benefit) + '</div>';
+  if (def.risk && def.risk !== '特になし。') html += '<div class="pc-risk">注意: ' + esc(def.risk) + '</div>';
+  if (locked) html += '<div class="pc-note">※ 制約を1つ選ぶと持ち込めるようになる</div>';
+  html += '</button>';
+  return html;
+}
+
+function noneCardHtml(kind, selectedId, label) {
+  var isActive = !selectedId;
+  return '<button type="button" class="prepcard' + (isActive ? ' active' : '') + '" data-' + kind + '="none">' +
+    '<div class="pc-title"><span>' + esc(label || 'なし') + '</span></div>' +
+    '<div class="pc-desc">何も持ち込まない。</div>' +
+    '</button>';
+}
+
+function renderPrepSection() {
+  var grants = state.pendingGrants;
+
+  var itemHtml = noneCardHtml('item', grants.itemId, '持ち込まない');
+  itemHtml += data.items.map(function (item) {
+    var locked = !isItemSelectable(item, grants.burdenId);
+    return prepCardHtml(item, 'item', grants.itemId, locked);
+  }).join('');
+  document.getElementById('itemChoiceList').innerHTML = itemHtml;
+
+  var skillHtml = noneCardHtml('skill', grants.skillId, '身につけない');
+  skillHtml += data.skills.map(function (skill) { return prepCardHtml(skill, 'skill', grants.skillId, false); }).join('');
+  document.getElementById('skillChoiceList').innerHTML = skillHtml;
+
+  var burdenHtml = noneCardHtml('burden', grants.burdenId, '背負わない');
+  burdenHtml += data.burdens.map(function (b) { return prepCardHtml(b, 'burden', grants.burdenId, false); }).join('');
+  document.getElementById('burdenChoiceList').innerHTML = burdenHtml;
+
+  var itemLabel = grants.itemId ? (data.items.filter(function (i) { return i.id === grants.itemId; })[0] || {}).label : 'なし';
+  var skillLabel = grants.skillId ? (data.skills.filter(function (s) { return s.id === grants.skillId; })[0] || {}).label : 'なし';
+  var burdenLabel = grants.burdenId ? (data.burdens.filter(function (b) { return b.id === grants.burdenId; })[0] || {}).label : 'なし';
+  document.getElementById('itemCurrentLabel').textContent = itemLabel || 'なし';
+  document.getElementById('skillCurrentLabel').textContent = skillLabel || 'なし';
+  document.getElementById('burdenCurrentLabel').textContent = burdenLabel || 'なし';
+
+  document.getElementById('grantSummary').innerHTML =
+    '<div class="rowline"><span class="k">持込アイテム</span><span class="v">' + esc(itemLabel || 'なし') + '</span></div>' +
+    '<div class="rowline"><span class="k">初期スキル</span><span class="v">' + esc(skillLabel || 'なし') + '</span></div>' +
+    '<div class="rowline"><span class="k">制約</span><span class="v">' + esc(burdenLabel || 'なし') + '</span></div>';
+}
+
 function renderStart() {
   var c = state.candidate;
-  var html = '';
-  html += '<div class="rowline"><span class="k">名前</span><span class="v">' + esc(c.name) + '（' + c.genderLabel + '）</span></div>';
-  html += '<div class="rowline"><span class="k">出身</span><span class="v">' + esc(c.region) + '</span></div>';
-  html += '<div class="barlist" style="margin-top:10px">';
-  data.abilities.forEach(function (a) { html += abilityBarHtml(a, c.abilities[a.id]); });
-  html += '</div><div class="traitgrid" style="margin-top:10px">';
+  var overviewHtml = '';
+  overviewHtml += '<div class="rowline"><span class="k">名前</span><span class="v">' + esc(c.name) + '（' + c.genderLabel + '）</span></div>';
+  overviewHtml += '<div class="rowline"><span class="k">出身</span><span class="v">' + esc(c.region) + '</span></div>';
+  document.getElementById('candidateOverviewBox').innerHTML = overviewHtml;
+
+  var detailHtml = '';
+  if (c.elements.length > 0) {
+    detailHtml += '<div class="relchips" style="margin-bottom:10px">' + c.elements.map(function (id) {
+      return '<span class="chip"><b>' + esc(ELEMENT_LABELS[id] || id) + '</b></span>';
+    }).join('') + '</div>';
+  }
+  detailHtml += '<div class="barlist">';
+  data.abilities.forEach(function (a) { detailHtml += abilityBarHtml(a, c.abilities[a.id]); });
+  detailHtml += '</div><div class="traitgrid" style="margin-top:10px">';
   data.traits.forEach(function (t) {
     var v = c.traits[t.id];
-    html += '<div class="t' + (v >= 70 ? ' hi' : '') + '"><span>' + t.label + '</span><span class="tv">' + v + '</span></div>';
+    detailHtml += '<div class="t' + (v >= 70 ? ' hi' : '') + '"><span>' + t.label + '</span><span class="tv">' + v + '</span></div>';
   });
-  html += '</div>';
-  document.getElementById('candidateBox').innerHTML = html;
+  detailHtml += '</div>';
+  document.getElementById('candidateDetailBox').innerHTML = detailHtml;
+
+  renderPrepSection();
 
   var pastCard = document.getElementById('pastLivesCard');
   if (state.pastLives.length > 0) {
@@ -340,6 +451,14 @@ function renderObserve() {
     ? c.goal.label + '（' + (GOAL_STATUS_LABELS[c.goal.status] || c.goal.status) + '・進捗' + c.goal.progress + '）'
     : '未形成';
 
+  document.getElementById('ovItem').textContent = itemStatusText(c);
+  document.getElementById('ovSkill').textContent = c.startingSkill
+    ? (data.skills.filter(function (s) { return s.id === c.startingSkill; })[0] || {}).label || c.startingSkill
+    : 'なし';
+  document.getElementById('ovBurden').textContent = c.burden
+    ? (data.burdens.filter(function (b) { return b.id === c.burden; })[0] || {}).label || c.burden
+    : 'なし';
+
   document.getElementById('relCount').textContent = '（' + state.relations.length + '人）';
   var relEmpty = document.getElementById('relEmpty');
   if (state.relations.length === 0) {
@@ -361,6 +480,23 @@ function renderObserve() {
   document.getElementById('speedRow').innerHTML = SPEEDS.map(function (s, i) {
     return '<button class="small' + (i === state.speedIndex ? ' active' : '') + '" data-speed="' + i + '" type="button">' + s.label + '</button>';
   }).join('');
+}
+
+function itemStatusText(c) {
+  if (!c.startingItem) return 'なし';
+  var item = data.items.filter(function (i) { return i.id === c.startingItem; })[0];
+  var label = item ? item.label : c.startingItem;
+  var firstUsedAge = c.itemFirstUsedAge[c.startingItem];
+  var itemState = c.itemState[c.startingItem];
+  if (itemState) {
+    if (itemState.consumed) return label + '（使い切った）';
+    if (firstUsedAge !== undefined) return label + '（残り' + itemState.usesRemaining + '回・' + firstUsedAge + '歳で初使用）';
+    return label + '（残り' + itemState.usesRemaining + '回・未使用）';
+  }
+  if (firstUsedAge !== undefined) {
+    return label + '（' + firstUsedAge + '歳の時に活用）';
+  }
+  return label + '（未使用）';
 }
 
 function renderLog() {
@@ -418,6 +554,22 @@ async function init() {
     renderObserve();
   });
 
+  document.getElementById('itemChoiceList').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-item]');
+    if (!btn || btn.disabled) return;
+    selectItem(btn.getAttribute('data-item'));
+  });
+  document.getElementById('skillChoiceList').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-skill]');
+    if (!btn) return;
+    selectSkill(btn.getAttribute('data-skill'));
+  });
+  document.getElementById('burdenChoiceList').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-burden]');
+    if (!btn) return;
+    selectBurden(btn.getAttribute('data-burden'));
+  });
+
   document.getElementById('speedRow').addEventListener('click', function (e) {
     var btn = e.target.closest('[data-speed]');
     if (!btn) return;
@@ -454,6 +606,8 @@ async function init() {
       var pct = function (v) { return Math.round(v * 100) + '%'; };
       var goalLabelOf = {};
       data.goals.forEach(function (g) { goalLabelOf[g.id] = g.label; });
+      var itemLabelOf = {};
+      data.items.forEach(function (i) { itemLabelOf[i.id] = i.label; });
 
       var lines = [];
       lines.push('試行回数: ' + stats.trials);
@@ -473,6 +627,15 @@ async function init() {
           g.abandoned + '/' + g.distorted + '/' + g.unresolved + '(' + g.unreachableWhileActive + ')/' +
           g.avgProgress.toFixed(0)
         );
+      });
+
+      lines.push('');
+      lines.push('[転生準備] 何も持たずに転生した率: ' + pct(stats.grantStats.noGrantRate));
+      lines.push('[アイテム] 選択/使用(使用率)');
+      Object.keys(stats.grantStats.items).sort().forEach(function (id) {
+        var s = stats.grantStats.items[id];
+        var rate = s.selected > 0 ? Math.round((s.used / s.selected) * 100) : 0;
+        lines.push('  ' + (itemLabelOf[id] || id) + ': ' + s.selected + '/' + s.used + '(' + rate + '%)');
       });
 
       lines.push('');
