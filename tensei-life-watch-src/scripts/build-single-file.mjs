@@ -32,6 +32,7 @@ function stripModuleSyntax(source) {
 var ENGINE_FILES = [
   'game-engine/rng.js',
   'game-engine/character-generator.js',
+  'game-engine/discovery.js',
   'game-engine/starting-grants.js',
   'game-engine/event-selector.js',
   'game-engine/decision-engine.js',

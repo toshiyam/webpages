@@ -1,6 +1,8 @@
 import { applyGoalFormation, applyGoalResolution } from './effect-processor.js';
 import { setItemOutcome, consumeItem, recordContextualItemUse } from './starting-grants.js';
 import { driftWorld } from './time-processor.js';
+import { isChoiceUnlocked } from './decision-engine.js';
+import { freshDiscoveries, recordLifeDiscoveries, evaluateUnlockCondition, isItemUnlocked } from './discovery.js';
 
 var ABILITY_IDS = ['physical', 'intelligence', 'social', 'willpower', 'sensitivity', 'luck'];
 
@@ -183,6 +185,67 @@ export function runWorldYearDriftSelfTests() {
   return results;
 }
 
+// 転生記録図鑑の発見カウンタ・解禁条件（issue #9）の境界条件を直接検証する。
+export function runDiscoveryUnlockSelfTests() {
+  var results = [];
+
+  function check(name, fn) {
+    var passed;
+    try { passed = !!fn(); } catch (e) { passed = false; }
+    results.push({ name: name, passed: passed });
+  }
+
+  check('条件が無いアイテムは常に解禁済み', function () {
+    return isItemUnlocked({ id: 'x' }, freshDiscoveries()) === true;
+  });
+
+  check('minCountに満たない発見では解禁されない', function () {
+    var d = freshDiscoveries();
+    d.occupations.adventurer = 1;
+    return evaluateUnlockCondition({ category: 'occupations', id: 'adventurer', minCount: 2 }, d) === false;
+  });
+
+  check('minCountを満たすと解禁される', function () {
+    var d = freshDiscoveries();
+    d.occupations.adventurer = 2;
+    return evaluateUnlockCondition({ category: 'occupations', id: 'adventurer', minCount: 2 }, d) === true;
+  });
+
+  check('anyはいずれか1つを満たせば解禁される', function () {
+    var d = freshDiscoveries();
+    d.goals.see_world_end = 1;
+    return evaluateUnlockCondition({ any: [
+      { category: 'occupations', id: 'adventurer' },
+      { category: 'goals', id: 'see_world_end' }
+    ] }, d) === true;
+  });
+
+  check('allはすべて満たさなければ解禁されない', function () {
+    var d = freshDiscoveries();
+    d.elements.demon_mark = 1;
+    return evaluateUnlockCondition({ all: [
+      { category: 'elements', id: 'demon_mark' },
+      { category: 'tags', id: 'demon_lord' }
+    ] }, d) === false;
+  });
+
+  check('recordLifeDiscoveriesは既存カウントを減らさず加算する', function () {
+    var d = freshDiscoveries();
+    var character = { elements: ['magic_affinity'], goal: null, occupation: 'blacksmith', tags: [] };
+    recordLifeDiscoveries(d, character, { cause: 'illness' }, { forge_apprentice: 3 });
+    recordLifeDiscoveries(d, character, { cause: 'illness' }, { forge_apprentice: 2 });
+    return d.elements.magic_affinity === 2 && d.occupations.blacksmith === 2 &&
+      d.deathCauses.illness === 2 && d.events.forge_apprentice === 5;
+  });
+
+  check('全選択肢が封印されたイベントはpickChoiceがnullを返す(封印無視のフォールバックをしない)', function () {
+    var evt = { choices: [{ id: 'locked', requiredFlags: ['item_never_owned'] }] };
+    return isChoiceUnlocked(evt.choices[0], {}) === false;
+  });
+
+  return results;
+}
+
 // 「アイテムに接触した(itemFirstUsedAgeが記録された)のにitemOutcome.statusが
 // unusedのまま」（issue #7 で実際に検出された、間接効果アイテムが常に未使用扱い
 // になるバグそのもの）と、「unused以外のstatusなのにageが記録されていない」を
@@ -256,11 +319,32 @@ export function findImmortalGoalWithoutEndLife(events) {
   return violations;
 }
 
+// choice.requiredFlags/excludedFlagsで選択肢を封印できるようになった際、
+// 「全選択肢が封印されたら封印を無視して全選択肢へ戻す」という危険な
+// フォールバックが decision-engine.js にあった（issue #9で敵対的検証により
+// 指摘: 解禁条件付き選択肢しか持たないイベントを新設すると、非対象者でも
+// 封印済み選択肢を選べてしまう再発経路になる）。フォールバックそのものを
+// 廃止した上で、すべてのイベントが「requiredFlags/excludedFlagsを一切
+// 持たない、常に選べる選択肢」を最低1つ持つことを静的に強制し、
+// pickChoiceがnullを返す経路（＝その年は何も起きない）が実運用では
+// 発生しないことを保証する。
+export function findEventsWithoutUnconditionalChoice(events) {
+  var violations = [];
+  events.forEach(function (evt) {
+    var hasUnconditional = (evt.choices || []).some(function (choice) {
+      return !choice.requiredFlags && !choice.excludedFlags;
+    });
+    if (!hasUnconditional) violations.push({ eventId: evt.id });
+  });
+  return violations;
+}
+
 export function runStaticConsistencyChecks(events) {
   return {
     abilityKeysInTraitWeights: findAbilityKeysInTraitWeights(events),
     goalResolutionWithoutIds: findGoalResolutionWithoutIds(events),
-    immortalGoalWithoutEndLife: findImmortalGoalWithoutEndLife(events)
+    immortalGoalWithoutEndLife: findImmortalGoalWithoutEndLife(events),
+    eventsWithoutUnconditionalChoice: findEventsWithoutUnconditionalChoice(events)
   };
 }
 

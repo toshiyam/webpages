@@ -1,4 +1,5 @@
 import { randInt } from './rng.js';
+import { isItemUnlocked, isSkillUnlocked, isBurdenUnlocked } from './discovery.js';
 
 // 転生準備フェーズで選んだ持込アイテム・初期スキル・制約を転生者へ適用する。
 // grants: { itemId, skillId, burdenId } （それぞれ null または 'none' で「なし」）
@@ -26,14 +27,20 @@ export function isItemSelectable(item, burdenId) {
   return !!burdenId && burdenId !== 'none';
 }
 
-export function applyStartingGrants(character, data, grants) {
+// discoveries を渡すと、転生記録図鑑の発見状況に基づく段階解禁
+// （game-data/items.json 等の unlockCondition）もあわせて強制する。省略時は
+// 解禁チェックを行わない（バランス検証バッチのように「プレイヤーが仮に
+// 全項目へアクセスできたら」を検証したい場面のための後方互換）。
+// UIだけでなくここでもチェックすることで、保存データの改変や表示上の
+// 見落としで未解禁の項目が付与される経路を塞ぐ（issue #9）。
+export function applyStartingGrants(character, data, grants, discoveries) {
   var itemId = grants && grants.itemId;
   var skillId = grants && grants.skillId;
   var burdenId = grants && grants.burdenId;
 
   if (burdenId && burdenId !== 'none') {
     var burden = findBurden(data, burdenId);
-    if (burden) {
+    if (burden && (!discoveries || isBurdenUnlocked(burden, discoveries))) {
       character.burden = burden.id;
       if (character.flags.indexOf('burden_' + burden.id) === -1) character.flags.push('burden_' + burden.id);
       if (typeof burden.startingHealth === 'number') {
@@ -47,7 +54,7 @@ export function applyStartingGrants(character, data, grants) {
 
   if (itemId && itemId !== 'none') {
     var item = findItem(data, itemId);
-    if (item && isItemSelectable(item, character.burden)) {
+    if (item && isItemSelectable(item, character.burden) && (!discoveries || isItemUnlocked(item, discoveries))) {
       character.startingItem = item.id;
       character.itemOutcome = { status: 'unused', age: null };
       if (character.flags.indexOf('item_' + item.id) === -1) character.flags.push('item_' + item.id);
@@ -62,7 +69,7 @@ export function applyStartingGrants(character, data, grants) {
 
   if (skillId && skillId !== 'none') {
     var skill = findSkill(data, skillId);
-    if (skill) {
+    if (skill && (!discoveries || isSkillUnlocked(skill, discoveries))) {
       character.startingSkill = skill.id;
       if (character.flags.indexOf('skill_' + skill.id) === -1) character.flags.push('skill_' + skill.id);
     }

@@ -26,6 +26,7 @@
     <button type="button" data-tab="observe" class="active">観測</button>
     <button type="button" data-tab="log">人生記録</button>
     <button type="button" data-tab="world">世界</button>
+    <button type="button" data-tab="encyclopedia">図鑑</button>
   </nav>
 
   <section id="screenStart">
@@ -156,6 +157,58 @@
     <div class="card">
       <h2>転生履歴</h2>
       <div class="pastlives" id="pastLivesList2"></div>
+    </div>
+  </section>
+
+  <section id="screenEncyclopedia" hidden>
+    <div class="card">
+      <h2>転生記録図鑑</h2>
+      <div class="btnrow">
+        <button class="small active" id="encyclopediaTabLives" type="button">過去人生</button>
+        <button class="small" id="encyclopediaTabDiscovery" type="button">発見項目</button>
+      </div>
+    </div>
+
+    <div id="encyclopediaLivesView">
+      <div class="card" id="encyclopediaListCard">
+        <h2>過去人生一覧 <span class="sub" id="encyclopediaCount"></span></h2>
+        <div class="pastlives" id="encyclopediaList"></div>
+        <div class="empty" id="encyclopediaEmpty" hidden>まだ記録がない。</div>
+      </div>
+      <div class="card" id="encyclopediaDetailCard" hidden>
+        <div class="btnrow single">
+          <button class="secondary small" id="encyclopediaBackBtn" type="button">← 一覧へ戻る</button>
+        </div>
+        <div id="encyclopediaDetail"></div>
+      </div>
+    </div>
+
+    <div id="encyclopediaDiscoveryView" hidden>
+      <div class="card">
+        <h2>発見率</h2>
+        <div id="discoveryRateBox"></div>
+      </div>
+      <div class="card">
+        <h2>特殊要素</h2>
+        <div class="relchips" id="discoveryElements"></div>
+      </div>
+      <div class="card">
+        <h2>生涯目標</h2>
+        <div class="relchips" id="discoveryGoals"></div>
+      </div>
+      <div class="card">
+        <h2>職業</h2>
+        <div class="relchips" id="discoveryOccupations"></div>
+      </div>
+      <div class="card">
+        <h2>死因</h2>
+        <div class="relchips" id="discoveryDeathCauses"></div>
+      </div>
+      <div class="card">
+        <h2>実績・人生アークの結末</h2>
+        <div class="relchips" id="discoveryTags"></div>
+        <div class="empty" id="discoveryTagsEmpty" hidden>まだ何も発見していない。</div>
+      </div>
     </div>
   </section>
 

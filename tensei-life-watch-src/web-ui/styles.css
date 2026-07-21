@@ -83,6 +83,8 @@ button.small.active { background: var(--accent); color: #1a1424; border-color: v
 .relchips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
 .chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; border-radius: 999px; background: var(--panel-soft); border: 1px solid var(--line); font-size: 0.74rem; color: var(--muted); }
 .chip b { color: var(--text); }
+.chip.locked { opacity: 0.5; }
+.chip.locked b { color: var(--muted); }
 
 .logfilter { display: flex; gap: 6px; margin-bottom: 10px; }
 .loglist { display: grid; gap: 8px; max-height: 60vh; overflow-y: auto; }
@@ -105,6 +107,11 @@ button.small.active { background: var(--accent); color: #1a1424; border-color: v
 .pastlives { display: grid; gap: 6px; }
 .pastlife { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); border-bottom: 1px dashed var(--line); padding: 4px 0; }
 .pastlife b { color: var(--text); }
+.pastlife-btn {
+  width: 100%; background: none; border: none; border-bottom: 1px dashed var(--line);
+  font: inherit; cursor: pointer; text-align: left;
+}
+.pastlife-btn:hover, .pastlife-btn:focus { background: var(--panel-soft); }
 
 details.simpanel summary { cursor: pointer; font-size: 0.82rem; color: var(--muted); }
 .simresult { font-size: 0.78rem; color: var(--muted); margin-top: 8px; white-space: pre-wrap; }

@@ -25,6 +25,30 @@ export function driftWorld(world, initialWorld, bounds) {
   });
 }
 
+// その年の老衰・病気などによる通常の死亡ロールを行い、{ logs, died, deathInfo }
+// を確定させる。イベントが発生しなかった年・イベントは発生したが選択肢が
+// 1つも解禁されていなかった年（issue #9: 封印を無視するフォールバックは
+// 行わないため、その場合は「何も起きなかった年」として扱う）の両方から
+// 共通で呼ばれる。
+function finishYear(newLogs, character, relations, world, data) {
+  var died = false, deathInfo = null;
+  if (character.health <= 0) died = true;
+  else if (Math.random() < mortalityChance(character, data.occupationRisk)) died = true;
+
+  if (died) {
+    character.alive = false;
+    var cause = decideDeathCause(character, data.occupationRisk);
+    deathInfo = { cause: cause, age: character.age };
+    newLogs.push({
+      year: world.yearEra, age: character.age, eventId: 'death', choiceId: cause,
+      text: character.name + 'は' + character.age + '歳で、' + data.deathCauseLabels[cause] + 'によりその生涯を閉じた。',
+      importance: 'historic'
+    });
+  }
+
+  return { logs: newLogs, died: died, deathInfo: deathInfo };
+}
+
 // gameState: { character, relations, world }
 // data: { events, occupationIncome, occupationRisk, namePool, deathCauseLabels,
 //         initialWorld, worldFieldBounds, worldFlagThresholds }
@@ -58,6 +82,12 @@ export function simulateYear(gameState, data) {
     var evt = pickEvent(data.events, character, ctx, world.yearEra);
     if (evt) {
       var choice = pickChoice(evt, character, ctx);
+      // pickChoiceは、選択肢が1つも解禁されていない場合に封印を無視するの
+      // ではなく null を返す（issue #9）。イベント自体はconsistency.jsの
+      // findEventsWithoutUnconditionalChoiceにより「常に選べる選択肢を
+      // 最低1つ持つ」ことが静的に保証されているため実運用では起こらないが、
+      // 万一発生した場合は「この年は何も起きなかった」ものとして扱う。
+      if (!choice) return finishYear(newLogs, character, relations, world, data);
       recordContextualItemUse(character, choice, ctx);
       applyEffects(character, relations, world, data.worldFieldBounds, data.namePool, choice.effects);
       character.eventHistory[evt.id] = world.yearEra;
@@ -87,20 +117,5 @@ export function simulateYear(gameState, data) {
     }
   }
 
-  var died = false, deathInfo = null;
-  if (character.health <= 0) died = true;
-  else if (Math.random() < mortalityChance(character, data.occupationRisk)) died = true;
-
-  if (died) {
-    character.alive = false;
-    var cause = decideDeathCause(character, data.occupationRisk);
-    deathInfo = { cause: cause, age: character.age };
-    newLogs.push({
-      year: world.yearEra, age: character.age, eventId: 'death', choiceId: cause,
-      text: character.name + 'は' + character.age + '歳で、' + data.deathCauseLabels[cause] + 'によりその生涯を閉じた。',
-      importance: 'historic'
-    });
-  }
-
-  return { logs: newLogs, died: died, deathInfo: deathInfo };
+  return finishYear(newLogs, character, relations, world, data);
 }
