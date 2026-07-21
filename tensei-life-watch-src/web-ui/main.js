@@ -1,6 +1,8 @@
 import {
   buildDataBundle, generateCharacter, simulateYear, generateSummary, runBatchSimulation,
-  applyStartingGrants, isItemSelectable
+  applyStartingGrants, isItemSelectable, determineLifeRank, lifeRankLabel,
+  freshDiscoveries, recordLifeDiscoveries, isItemUnlocked, isSkillUnlocked, isBurdenUnlocked, buildLifeRecord,
+  TAG_SHORT_LABELS
 } from '../game-engine/index.js';
 
 // escapeHtml は game-engine に無いため、ここでのみ小さく定義する（描画専用のUIヘルパー）。
@@ -8,7 +10,7 @@ function esc(s) {
   return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; });
 }
 
-var SCHEMA_VERSION = 6;
+var SCHEMA_VERSION = 7;
 var STORAGE_KEY = 'tenseiLifeWatch:v1';
 var MAX_OFFLINE_YEARS = 300;
 
@@ -32,6 +34,8 @@ var timerHandle = null;
 var isPlaying = false;
 var currentTab = 'observe';
 var currentLogFilter = 'all';
+var encyclopediaSubTab = 'lives';
+var encyclopediaDetailIndex = null;
 
 async function loadJson(path) {
   var res = await fetch(path);
@@ -72,6 +76,7 @@ function freshState() {
     log: [],
     lifetimeCount: 0,
     pastLives: [],
+    discoveries: freshDiscoveries(),
     lastSavedAt: Date.now(),
     speedIndex: 1
   };
@@ -79,8 +84,8 @@ function freshState() {
 
 // schemaVersion 1 (要素/生涯目標/世界状態の拡張前)、2 (worldImpact集計の追加前)、
 // 3 (転生準備フェーズの追加前)、4 (itemOutcome状態モデルの追加前)、
-// 5 (暦のdriftWorld混入バグ修正前) の保存データを、新しいフィールドを補いながら
-// 壊さずに引き継ぐ。
+// 5 (暦のdriftWorld混入バグ修正前)、6 (転生記録図鑑・発見/段階解禁の追加前) の
+// 保存データを、新しいフィールドを補いながら壊さずに引き継ぐ。
 function migrateCharacter(character) {
   if (!character) return character;
   if (!Array.isArray(character.elements)) character.elements = [];
@@ -133,6 +138,11 @@ function migrateState(raw) {
     migrateCharacter(raw.candidate);
     migrateWorld(raw.world);
     if (!raw.pendingGrants) raw.pendingGrants = freshPendingGrants();
+    // schemaVersion 6以前のセーブには discoveries（転生記録図鑑の発見状況）が
+    // 存在しない。空の状態から積み上げ直すことになるが、これは既存の過去人生
+    // データを破棄するわけではなく単に発見済み扱いにならないだけなので、
+    // セーブそのものは壊さずに引き継げる。
+    if (!raw.discoveries || typeof raw.discoveries !== 'object') raw.discoveries = freshDiscoveries();
     raw.schemaVersion = SCHEMA_VERSION;
   }
   return raw;
@@ -167,6 +177,7 @@ function loadState() {
   if (!sanitized.candidate) sanitized.candidate = generateCharacter(data);
   if (!sanitized.pendingGrants) sanitized.pendingGrants = freshPendingGrants();
   if (!sanitized.pastLives) sanitized.pastLives = [];
+  if (!sanitized.discoveries || typeof sanitized.discoveries !== 'object') sanitized.discoveries = freshDiscoveries();
   if (typeof sanitized.speedIndex !== 'number') sanitized.speedIndex = 1;
   return sanitized;
 }
@@ -213,7 +224,9 @@ function catchUpOffline() {
 }
 
 function startLife() {
-  applyStartingGrants(state.candidate, data, state.pendingGrants);
+  // discoveries を渡し、保存データの改変やUIの見落としで未解禁の持込・
+  // スキル・制約が付与されてしまう経路をエンジン側でも塞ぐ（issue #9）。
+  applyStartingGrants(state.candidate, data, state.pendingGrants, state.discoveries);
   state.character = state.candidate;
   state.relations = [];
   state.log = [{
@@ -226,6 +239,14 @@ function startLife() {
   renderAll();
 }
 
+// state.log はその人生専用（startLifeで毎回リセットされる）なので、ここで
+// 集計すればそのまま「このライフで各イベントが何回発生したか」になる。
+function tallyEventCounts(log) {
+  var counts = {};
+  log.forEach(function (l) { counts[l.eventId] = (counts[l.eventId] || 0) + 1; });
+  return counts;
+}
+
 function finishLife(deathInfo) {
   isPlaying = false;
   stopTimer();
@@ -233,11 +254,18 @@ function finishLife(deathInfo) {
     state.character, state.relations, deathInfo, data.occupations, data.traits, data.deathCauseLabels,
     data.items, data.skills, data.burdens
   );
-  state.pastLives.unshift({
-    name: state.character.name, age: state.character.age,
-    occupation: data.occupations[state.character.occupation], cause: data.deathCauseLabels[deathInfo.cause]
-  });
+  var lifeRank = determineLifeRank(state.character);
+  var record = buildLifeRecord(state.character, state.relations, deathInfo, lifeRank, state.log);
+  // 過去人生一覧（既存の簡易表示）は職業・死因をラベル済み文字列として使う。
+  // buildLifeRecordはエンジン側の純粋関数のためIDのまま持たせているので、
+  // ここでラベルを解決して両方の用途に使える1つのレコードにする。
+  record.occupationLabel = data.occupations[state.character.occupation];
+  record.causeLabel = data.deathCauseLabels[deathInfo.cause];
+  state.pastLives.unshift(record);
   if (state.pastLives.length > 20) state.pastLives.length = 20;
+  // 発見状況は転生記録図鑑・段階解禁の元になる、生涯をまたいで蓄積し続ける
+  // 状態。過去人生一覧を20件までに切り詰めても、ここは一切減らない。
+  recordLifeDiscoveries(state.discoveries, state.character, deathInfo, tallyEventCounts(state.log));
   state.lastDeathSummary = summary;
   state.lastDeathInfo = deathInfo;
   state.candidate = generateCharacter(data);
@@ -290,18 +318,29 @@ function selectItem(itemId) {
   if (next) {
     var item = data.items.filter(function (i) { return i.id === next; })[0];
     if (!isItemSelectable(item, state.pendingGrants.burdenId)) return; // 制約未選択のため選べない
+    if (!isItemUnlocked(item, state.discoveries)) return; // まだ発見条件を満たしていない
   }
   state.pendingGrants.itemId = next;
   saveState();
   renderStart();
 }
 function selectSkill(skillId) {
-  state.pendingGrants.skillId = state.pendingGrants.skillId === skillId ? null : skillId;
+  var next = state.pendingGrants.skillId === skillId ? null : skillId;
+  if (next) {
+    var skill = data.skills.filter(function (s) { return s.id === next; })[0];
+    if (!isSkillUnlocked(skill, state.discoveries)) return;
+  }
+  state.pendingGrants.skillId = next;
   saveState();
   renderStart();
 }
 function selectBurden(burdenId) {
-  state.pendingGrants.burdenId = state.pendingGrants.burdenId === burdenId ? null : burdenId;
+  var next = state.pendingGrants.burdenId === burdenId ? null : burdenId;
+  if (next) {
+    var burdenDef = data.burdens.filter(function (b) { return b.id === next; })[0];
+    if (!isBurdenUnlocked(burdenDef, state.discoveries)) return;
+  }
+  state.pendingGrants.burdenId = next;
   // 制約を外したことで選択中のアイテムが選べなくなる場合は、選択を解除する。
   if (state.pendingGrants.itemId) {
     var item = data.items.filter(function (i) { return i.id === state.pendingGrants.itemId; })[0];
@@ -319,10 +358,69 @@ function abilityBarHtml(def, val) {
     '<span class="val">' + val + '</span></div>';
 }
 
+function pastLifeAge(p) { return p.lifespan !== undefined ? p.lifespan : p.age; }
+function pastLifeOccupationLabel(p) { return p.occupationLabel || p.occupation; }
+function pastLifeCauseLabel(p) { return p.causeLabel || p.cause; }
+
 function pastLivesHtml(list) {
   return list.map(function (p) {
-    return '<div class="pastlife"><span><b>' + esc(p.name) + '</b>（' + esc(p.occupation) + '）</span><span>享年' + p.age + '歳・' + esc(p.cause) + '</span></div>';
+    return '<div class="pastlife"><span><b>' + esc(p.name) + '</b>（' + esc(pastLifeOccupationLabel(p)) + '）</span><span>享年' + pastLifeAge(p) + '歳・' + esc(pastLifeCauseLabel(p)) + '</span></div>';
   }).join('');
+}
+
+function encyclopediaListHtml(list) {
+  return list.map(function (p, i) {
+    return '<button type="button" class="pastlife pastlife-btn" data-life-index="' + i + '">' +
+      '<span><b>' + esc(p.name) + '</b>（' + esc(pastLifeOccupationLabel(p)) + '）</span>' +
+      '<span>享年' + pastLifeAge(p) + '歳・' + esc(pastLifeCauseLabel(p)) + '</span></button>';
+  }).join('');
+}
+
+function lifeDetailHtml(p) {
+  if (p.elements === undefined) {
+    // schemaVersion 6以前の簡易レコードには詳細情報が無い。
+    return '<div class="empty">この人生は詳細記録の追加より前のものです。</div>';
+  }
+  var parts = [];
+  parts.push('<div class="rowline"><span class="k">名前</span><span class="v">' + esc(p.name) + '（' + esc(p.genderLabel || '') + '）</span></div>');
+  parts.push('<div class="rowline"><span class="k">出身</span><span class="v">' + esc(p.region || '') + '</span></div>');
+  parts.push('<div class="rowline"><span class="k">享年</span><span class="v">' + pastLifeAge(p) + '歳</span></div>');
+  parts.push('<div class="rowline"><span class="k">最終職業</span><span class="v">' + esc(pastLifeOccupationLabel(p)) + '</span></div>');
+  parts.push('<div class="rowline"><span class="k">死因/結末</span><span class="v">' + esc(pastLifeCauseLabel(p)) + '</span></div>');
+  if (p.lifeRank) parts.push('<div class="rowline"><span class="k">人生ランク</span><span class="v">' + esc(lifeRankLabel(p.lifeRank)) + '</span></div>');
+  if (p.elements && p.elements.length > 0) {
+    parts.push('<div class="rowline"><span class="k">特殊要素</span><span class="v">' +
+      p.elements.map(function (id) { return esc(ELEMENT_LABELS[id] || id); }).join('、') + '</span></div>');
+  }
+  if (p.goal) {
+    parts.push('<div class="rowline"><span class="k">生涯目標</span><span class="v">' +
+      esc(p.goal.label) + '（' + esc(GOAL_STATUS_LABELS[p.goal.status] || p.goal.status) + '）</span></div>');
+  }
+  var itemLabel = p.startingItem ? (data.items.filter(function (i) { return i.id === p.startingItem; })[0] || {}).label : null;
+  if (itemLabel) {
+    var outcomeText = p.itemOutcome ? ({
+      unused: '未使用', used: '活用', consumed: '使い切った', lost: '喪失', rejected: '使用を見送った'
+    }[p.itemOutcome.status] || p.itemOutcome.status) : '';
+    parts.push('<div class="rowline"><span class="k">持込アイテム</span><span class="v">' + esc(itemLabel) + '（' + esc(outcomeText) + '）</span></div>');
+  }
+  var skillLabel = p.startingSkill ? (data.skills.filter(function (s) { return s.id === p.startingSkill; })[0] || {}).label : null;
+  if (skillLabel) parts.push('<div class="rowline"><span class="k">初期スキル</span><span class="v">' + esc(skillLabel) + '</span></div>');
+  var burdenLabel = p.burden ? (data.burdens.filter(function (b) { return b.id === p.burden; })[0] || {}).label : null;
+  if (burdenLabel) parts.push('<div class="rowline"><span class="k">制約</span><span class="v">' + esc(burdenLabel) + '</span></div>');
+  if (p.tags && p.tags.length > 0) {
+    parts.push('<div class="relchips" style="margin-top:8px">' + p.tags.map(function (id) {
+      return '<span class="chip"><b>' + esc(TAG_SHORT_LABELS[id] || id) + '</b></span>';
+    }).join('') + '</div>');
+  }
+  if (p.relations && p.relations.length > 0) {
+    parts.push('<div class="relchips" style="margin-top:8px">' + p.relations.map(function (r) {
+      return '<span class="chip"><b>' + esc(r.name) + '</b>' + esc(r.role) + '</span>';
+    }).join('') + '</div>');
+  }
+  if (p.historicEvents && p.historicEvents.length > 0) {
+    parts.push('<div class="loglist" style="margin-top:8px">' + logListHtml(p.historicEvents) + '</div>');
+  }
+  return parts.join('');
 }
 
 function logListHtml(entries) {
@@ -343,6 +441,7 @@ function renderAll() {
   document.getElementById('screenObserve').hidden = !(hasLiving && currentTab === 'observe');
   document.getElementById('screenLog').hidden = !(hasLiving && currentTab === 'log');
   document.getElementById('screenWorld').hidden = !(hasLiving && currentTab === 'world');
+  document.getElementById('screenEncyclopedia').hidden = !(hasLiving && currentTab === 'encyclopedia');
 
   if (!state.character) renderStart();
   if (showDeath) renderDeath();
@@ -350,10 +449,11 @@ function renderAll() {
     renderObserve();
     renderLog();
     renderWorld();
+    if (currentTab === 'encyclopedia') renderEncyclopedia();
   }
 }
 
-function prepCardHtml(def, kind, selectedId, locked) {
+function prepCardHtml(def, kind, selectedId, locked, lockNote) {
   var isActive = selectedId === def.id;
   var classes = 'prepcard' + (isActive ? ' active' : '') + (locked ? ' locked' : '');
   var html = '<button type="button" class="' + classes + '" data-' + kind + '="' + esc(def.id) + '"' + (locked ? ' disabled' : '') + '>';
@@ -361,7 +461,7 @@ function prepCardHtml(def, kind, selectedId, locked) {
   html += '<div class="pc-desc">' + esc(def.description) + '</div>';
   if (def.benefit) html += '<div class="pc-benefit">恩恵: ' + esc(def.benefit) + '</div>';
   if (def.risk && def.risk !== '特になし。') html += '<div class="pc-risk">注意: ' + esc(def.risk) + '</div>';
-  if (locked) html += '<div class="pc-note">※ 制約を1つ選ぶと持ち込めるようになる</div>';
+  if (locked) html += '<div class="pc-note">※ ' + esc(lockNote || '選べません') + '</div>';
   html += '</button>';
   return html;
 }
@@ -379,17 +479,25 @@ function renderPrepSection() {
 
   var itemHtml = noneCardHtml('item', grants.itemId, '持ち込まない');
   itemHtml += data.items.map(function (item) {
-    var locked = !isItemSelectable(item, grants.burdenId);
-    return prepCardHtml(item, 'item', grants.itemId, locked);
+    var burdenLocked = !isItemSelectable(item, grants.burdenId);
+    var undiscovered = !isItemUnlocked(item, state.discoveries);
+    var note = undiscovered ? (item.unlockHint || 'まだ発見条件を満たしていない。') : '制約を1つ選ぶと持ち込めるようになる';
+    return prepCardHtml(item, 'item', grants.itemId, burdenLocked || undiscovered, note);
   }).join('');
   document.getElementById('itemChoiceList').innerHTML = itemHtml;
 
   var skillHtml = noneCardHtml('skill', grants.skillId, '身につけない');
-  skillHtml += data.skills.map(function (skill) { return prepCardHtml(skill, 'skill', grants.skillId, false); }).join('');
+  skillHtml += data.skills.map(function (skill) {
+    var undiscovered = !isSkillUnlocked(skill, state.discoveries);
+    return prepCardHtml(skill, 'skill', grants.skillId, undiscovered, skill.unlockHint || 'まだ発見条件を満たしていない。');
+  }).join('');
   document.getElementById('skillChoiceList').innerHTML = skillHtml;
 
   var burdenHtml = noneCardHtml('burden', grants.burdenId, '背負わない');
-  burdenHtml += data.burdens.map(function (b) { return prepCardHtml(b, 'burden', grants.burdenId, false); }).join('');
+  burdenHtml += data.burdens.map(function (b) {
+    var undiscovered = !isBurdenUnlocked(b, state.discoveries);
+    return prepCardHtml(b, 'burden', grants.burdenId, undiscovered, b.unlockHint || 'まだ発見条件を満たしていない。');
+  }).join('');
   document.getElementById('burdenChoiceList').innerHTML = burdenHtml;
 
   var itemLabel = grants.itemId ? (data.items.filter(function (i) { return i.id === grants.itemId; })[0] || {}).label : 'なし';
@@ -558,6 +666,84 @@ function renderWorld() {
   document.getElementById('pastLivesList2').innerHTML = state.pastLives.length ? pastLivesHtml(state.pastLives) : '<div class="empty">まだ記録がない。</div>';
 }
 
+// 発見済み/未発見のカタログをチップ一覧のHTMLへ変換する。未発見は名称を伏せ、
+// 存在だけを示す（issue #9: 「未発見項目は名称を伏せるか、存在だけを示す」）。
+function discoveryCatalogHtml(catalog, discoveredMap) {
+  return catalog.map(function (entry) {
+    var count = discoveredMap[entry.id] || 0;
+    if (count <= 0) return '<span class="chip locked"><b>？？？</b></span>';
+    return '<span class="chip"><b>' + esc(entry.label) + '</b>×' + count + '</span>';
+  }).join('');
+}
+
+function discoveryRateOf(catalog, discoveredMap) {
+  var total = catalog.length;
+  var found = catalog.filter(function (e) { return (discoveredMap[e.id] || 0) > 0; }).length;
+  return { found: found, total: total };
+}
+
+function renderEncyclopedia() {
+  document.getElementById('encyclopediaTabLives').classList.toggle('active', encyclopediaSubTab === 'lives');
+  document.getElementById('encyclopediaTabDiscovery').classList.toggle('active', encyclopediaSubTab === 'discovery');
+  document.getElementById('encyclopediaLivesView').hidden = encyclopediaSubTab !== 'lives';
+  document.getElementById('encyclopediaDiscoveryView').hidden = encyclopediaSubTab !== 'discovery';
+
+  if (encyclopediaSubTab === 'lives') {
+    var showDetail = encyclopediaDetailIndex !== null && state.pastLives[encyclopediaDetailIndex];
+    document.getElementById('encyclopediaListCard').hidden = showDetail;
+    document.getElementById('encyclopediaDetailCard').hidden = !showDetail;
+    if (showDetail) {
+      document.getElementById('encyclopediaDetail').innerHTML = lifeDetailHtml(state.pastLives[encyclopediaDetailIndex]);
+    } else {
+      document.getElementById('encyclopediaCount').textContent = '（全' + state.pastLives.length + '件）';
+      var empty = document.getElementById('encyclopediaEmpty');
+      if (state.pastLives.length === 0) {
+        empty.hidden = false;
+        document.getElementById('encyclopediaList').innerHTML = '';
+      } else {
+        empty.hidden = true;
+        document.getElementById('encyclopediaList').innerHTML = encyclopediaListHtml(state.pastLives);
+      }
+    }
+    return;
+  }
+
+  var d = state.discoveries;
+  var elementCatalog = data.elements.filter(function (e) { return e.id !== 'none'; }).map(function (e) { return { id: e.id, label: ELEMENT_LABELS[e.id] || e.label }; });
+  var goalCatalog = data.goals.map(function (g) { return { id: g.id, label: g.label }; });
+  var occCatalog = Object.keys(data.occupations).map(function (id) { return { id: id, label: data.occupations[id] }; });
+  var causeCatalog = Object.keys(data.deathCauseLabels).map(function (id) { return { id: id, label: data.deathCauseLabels[id] }; });
+
+  var rates = [
+    ['特殊要素', discoveryRateOf(elementCatalog, d.elements)],
+    ['生涯目標', discoveryRateOf(goalCatalog, d.goals)],
+    ['職業', discoveryRateOf(occCatalog, d.occupations)],
+    ['死因', discoveryRateOf(causeCatalog, d.deathCauses)]
+  ];
+  document.getElementById('discoveryRateBox').innerHTML = rates.map(function (r) {
+    var label = r[0], rate = r[1];
+    var pct = rate.total > 0 ? Math.round((rate.found / rate.total) * 100) : 0;
+    return '<div class="rowline"><span class="k">' + label + '</span><span class="v">' + rate.found + ' / ' + rate.total + '（' + pct + '%）</span></div>';
+  }).join('');
+
+  document.getElementById('discoveryElements').innerHTML = discoveryCatalogHtml(elementCatalog, d.elements);
+  document.getElementById('discoveryGoals').innerHTML = discoveryCatalogHtml(goalCatalog, d.goals);
+  document.getElementById('discoveryOccupations').innerHTML = discoveryCatalogHtml(occCatalog, d.occupations);
+  document.getElementById('discoveryDeathCauses').innerHTML = discoveryCatalogHtml(causeCatalog, d.deathCauses);
+
+  var tagIds = Object.keys(d.tags);
+  var tagsEmpty = document.getElementById('discoveryTagsEmpty');
+  if (tagIds.length === 0) {
+    tagsEmpty.hidden = false;
+    document.getElementById('discoveryTags').innerHTML = '';
+  } else {
+    tagsEmpty.hidden = true;
+    document.getElementById('discoveryTags').innerHTML = tagIds.map(function (id) {
+      return '<span class="chip"><b>' + esc(TAG_SHORT_LABELS[id] || id) + '</b>×' + d.tags[id] + '</span>';
+    }).join('');
+  }
+}
+
 function renderDeath() {
   var info = state.lastDeathInfo || { cause: 'special' };
   document.getElementById('deathCause').textContent = data.deathCauseLabels[info.cause];
@@ -626,6 +812,26 @@ async function init() {
       b.classList.toggle('active', b === btn);
     });
     renderLog();
+  });
+
+  document.getElementById('encyclopediaTabLives').addEventListener('click', function () {
+    encyclopediaSubTab = 'lives';
+    renderEncyclopedia();
+  });
+  document.getElementById('encyclopediaTabDiscovery').addEventListener('click', function () {
+    encyclopediaSubTab = 'discovery';
+    encyclopediaDetailIndex = null;
+    renderEncyclopedia();
+  });
+  document.getElementById('encyclopediaList').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-life-index]');
+    if (!btn) return;
+    encyclopediaDetailIndex = parseInt(btn.getAttribute('data-life-index'), 10);
+    renderEncyclopedia();
+  });
+  document.getElementById('encyclopediaBackBtn').addEventListener('click', function () {
+    encyclopediaDetailIndex = null;
+    renderEncyclopedia();
   });
 
   document.getElementById('simBtn').addEventListener('click', function () {

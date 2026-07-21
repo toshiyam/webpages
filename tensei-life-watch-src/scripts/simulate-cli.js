@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { buildDataBundle, runBatchSimulation, runGrantComparisonTrial } from '../game-engine/index.js';
+import { buildDataBundle, runBatchSimulation, runGrantComparisonTrial, runDiscoveryConsistencyCheck } from '../game-engine/index.js';
 
 var __dirname = dirname(fileURLToPath(import.meta.url));
 var dataDir = join(__dirname, '..', 'game-data');
@@ -102,6 +102,7 @@ console.log('自己テスト: ' + stats.consistency.selfTests.filter(function (t
 console.log('静的チェック - traitWeights内の能力IDキー: ' + stats.consistency.staticChecks.abilityKeysInTraitWeights.length + '件');
 console.log('静的チェック - ids未指定のgoalResolution: ' + stats.consistency.staticChecks.goalResolutionWithoutIds.length + '件');
 console.log('静的チェック - endLife未対応の不老不死completed: ' + stats.consistency.staticChecks.immortalGoalWithoutEndLife.length + '件');
+console.log('静的チェック - 常時解禁の選択肢を持たないイベント: ' + stats.consistency.staticChecks.eventsWithoutUnconditionalChoice.length + '件');
 console.log('人生ごとの検証 - 進捗100%未満で完遂した人生: ' + stats.consistency.goalProgressViolations.length + '件');
 console.log('人生ごとの検証 - 接触したのにitemOutcomeがunusedのまま/状態はあるが年齢が無い: ' + stats.consistency.itemOutcomeViolations.length + '件');
 console.log('人生ごとの検証 - 不老不死達成後に通常死亡/未達成なのに不老不死終了: ' + stats.consistency.immortalityViolations.length + '件');
@@ -122,3 +123,12 @@ Object.keys(comparison.variants).forEach(function (label) {
   console.log('  ' + label + ': アーク到達率' + pct(v.arcClimaxRate) + ' 平均寿命' + v.avgLifespan.toFixed(1) + '歳' +
     (v.arcClimaxRate > 0.8 ? '  !! 80%超過' : ''));
 });
+
+console.log('\n--- issue#9 転生記録図鑑・段階解禁の巻き戻り検証（100人生連続） ---');
+var discoveryCheck = runDiscoveryConsistencyCheck(data, 100);
+console.log('解禁状態が巻き戻った回数: ' + discoveryCheck.unlockRollbackCount + '件');
+console.log('発見カウントが減少した回数: ' + discoveryCheck.discoveryCountRollbackCount + '件');
+var unlockedItemIds = Object.keys(discoveryCheck.finalUnlocked).filter(function (k) {
+  return k.indexOf('item:') === 0 && discoveryCheck.finalUnlocked[k];
+}).map(function (k) { return k.slice(5); });
+console.log('100人生後に解禁済みのアイテム: ' + unlockedItemIds.join(', '));

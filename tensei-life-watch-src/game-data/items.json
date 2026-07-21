@@ -8,7 +8,13 @@
     {
       "id": "medical_kit", "label": "医療箱",
       "description": "傷薬と包帯が入った小さな箱。使うたびに中身が減っていく。", "benefit": "病気や怪我の場面で治療を助ける（使用回数3回）。", "risk": "使い切れば、以後は普通の治療しか受けられない。",
-      "requiresBurden": false, "usesRemaining": 3
+      "requiresBurden": false, "usesRemaining": 3,
+      "unlockCondition": { "any": [
+        { "category": "deathCauses", "id": "illness", "minCount": 1 },
+        { "category": "events", "id": "illness_common", "minCount": 2 },
+        { "category": "events", "id": "accident_workplace", "minCount": 2 }
+      ] },
+      "unlockHint": "病気や事故に関わる出来事を何度か観測すると持ち込めるようになる。"
     },
     {
       "id": "modern_textbook", "label": "現代の教本",
@@ -18,12 +24,19 @@
     {
       "id": "compass", "label": "方位磁針",
       "description": "どんな場所でも正しい方角を示す道具。", "benefit": "探索や、世界の果てを目指す旅を助ける。", "risk": "特になし。",
-      "requiresBurden": false
+      "requiresBurden": false,
+      "unlockCondition": { "any": [
+        { "category": "occupations", "id": "adventurer", "minCount": 1 },
+        { "category": "goals", "id": "see_world_end", "minCount": 1 }
+      ] },
+      "unlockHint": "冒険者という職業か、「世界の果てを見る」という生涯目標を発見すると持ち込めるようになる。"
     },
     {
       "id": "family_photo", "label": "家族写真",
       "description": "前世の家族が写った、色あせた一枚の写真。", "benefit": "家族を思う気持ちや、平穏・帰還への意志を強める。", "risk": "特になし。",
-      "requiresBurden": false
+      "requiresBurden": false,
+      "unlockCondition": { "category": "goals", "id": "protect_family", "minCount": 1 },
+      "unlockHint": "「家族を守る」という生涯目標を発見すると持ち込めるようになる。"
     },
     {
       "id": "silver_purse", "label": "銀貨袋",
@@ -33,7 +46,13 @@
     {
       "id": "sealed_ring", "label": "封印された指輪",
       "description": "禁忌の力を内に秘めた指輪。", "benefit": "魔に関わる特別な道が開ける。", "risk": "触れた者は、闇の力に魅入られる危険を負う。",
-      "requiresBurden": true
+      "requiresBurden": true,
+      "unlockCondition": { "any": [
+        { "category": "elements", "id": "demon_mark", "minCount": 1 },
+        { "category": "elements", "id": "cursed_soul", "minCount": 1 },
+        { "category": "tags", "id": "demon_lord", "minCount": 1 }
+      ] },
+      "unlockHint": "魔王候補の証・呪いを宿す魂・魔王としての結末のいずれかを発見すると持ち込めるようになる。"
     },
     {
       "id": "nameless_seed", "label": "名もなき種子",

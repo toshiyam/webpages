@@ -3,7 +3,8 @@ import { applyStartingGrants, isItemSelectable } from './starting-grants.js';
 import { simulateYear } from './time-processor.js';
 import { determineLifeRank, hasEnteredAnyArc, hasReachedArcClimax, hadNothingHappen } from './life-rank.js';
 import { buildContextSet, filterEligibleEvents } from './event-selector.js';
-import { findGoalProgressViolation, runStaticConsistencyChecks, runGoalResolutionSelfTests, findItemOutcomeViolation, runItemOutcomeSelfTests, findImmortalityViolation, runWorldYearDriftSelfTests } from './consistency.js';
+import { findGoalProgressViolation, runStaticConsistencyChecks, runGoalResolutionSelfTests, findItemOutcomeViolation, runItemOutcomeSelfTests, findImmortalityViolation, runWorldYearDriftSelfTests, runDiscoveryUnlockSelfTests } from './consistency.js';
+import { freshDiscoveries, recordLifeDiscoveries, isItemUnlocked, isSkillUnlocked, isBurdenUnlocked } from './discovery.js';
 import { pick } from './rng.js';
 
 var MAX_LIFE_YEARS = 130;
@@ -266,7 +267,7 @@ export function runBatchSimulation(data, n) {
     .filter(function (id) { return firedEventIds.indexOf(id) === -1; });
 
   var staticChecks = runStaticConsistencyChecks(data.events);
-  var selfTests = runGoalResolutionSelfTests().concat(runItemOutcomeSelfTests()).concat(runWorldYearDriftSelfTests());
+  var selfTests = runGoalResolutionSelfTests().concat(runItemOutcomeSelfTests()).concat(runWorldYearDriftSelfTests()).concat(runDiscoveryUnlockSelfTests());
 
   var unreachableGoalResolution = {};
   Object.keys(goalStats).forEach(function (id) {
@@ -316,6 +317,7 @@ export function runBatchSimulation(data, n) {
         staticChecks.abilityKeysInTraitWeights.length +
         staticChecks.goalResolutionWithoutIds.length +
         staticChecks.immortalGoalWithoutEndLife.length +
+        staticChecks.eventsWithoutUnconditionalChoice.length +
         selfTests.filter(function (t) { return !t.passed; }).length
     }
   };
@@ -354,4 +356,56 @@ export function runGrantComparisonTrial(data, grantVariants, trialsPerVariant) {
   });
 
   return { templateName: template.name, variants: report };
+}
+
+// 転生記録図鑑の発見状況・転生準備項目の段階解禁（issue #9）が、生涯を
+// またいで正しく蓄積し続け、一度解禁された項目が後の人生で再び未解禁へ
+// 戻らない（＝解禁の巻き戻りが起きない）ことを、discoveries を共有する
+// n回連続の人生で検証する。バッチ検証のrunBatchSimulationとは異なり、
+// 各人生が独立した世界からやり直すのではなく、同一プレイヤーが同一
+// セーブデータで転生を繰り返す状況を模する。
+export function runDiscoveryConsistencyCheck(data, n) {
+  var goalResolutionEventMap = buildGoalResolutionEventMap(data.events);
+  var discoveries = freshDiscoveries();
+
+  function unlockSnapshot() {
+    var snap = {};
+    (data.items || []).forEach(function (i) { snap['item:' + i.id] = isItemUnlocked(i, discoveries); });
+    (data.skills || []).forEach(function (s) { snap['skill:' + s.id] = isSkillUnlocked(s, discoveries); });
+    (data.burdens || []).forEach(function (b) { snap['burden:' + b.id] = isBurdenUnlocked(b, discoveries); });
+    return snap;
+  }
+
+  var previous = unlockSnapshot();
+  var unlockRollbackCount = 0;
+  var discoveryCountRollbackCount = 0;
+
+  for (var i = 0; i < n; i++) {
+    var character = generateCharacter(data);
+    applyStartingGrants(character, data, pickRandomGrants(data), discoveries);
+    var beforeCounts = JSON.parse(JSON.stringify(discoveries));
+    var result = runLife(character, data, goalResolutionEventMap);
+    recordLifeDiscoveries(discoveries, character, { cause: result.cause }, result.eventCounts);
+
+    Object.keys(discoveries).forEach(function (category) {
+      Object.keys(discoveries[category]).forEach(function (id) {
+        var before = (beforeCounts[category] && beforeCounts[category][id]) || 0;
+        if (discoveries[category][id] < before) discoveryCountRollbackCount += 1;
+      });
+    });
+
+    var current = unlockSnapshot();
+    Object.keys(current).forEach(function (key) {
+      if (previous[key] === true && current[key] === false) unlockRollbackCount += 1;
+    });
+    previous = current;
+  }
+
+  return {
+    trials: n,
+    unlockRollbackCount: unlockRollbackCount,
+    discoveryCountRollbackCount: discoveryCountRollbackCount,
+    finalDiscoveries: discoveries,
+    finalUnlocked: previous
+  };
 }

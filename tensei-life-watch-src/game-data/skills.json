@@ -5,8 +5,12 @@
     { "id": "negotiation", "label": "交渉術", "description": "人と駆け引きし、折り合いをつける術に長けている。", "benefit": "商談や対立の場面で有利に働く。" },
     { "id": "camping", "label": "野営術", "description": "野外で安全に寝泊まりする技術を持っている。", "benefit": "探索や危険からの回避を助ける。" },
     { "id": "basic_smithing", "label": "鍛冶の基礎", "description": "金属を鍛える基礎的な技術を心得ている。", "benefit": "鍛冶・技術革新に関わる場面を助ける。" },
-    { "id": "mana_sense", "label": "魔力感知", "description": "目に見えない魔力の流れを感じ取れる。", "benefit": "魔・信仰・勇者や魔王に関わる場面を助ける。" },
-    { "id": "danger_sense", "label": "危機察知", "description": "危険が迫ると、いち早く気配で気づく。", "benefit": "事故や襲撃の場面で被害を抑えやすくする。" },
+    { "id": "mana_sense", "label": "魔力感知", "description": "目に見えない魔力の流れを感じ取れる。", "benefit": "魔・信仰・勇者や魔王に関わる場面を助ける。",
+      "unlockCondition": { "category": "elements", "id": "magic_affinity", "minCount": 1 },
+      "unlockHint": "「異常なまでの魔法適性」という特殊要素を発見すると選べるようになる。" },
+    { "id": "danger_sense", "label": "危機察知", "description": "危険が迫ると、いち早く気配で気づく。", "benefit": "事故や襲撃の場面で被害を抑えやすくする。",
+      "unlockCondition": { "category": "deathCauses", "id": "accident", "minCount": 1 },
+      "unlockHint": "事故による死を一度でも観測すると選べるようになる。" },
     { "id": "mnemonics", "label": "記憶術", "description": "物事を忘れにくく、正確に思い出す訓練を積んでいる。", "benefit": "前世の記憶や、帰還・出世に関わる場面を助ける。" }
   ]
 }

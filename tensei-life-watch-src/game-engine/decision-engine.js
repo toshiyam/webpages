@@ -43,13 +43,21 @@ export function isChoiceUnlocked(choice, ctx) {
 }
 
 export function unlockedChoices(evt, ctx) {
-  var unlocked = evt.choices.filter(function (c) { return isChoiceUnlocked(c, ctx); });
-  // 解禁条件付きの選択肢しか無いイベント定義は本来避けるべきだが、
-  // 万一すべて封印された場合でもクラッシュしないよう全選択肢へフォールバックする。
-  return unlocked.length > 0 ? unlocked : evt.choices;
+  return evt.choices.filter(function (c) { return isChoiceUnlocked(c, ctx); });
 }
 
+// 全選択肢が封印された場合に「封印を無視して全選択肢へ戻す」フォールバックは
+// 過去に採用していたが、それ自体が将来の再発経路になる（issue #9の敵対的検証
+// で指摘: 解禁条件付き選択肢しか持たないイベントを新設すると、非対象者でも
+// 封印済み選択肢を選べてしまう）。そのため、封印を無視するフォールバックは
+// 一切行わない。すべての通常イベントは
+// consistency.js の findEventsWithoutUnconditionalChoice によって
+// 「requiredFlags/excludedFlagsを持たない、常に選べる選択肢を最低1つ持つ」
+// ことを静的に検証しており、対象イベントである限りここが null になることは
+// 構造的に無い。万一データ不備でnullになった場合は、その年は何も選ばな
+// かった（イベントが起きなかった）ものとして扱う（time-processor.js側）。
 export function pickChoice(evt, character, ctx) {
   var candidates = unlockedChoices(evt, ctx);
+  if (candidates.length === 0) return null;
   return weightedPick(candidates, function (c) { return scoreChoice(c, character, ctx); });
 }

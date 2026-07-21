@@ -39,6 +39,25 @@ var TAG_PHRASES = {
   late_awakening: '{name}は長く平穏を選び続けた末に、ついに大きな使命へと踏み出した。'
 };
 
+// TAG_PHRASESの短縮版。転生記録図鑑の発見項目一覧（issue #9）のように、
+// 一文ではなく見出し語として表示したい場面向け。
+export var TAG_SHORT_LABELS = {
+  notable_smith: '名工', arms_dealer: '武具商', renowned_adventurer: '名高き冒険者',
+  fallen_adventurer: '堕ちた冒険者', wealthy_merchant: '豪商', rumored_lucky: '幸運の噂',
+  disabled_veteran: '深傷の生還者', legendary_hero: '伝説の英雄', fallen_hero: '堕落した英雄',
+  demon_lord: '新たな魔王', fallen_to_darkness: '闇に呑まれた者', redeemed: '道を選び直した者',
+  usurper_king: '簒奪者の王', just_ruler: '正統な支配者', executed_traitor: '処刑された反逆者',
+  legendary_adventurer: '伝説の冒険者', self_serving_hero: '栄光を独占した英雄',
+  economic_ruler: '経済を掌握した豪商', bankrupt_tycoon: '破綻した豪商',
+  forbidden_technologist: '禁忌の技術者', renowned_inventor: '平和の発明家',
+  catastrophic_inventor: '災厄の発明家', legendary_artisan: '伝説の職人',
+  cursed_creation: '呪われた遺物の作者', beloved_craftsman: '愛される職人',
+  religious_leader: '教団の頂点', heretic_prophet: '異端の予言者', executed_heretic: '処刑された異端者',
+  rebel_leader: '反乱の指導者', executed_rebel: '処刑された反乱者', legendary_outlaw: '伝説の無法者',
+  peace_guardian: '平穏の守り手', quiet_life: '静かな生涯', retired_hero: '引退した英雄',
+  late_awakening: '遅咲きの覚醒者'
+};
+
 var TRAIT_PHRASES = {
   bravery: '{name}は生涯、恐れを知らぬ勇敢さで知られた。',
   caution: '{name}は常に慎重さを失わず、危うい橋を渡らなかった。',

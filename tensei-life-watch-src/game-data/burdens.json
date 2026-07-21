@@ -15,7 +15,9 @@
     },
     {
       "id": "cursed_fate", "label": "呪われた運命",
-      "description": "生まれながらに不吉な運命を背負っている。", "risk": "災厄や闇に関わる出来事に巻き込まれやすい。"
+      "description": "生まれながらに不吉な運命を背負っている。", "risk": "災厄や闇に関わる出来事に巻き込まれやすい。",
+      "unlockCondition": { "category": "elements", "id": "cursed_soul", "minCount": 1 },
+      "unlockHint": "「魂に刻まれた呪い」という特殊要素を発見すると選べるようになる。"
     },
     {
       "id": "poor_birth", "label": "貧困出生",
