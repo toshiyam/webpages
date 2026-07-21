@@ -94,3 +94,19 @@ export function markItemUsed(character, itemId) {
     character.itemFirstUsedAge[itemId] = character.age;
   }
 }
+
+// 万能ナイフ・現代の教本・方位磁針・家族写真のように、専用イベントを持たず
+// choice.contextWeights による重み補正だけで人生へ影響するアイテムは、
+// consumeItem/markItemUsedを呼ぶ専用効果が無いため、そのままでは
+// 「実際に選択へ影響していても死亡時要約では未使用扱い」になってしまう。
+// 選ばれた選択肢の contextWeights に 'item_<持込アイテムID>' キーがあり、
+// かつそのフラグが実際にコンテキストへ立っていた（=補正が適用され得た）場合
+// にのみ、そのイベント発生時点を初回使用として記録する
+// （単に候補イベントになっただけでなく、選択肢が実際に選ばれた時だけ呼ばれる）。
+export function recordContextualItemUse(character, choice, ctx) {
+  if (!character.startingItem || !choice || !choice.contextWeights) return;
+  var key = 'item_' + character.startingItem;
+  if (choice.contextWeights[key] !== undefined && ctx[key]) {
+    markItemUsed(character, character.startingItem);
+  }
+}

@@ -3,6 +3,7 @@ import { buildContextSet, pickEvent } from './event-selector.js';
 import { pickChoice } from './decision-engine.js';
 import { applyEffects } from './effect-processor.js';
 import { mortalityChance, decideDeathCause } from './mortality.js';
+import { recordContextualItemUse } from './starting-grants.js';
 
 // 世界状態を初期値へ緩やかに回帰させつつ小さなノイズを与える（暴走を防ぐ）。
 function driftWorld(world, initialWorld, bounds) {
@@ -49,6 +50,7 @@ export function simulateYear(gameState, data) {
     var evt = pickEvent(data.events, character, ctx, world.yearEra);
     if (evt) {
       var choice = pickChoice(evt, character, ctx);
+      recordContextualItemUse(character, choice, ctx);
       applyEffects(character, relations, world, data.worldFieldBounds, data.namePool, choice.effects);
       character.eventHistory[evt.id] = world.yearEra;
       if (evt.unique) character.firedUnique[evt.id] = true;
