@@ -103,6 +103,10 @@ console.log('静的チェック - traitWeights内の能力IDキー: ' + stats.co
 console.log('静的チェック - ids未指定のgoalResolution: ' + stats.consistency.staticChecks.goalResolutionWithoutIds.length + '件');
 console.log('静的チェック - endLife未対応の不老不死completed: ' + stats.consistency.staticChecks.immortalGoalWithoutEndLife.length + '件');
 console.log('静的チェック - 常時解禁の選択肢を持たないイベント: ' + stats.consistency.staticChecks.eventsWithoutUnconditionalChoice.length + '件');
+console.log('静的チェック(レビュー候補・違反件数には含めない) - 死亡文言とendLifeの不整合候補: ' + stats.consistency.staticChecks.deathWordingCandidates.length + '件');
+stats.consistency.staticChecks.deathWordingCandidates.forEach(function (c) {
+  console.log('  [' + c.issue + '] ' + c.eventId + ' -> ' + c.choiceId + ': ' + c.text);
+});
 console.log('人生ごとの検証 - 進捗100%未満で完遂した人生: ' + stats.consistency.goalProgressViolations.length + '件');
 console.log('人生ごとの検証 - 接触したのにitemOutcomeがunusedのまま/状態はあるが年齢が無い: ' + stats.consistency.itemOutcomeViolations.length + '件');
 console.log('人生ごとの検証 - 不老不死達成後に通常死亡/未達成なのに不老不死終了: ' + stats.consistency.immortalityViolations.length + '件');

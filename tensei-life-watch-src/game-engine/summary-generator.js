@@ -169,7 +169,13 @@ function burdenPhrase(character, name, burdensDef) {
 export function generateSummary(character, relations, deathInfo, occupations, traitsDef, deathCauseLabels, itemsDef, skillsDef, burdensDef) {
   var name = character.name;
   var parts = [];
-  if (deathInfo.special) {
+  // deathInfo.special は「老衰・病気などの通常の死亡ロールを経ずに、
+  // イベント側で確定的に人生を終えた（effects.endLife）」ことだけを意味し、
+  // 「死を超越した」という意味ではない。処刑のような通常の死亡もこの経路を
+  // 通るため、「死の理から離れた」という特別な言い回しは不老不死到達
+  // （immortality_ascension）専用とし、それ以外のendLife原因は通常の死亡と
+  // 同じ文で説明する（issue #14: 文言と状態の不整合の再発を避ける）。
+  if (deathInfo.special && deathInfo.cause === 'immortality_ascension') {
     parts.push(name + 'は' + character.age + '歳で、' + deathCauseLabels[deathInfo.cause] + '。老いや死の理から離れ、その観測はここで終わりを迎えた。');
   } else {
     parts.push(name + 'は' + character.age + '歳で、' + deathCauseLabels[deathInfo.cause] + 'によりその生涯を閉じた。');

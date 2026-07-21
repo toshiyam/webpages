@@ -3238,7 +3238,7 @@
       },
       {
         "id": "beloved_master",
-        "label": "多くの人に愛される名匠として生涯を終える",
+        "label": "多くの人に愛される名匠としての地位を確立する",
         "baseWeight": 9,
         "traitWeights": {
           "altruism": 0.2
@@ -3252,7 +3252,7 @@
           ],
           "fame": 10
         },
-        "resultText": "{name}は多くの人に愛される、確かな腕を持つ職人として生涯を終えた。",
+        "resultText": "{name}は多くの人に愛される、確かな腕を持つ職人としての地位を確立した。",
         "importance": "historic"
       }
     ]
@@ -3468,6 +3468,9 @@
               "deny_god"
             ],
             "status": "failed"
+          },
+          "endLife": {
+            "cause": "crime"
           }
         },
         "resultText": "{name}は異端者として断罪され、その生涯を終えた。",
@@ -3652,6 +3655,9 @@
               "pursue_revenge"
             ],
             "status": "failed"
+          },
+          "endLife": {
+            "cause": "crime"
           }
         },
         "resultText": "{name}の反乱は鎮圧され、処刑によってその生涯を終えた。",
@@ -3811,7 +3817,7 @@
     "choices": [
       {
         "id": "live_in_guarded_peace",
-        "label": "守り抜いた平穏の中で生涯を終える",
+        "label": "守り抜いた平穏の中で暮らし続ける",
         "baseWeight": 9,
         "traitWeights": {
           "family_orientation": 0.3,
@@ -3834,12 +3840,12 @@
             "status": "completed"
           }
         },
-        "resultText": "{name}はあらゆる誘惑を退け、守り抜いた平穏の中で生涯を終えた。",
+        "resultText": "{name}はあらゆる誘惑を退け、守り抜いた平穏の中で暮らし続けることを選んだ。",
         "importance": "historic"
       },
       {
         "id": "slip_into_obscurity",
-        "label": "表舞台に出ることなく生涯を終える",
+        "label": "表舞台に出ることなく静かに暮らし続ける",
         "baseWeight": 7,
         "traitWeights": {
           "caution": 0.2
@@ -3852,7 +3858,7 @@
             "quiet_life"
           ]
         },
-        "resultText": "{name}は表舞台に出ることなく、静かにその生涯を終えた。",
+        "resultText": "{name}は表舞台に出ることなく、静かに暮らし続けることを選んだ。",
         "importance": "historic"
       },
       {

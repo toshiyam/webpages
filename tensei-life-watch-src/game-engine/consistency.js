@@ -1,6 +1,6 @@
 import { applyGoalFormation, applyGoalResolution } from './effect-processor.js';
 import { setItemOutcome, consumeItem, recordContextualItemUse } from './starting-grants.js';
-import { driftWorld } from './time-processor.js';
+import { driftWorld, simulateYear } from './time-processor.js';
 import { isChoiceUnlocked } from './decision-engine.js';
 import { freshDiscoveries, recordLifeDiscoveries, evaluateUnlockCondition, isItemUnlocked } from './discovery.js';
 
@@ -246,6 +246,86 @@ export function runDiscoveryUnlockSelfTests() {
   return results;
 }
 
+// 「処刑された」のように死亡・生涯終了を断定するイベントは、必ず同じ年で
+// effects.endLifeにより通常の老衰・病気の死亡ロールを経ずに確定的に終端し、
+// 同一年内に二重の死亡・終端ログが生成されないことを、実際のsimulateYearを
+// 通して直接検証する（issue #14）。
+export function runEndLifeSelfTests() {
+  var results = [];
+
+  function check(name, fn) {
+    var passed;
+    try { passed = !!fn(); } catch (e) { passed = false; }
+    results.push({ name: name, passed: passed });
+  }
+
+  function makeData(evt) {
+    return {
+      events: [evt],
+      occupationIncome: { unemployed: 2 },
+      occupationRisk: {},
+      namePool: ['テスト'],
+      deathCauseLabels: { crime: '犯罪・処刑', aging: '老衰' },
+      initialWorld: { yearEra: 0, stability: 50, warThreat: 15, demonThreat: 15, religiousInfluence: 50, techLevel: 30, economy: 50 },
+      worldFieldBounds: { min: 0, max: 100 },
+      worldFlagThresholds: {}
+    };
+  }
+
+  function makeCharacter() {
+    return {
+      id: 'test', name: 'テスト', age: 30, occupation: 'unemployed', money: 10, health: 95, alive: true,
+      abilities: {}, traits: {}, elements: [], goal: null, fame: 0, worldImpact: {},
+      startingItem: null, startingSkill: null, burden: null, itemState: {}, itemFirstUsedAge: {},
+      itemOutcome: { status: 'unused', age: null }, flags: [], tags: [], firedUnique: {}, eventHistory: {}, zeroMoneyStreak: 0
+    };
+  }
+
+  // simulateYearは「今年イベントが起きるか」自体もMath.random()で決めるため、
+  // このテストだけは決定的に検証できるようMath.randomを一時的に固定する
+  // （0を返す限り、唯一の合成イベント・唯一の選択肢が確実に選ばれる）。
+  function withFixedRandom(fn) {
+    var original = Math.random;
+    try {
+      Math.random = function () { return 0; };
+      return fn();
+    } finally {
+      Math.random = original;
+    }
+  }
+
+  check('健康な状態でも執行(endLife)された選択肢は確定的にその年で死亡する', function () {
+    var evt = {
+      id: 'test_execution', category: 'test', eventType: 'historic', unique: true,
+      ageRange: { min: 0, max: 130 }, baseWeight: 10, conditions: {},
+      text: '断罪の時が来た。',
+      choices: [{ id: 'executed', label: '処刑される', baseWeight: 10, effects: { health: -70, endLife: { cause: 'crime' } }, resultText: '処刑された。' }]
+    };
+    var data = makeData(evt);
+    var character = makeCharacter();
+    var gameState = { character: character, relations: [], world: Object.assign({}, data.initialWorld) };
+    var result = withFixedRandom(function () { return simulateYear(gameState, data); });
+    return result.died === true && result.deathInfo.cause === 'crime' && character.alive === false;
+  });
+
+  check('endLifeで終端した年は死亡ログが1件だけで、通常死亡ログと二重生成されない', function () {
+    var evt = {
+      id: 'test_execution2', category: 'test', eventType: 'historic', unique: true,
+      ageRange: { min: 0, max: 130 }, baseWeight: 10, conditions: {},
+      text: '断罪の時が来た。',
+      choices: [{ id: 'executed', label: '処刑される', baseWeight: 10, effects: { health: -70, endLife: { cause: 'crime' } }, resultText: '処刑された。' }]
+    };
+    var data = makeData(evt);
+    var character = makeCharacter();
+    var gameState = { character: character, relations: [], world: Object.assign({}, data.initialWorld) };
+    var result = withFixedRandom(function () { return simulateYear(gameState, data); });
+    var deathLikeLogs = result.logs.filter(function (l) { return l.importance === 'historic' && (l.eventId === 'death' || l.eventId === 'special_ending'); });
+    return deathLikeLogs.length === 1;
+  });
+
+  return results;
+}
+
 // 「アイテムに接触した(itemFirstUsedAgeが記録された)のにitemOutcome.statusが
 // unusedのまま」（issue #7 で実際に検出された、間接効果アイテムが常に未使用扱い
 // になるバグそのもの）と、「unused以外のstatusなのにageが記録されていない」を
@@ -339,12 +419,45 @@ export function findEventsWithoutUnconditionalChoice(events) {
   return violations;
 }
 
+// 死亡・生涯終了を断定する文言と、実際の終端効果（effects.endLife）との
+// 不整合候補を一覧化する（issue #14）。あくまで「レビュー対象の候補一覧」
+// であり、ランタイムの生命状態判定にこの文字列検査結果を使うことは禁止
+// （ログ文字列の解析で alive を書き換えるような実装をしないため）。
+// 誤検知は許容し、totalViolationCountには含めない。
+var DEATH_WORDS = [
+  '死亡', '生涯を閉じ', '生涯を終え', '息を引き取', '命を落と', '死を迎え', '絶命',
+  '処刑', '殺され', '討たれ', '斃れ', '亡くなっ', '死んだ', '死する', '刑死', '刑に処', '命が尽き'
+];
+var CONTINUATION_WORDS = [
+  '暮らし続け', '生き続け', '踏み出した', '選び続け', '地位を確立', '歩み続け', '続けることを選んだ'
+];
+
+export function findDeathWordingInconsistencies(events) {
+  var candidates = [];
+  events.forEach(function (evt) {
+    (evt.choices || []).forEach(function (choice) {
+      var text = choice.resultText || '';
+      var hasEndLife = !!(choice.effects && choice.effects.endLife);
+      var mentionsDeath = DEATH_WORDS.some(function (w) { return text.indexOf(w) >= 0; });
+      var mentionsContinuation = CONTINUATION_WORDS.some(function (w) { return text.indexOf(w) >= 0; });
+      if (mentionsDeath && !hasEndLife) {
+        candidates.push({ eventId: evt.id, choiceId: choice.id, issue: 'death_wording_without_endLife', text: text });
+      }
+      if (hasEndLife && mentionsContinuation) {
+        candidates.push({ eventId: evt.id, choiceId: choice.id, issue: 'endLife_with_continuation_wording', text: text });
+      }
+    });
+  });
+  return candidates;
+}
+
 export function runStaticConsistencyChecks(events) {
   return {
     abilityKeysInTraitWeights: findAbilityKeysInTraitWeights(events),
     goalResolutionWithoutIds: findGoalResolutionWithoutIds(events),
     immortalGoalWithoutEndLife: findImmortalGoalWithoutEndLife(events),
-    eventsWithoutUnconditionalChoice: findEventsWithoutUnconditionalChoice(events)
+    eventsWithoutUnconditionalChoice: findEventsWithoutUnconditionalChoice(events),
+    deathWordingCandidates: findDeathWordingInconsistencies(events)
   };
 }
 
