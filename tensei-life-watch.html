@@ -5280,6 +5280,43 @@ function isBurdenUnlocked(burden, discoveries) {
   return evaluateUnlockCondition(burden && burden.unlockCondition, discoveries);
 }
 
+// schemaVersion 6以前からschemaVersion 7へ初めて移行する既存セーブ向けの
+// 一回限りの復元処理（issue #15）。discoveriesが存在しない状態で移行される
+// ため、そのままでは既に複数人生を観測済みのプレイヤーでも発見状態が
+// 空へ巻き戻って見えてしまう。既存のpastLives（過去人生一覧、最大20件）
+// から復元可能な範囲だけを加算する。呼び出し側（migrateState）が
+// discoveriesが存在しなかった移行の瞬間にのみ1回呼ぶことで二重加算を防ぐ
+// （この関数自体は加算のみを行う一括処理であり、多重呼び出しの防止は
+// 呼び出し側の責務）。
+//
+// 過去人生の記録形式は2種類ある。
+// - schemaVersion 7の詳細レコード（buildLifeRecordが生成、elementsを持つ）:
+//   occupation/deathCauseはID、elements/goal.id/tagsも直接復元できる
+// - schemaVersion 6以前の簡易レコード（elementsを持たない）:
+//   occupation/causeはラベル文字列のみで、IDへ逆引きできた場合のみ復元する
+// いずれの形式にも発生イベントIDの履歴（eventCounts相当）は保存されて
+// いないため、events カテゴリは復元不能であり、推測で埋めない。
+function restoreDiscoveriesFromPastLives(discoveries, pastLives, occupations, deathCauseLabels) {
+  var occupationIdByLabel = {};
+  Object.keys(occupations || {}).forEach(function (id) { occupationIdByLabel[occupations[id]] = id; });
+  var deathCauseIdByLabel = {};
+  Object.keys(deathCauseLabels || {}).forEach(function (id) { deathCauseIdByLabel[deathCauseLabels[id]] = id; });
+
+  (pastLives || []).forEach(function (p) {
+    if (!p) return;
+    if (p.elements !== undefined) {
+      bump(discoveries.occupations, p.occupation);
+      bump(discoveries.deathCauses, p.deathCause);
+      (p.elements || []).forEach(function (id) { bump(discoveries.elements, id); });
+      if (p.goal && p.goal.id) bump(discoveries.goals, p.goal.id);
+      (p.tags || []).forEach(function (id) { bump(discoveries.tags, id); });
+    } else {
+      bump(discoveries.occupations, occupationIdByLabel[p.occupation]);
+      bump(discoveries.deathCauses, deathCauseIdByLabel[p.cause]);
+    }
+  });
+}
+
 // 死亡時のスナップショットを1件分の「転生記録図鑑」エントリとして組み立てる。
 // character/relations/log/deathInfo/lifeRank のみを情報源とする
 // （LLM不使用の要約と同じ方針）。過去人生一覧・人生詳細画面の両方で
@@ -6077,6 +6114,70 @@ function runDiscoveryUnlockSelfTests() {
   return results;
 }
 
+// schemaVersion 6以前から7への移行時、既存pastLivesから発見状態を復元する
+// restoreDiscoveriesFromPastLives（issue #15）の境界条件を直接検証する。
+function runDiscoveryRestoreSelfTests() {
+  var results = [];
+
+  function check(name, fn) {
+    var passed;
+    try { passed = !!fn(); } catch (e) { passed = false; }
+    results.push({ name: name, passed: passed });
+  }
+
+  var occupations = { blacksmith: '鍛冶屋', adventurer: '冒険者' };
+  var deathCauseLabels = { illness: '病気', crime: '犯罪・処刑' };
+
+  check('schemaVersion6以前の簡易レコード(ラベルのみ)からラベル逆引きで職業・死因のみ復元する', function () {
+    var d = freshDiscoveries();
+    var oldRecord = { name: 'A', age: 40, occupation: '鍛冶屋', cause: '病気' };
+    restoreDiscoveriesFromPastLives(d, [oldRecord], occupations, deathCauseLabels);
+    return d.occupations.blacksmith === 1 && d.deathCauses.illness === 1 &&
+      Object.keys(d.elements).length === 0 && Object.keys(d.goals).length === 0 &&
+      Object.keys(d.tags).length === 0 && Object.keys(d.events).length === 0;
+  });
+
+  check('未知のラベルは逆引きできず捏造しない', function () {
+    var d = freshDiscoveries();
+    var oldRecord = { name: 'A', age: 40, occupation: '廃業した職業', cause: '未知の死因' };
+    restoreDiscoveriesFromPastLives(d, [oldRecord], occupations, deathCauseLabels);
+    return Object.keys(d.occupations).length === 0 && Object.keys(d.deathCauses).length === 0;
+  });
+
+  check('詳細レコード(elementsを持つ)は特殊要素・生涯目標・タグ・職業・死因をIDで直接復元する', function () {
+    var d = freshDiscoveries();
+    var detailedRecord = {
+      name: 'B', elements: ['magic_affinity'], goal: { id: 'become_king', label: '王になる', status: 'completed' },
+      occupation: 'adventurer', deathCause: 'crime', tags: ['executed_heretic']
+    };
+    restoreDiscoveriesFromPastLives(d, [detailedRecord], occupations, deathCauseLabels);
+    return d.elements.magic_affinity === 1 && d.goals.become_king === 1 &&
+      d.occupations.adventurer === 1 && d.deathCauses.crime === 1 && d.tags.executed_heretic === 1 &&
+      Object.keys(d.events).length === 0;
+  });
+
+  check('複数の過去人生は加算され、既存の発見数を減らさない', function () {
+    var d = freshDiscoveries();
+    d.occupations.blacksmith = 5;
+    var records = [
+      { name: 'A', occupation: '鍛冶屋', cause: '病気' },
+      { name: 'B', elements: [], goal: null, occupation: 'blacksmith', deathCause: 'illness', tags: [] }
+    ];
+    restoreDiscoveriesFromPastLives(d, records, occupations, deathCauseLabels);
+    return d.occupations.blacksmith === 7;
+  });
+
+  check('pastLivesが空・未定義でも例外を投げない', function () {
+    var d1 = freshDiscoveries();
+    restoreDiscoveriesFromPastLives(d1, [], occupations, deathCauseLabels);
+    var d2 = freshDiscoveries();
+    restoreDiscoveriesFromPastLives(d2, undefined, occupations, deathCauseLabels);
+    return Object.keys(d1.occupations).length === 0 && Object.keys(d2.occupations).length === 0;
+  });
+
+  return results;
+}
+
 // 「処刑された」のように死亡・生涯終了を断定するイベントは、必ず同じ年で
 // effects.endLifeにより通常の老衰・病気の死亡ロールを経ずに確定的に終端し、
 // 同一年内に二重の死亡・終端ログが生成されないことを、実際のsimulateYearを
@@ -6152,6 +6253,54 @@ function runEndLifeSelfTests() {
     var result = withFixedRandom(function () { return simulateYear(gameState, data); });
     var deathLikeLogs = result.logs.filter(function (l) { return l.importance === 'historic' && (l.eventId === 'death' || l.eventId === 'special_ending'); });
     return deathLikeLogs.length === 1;
+  });
+
+  // findEndLifeConsistencyViolation自体の境界条件（レビュー指摘: バッチ
+  // シミュレーションで実際に使われる検査ロジックそのものを直接検証する）。
+  check('終端ログが無く状態も矛盾しない生存中の人生はviolationなし', function () {
+    var log = [{ year: 1, age: 21, eventId: 'some_event', choiceId: 'a', importance: 'minor' }];
+    var character = { id: 'c1', age: 21, alive: true };
+    return findEndLifeConsistencyViolation(log, character, false, null) === null;
+  });
+
+  check('終端ログの後に別ログがあればpost_termination_eventを検出する', function () {
+    var log = [
+      { year: 5, age: 25, eventId: 'special_ending', choiceId: 'crime', importance: 'historic' },
+      { year: 6, age: 26, eventId: 'some_event', choiceId: 'b', importance: 'minor' }
+    ];
+    var character = { id: 'c2', age: 26, alive: false };
+    var v = findEndLifeConsistencyViolation(log, character, true, { cause: 'crime' });
+    return v !== null && v.type === 'post_termination_event';
+  });
+
+  check('終端ログがあるのにaliveがfalseでなければpost_termination_aliveを検出する', function () {
+    var log = [{ year: 5, age: 25, eventId: 'death', choiceId: 'illness', importance: 'historic' }];
+    var character = { id: 'c3', age: 25, alive: true };
+    var v = findEndLifeConsistencyViolation(log, character, true, { cause: 'illness' });
+    return v !== null && v.type === 'post_termination_alive';
+  });
+
+  check('死亡/特殊終端ログが複数あればduplicate_termination_logを検出する', function () {
+    var log = [
+      { year: 5, age: 25, eventId: 'special_ending', choiceId: 'crime', importance: 'historic' },
+      { year: 5, age: 25, eventId: 'death', choiceId: 'illness', importance: 'historic' }
+    ];
+    var character = { id: 'c4', age: 25, alive: false };
+    var v = findEndLifeConsistencyViolation(log, character, true, { cause: 'crime' });
+    return v !== null && v.type === 'duplicate_termination_log';
+  });
+
+  check('終端ログが無いのにdied/deathInfoだけ設定されていればstate_mismatchを検出する', function () {
+    var log = [{ year: 1, age: 21, eventId: 'some_event', choiceId: 'a', importance: 'minor' }];
+    var character = { id: 'c5', age: 21, alive: true };
+    var v = findEndLifeConsistencyViolation(log, character, true, { cause: 'illness' });
+    return v !== null && v.type === 'state_mismatch';
+  });
+
+  check('終端ログ・alive・died・deathInfoが揃って整合していればviolationなし', function () {
+    var log = [{ year: 5, age: 25, eventId: 'death', choiceId: 'illness', importance: 'historic' }];
+    var character = { id: 'c6', age: 25, alive: false };
+    return findEndLifeConsistencyViolation(log, character, true, { cause: 'illness' }) === null;
   });
 
   return results;
@@ -6317,6 +6466,72 @@ function findImmortalityViolation(character, deathInfo) {
   if (!achieved && cause === 'immortality_ascension') {
     return { issue: 'immortality_ascension_without_goal' };
   }
+  return null;
+}
+
+// issue #14で要求された「死亡・生涯終了ログ後も人生が継続する」不整合の
+// 再発防止は、runEndLifeSelfTestsの合成2ケースだけでは不十分（レビュー指摘）。
+// 実際のバッチシミュレーションで、1人生分の完全なログ列（各年のsimulateYear
+// 結果をそのまま連結したもの。間引き・再構成しない）と、ループ終了時点の
+// character/died/deathInfoから、以下4種を独立に検出する。
+//   post_termination_event: 終端ログ(eventId: death または special_ending)の
+//     後に、別のログが存在する（＝終端後も通常の年次処理が続いた）
+//   post_termination_alive: 終端ログが存在するのに character.alive !== false
+//   duplicate_termination_log: 終端ログが1件を超えて存在する（二重死亡/終端）
+//   state_mismatch: alive===false / died===true / deathInfo!=null の
+//     3つが一致しない
+// 問題なければ null を返す。呼び出し側（runLife）が生成する完全なログ列を
+// 前提とするため、eventCountsのような集計済みデータでは代用できない。
+function findEndLifeConsistencyViolation(log, character, died, deathInfo) {
+  var TERMINATION_EVENT_IDS = ['death', 'special_ending'];
+  var entries = log || [];
+  var terminationIndices = [];
+  entries.forEach(function (entry, index) {
+    if (entry.importance === 'historic' && TERMINATION_EVENT_IDS.indexOf(entry.eventId) !== -1) {
+      terminationIndices.push(index);
+    }
+  });
+
+  function violation(type, detail) {
+    return {
+      type: type,
+      characterId: character.id,
+      age: character.age,
+      alive: character.alive,
+      died: !!died,
+      deathInfo: deathInfo || null,
+      detail: detail,
+      log: entries.map(function (l) {
+        return { year: l.year, age: l.age, eventId: l.eventId, choiceId: l.choiceId, importance: l.importance };
+      })
+    };
+  }
+
+  if (terminationIndices.length > 1) {
+    return violation('duplicate_termination_log', { terminationIndices: terminationIndices });
+  }
+
+  if (terminationIndices.length === 1) {
+    var termIndex = terminationIndices[0];
+    if (termIndex !== entries.length - 1) {
+      return violation('post_termination_event', {
+        terminationIndex: termIndex,
+        followingEventId: entries[termIndex + 1].eventId,
+        followingChoiceId: entries[termIndex + 1].choiceId
+      });
+    }
+    if (character.alive !== false) {
+      return violation('post_termination_alive', { terminationIndex: termIndex, terminationEventId: entries[termIndex].eventId });
+    }
+  }
+
+  var aliveIsDead = character.alive === false;
+  var diedFlag = !!died;
+  var hasDeathInfo = deathInfo != null;
+  if (aliveIsDead !== diedFlag || aliveIsDead !== hasDeathInfo || diedFlag !== hasDeathInfo) {
+    return violation('state_mismatch', { aliveIsDead: aliveIsDead, diedFlag: diedFlag, hasDeathInfo: hasDeathInfo });
+  }
+
   return null;
 }
 
@@ -6726,8 +6941,13 @@ function runLife(character, data, goalResolutionEventMap) {
   var eventCounts = {};
   var married = false;
   var deathInfo = null;
+  var died = false;
   var eligibleEverSeen = {};
   var yearRollbackCount = 0;
+  // 死亡・特殊終端まわりの状態不変条件(issue #14)は、間引き・再構成した
+  // 集計データではなく実際のログ列そのものを検証しないと再発を検出できない
+  // （レビュー指摘）。ここで各年のsimulateYear結果を素通しで連結する。
+  var fullLog = [];
 
   for (var i = 0; i < MAX_LIFE_YEARS; i++) {
     if (goalResolutionEventMap && character.goal && character.goal.status === 'active') {
@@ -6744,9 +6964,12 @@ function runLife(character, data, goalResolutionEventMap) {
     if (!Number.isInteger(world.yearEra) || !Number.isFinite(world.yearEra) || world.yearEra <= yearBefore) {
       yearRollbackCount += 1;
     }
-    result.logs.forEach(function (l) { eventCounts[l.eventId] = (eventCounts[l.eventId] || 0) + 1; });
+    result.logs.forEach(function (l) {
+      eventCounts[l.eventId] = (eventCounts[l.eventId] || 0) + 1;
+      fullLog.push(l);
+    });
     if (character.flags.indexOf('married') >= 0) married = true;
-    if (result.died) { deathInfo = result.deathInfo; break; }
+    if (result.died) { died = true; deathInfo = result.deathInfo; break; }
   }
 
   var worldImpact = Object.keys(character.worldImpact).some(function (key) {
@@ -6782,6 +7005,7 @@ function runLife(character, data, goalResolutionEventMap) {
     goalProgressViolation: findGoalProgressViolation(character),
     itemOutcomeViolation: findItemOutcomeViolation(character),
     immortalityViolation: findImmortalityViolation(character, deathInfo),
+    endLifeViolation: findEndLifeConsistencyViolation(fullLog, character, died, deathInfo),
     yearRollbackCount: yearRollbackCount,
     startingItem: character.startingItem,
     startingSkill: character.startingSkill,
@@ -6861,6 +7085,7 @@ function runBatchSimulation(data, n) {
   var goalProgressViolations = [];
   var itemOutcomeViolations = [];
   var immortalityViolations = [];
+  var endLifeViolations = [];
   var yearRollbackCount = 0;
 
   results.forEach(function (r) {
@@ -6875,6 +7100,7 @@ function runBatchSimulation(data, n) {
     if (r.goalProgressViolation) goalProgressViolations.push(r.goalProgressViolation);
     if (r.itemOutcomeViolation) itemOutcomeViolations.push(r.itemOutcomeViolation);
     if (r.immortalityViolation) immortalityViolations.push(r.immortalityViolation);
+    if (r.endLifeViolation) endLifeViolations.push(r.endLifeViolation);
     yearRollbackCount += r.yearRollbackCount || 0;
     if (!r.startingItem && !r.startingSkill && !r.burden) noGrantCount += 1;
 
@@ -6946,7 +7172,7 @@ function runBatchSimulation(data, n) {
     .filter(function (id) { return firedEventIds.indexOf(id) === -1; });
 
   var staticChecks = runStaticConsistencyChecks(data.events);
-  var selfTests = runGoalResolutionSelfTests().concat(runItemOutcomeSelfTests()).concat(runWorldYearDriftSelfTests()).concat(runDiscoveryUnlockSelfTests()).concat(runEndLifeSelfTests());
+  var selfTests = runGoalResolutionSelfTests().concat(runItemOutcomeSelfTests()).concat(runWorldYearDriftSelfTests()).concat(runDiscoveryUnlockSelfTests()).concat(runEndLifeSelfTests()).concat(runDiscoveryRestoreSelfTests());
 
   var unreachableGoalResolution = {};
   Object.keys(goalStats).forEach(function (id) {
@@ -6986,12 +7212,14 @@ function runBatchSimulation(data, n) {
       goalProgressViolations: goalProgressViolations,
       itemOutcomeViolations: itemOutcomeViolations,
       immortalityViolations: immortalityViolations,
+      endLifeViolations: endLifeViolations,
       yearRollbackCount: yearRollbackCount,
       unreachableGoalResolution: unreachableGoalResolution,
       totalViolationCount:
         goalProgressViolations.length +
         itemOutcomeViolations.length +
         immortalityViolations.length +
+        endLifeViolations.length +
         yearRollbackCount +
         staticChecks.abilityKeysInTraitWeights.length +
         staticChecks.goalResolutionWithoutIds.length +
@@ -7213,10 +7441,14 @@ function migrateState(raw) {
     migrateWorld(raw.world);
     if (!raw.pendingGrants) raw.pendingGrants = freshPendingGrants();
     // schemaVersion 6以前のセーブには discoveries（転生記録図鑑の発見状況）が
-    // 存在しない。空の状態から積み上げ直すことになるが、これは既存の過去人生
-    // データを破棄するわけではなく単に発見済み扱いにならないだけなので、
-    // セーブそのものは壊さずに引き継げる。
-    if (!raw.discoveries || typeof raw.discoveries !== 'object') raw.discoveries = freshDiscoveries();
+    // 存在しない。既存のpastLives（過去人生一覧）から復元可能な範囲を
+    // ここで一度だけ積み上げる（issue #15）。この分岐に入るのは
+    // schemaVersion が初めて7未満から7へ上がる移行の瞬間だけなので、
+    // 同じセーブを何度読み込んでも二重加算にはならない。
+    if (!raw.discoveries || typeof raw.discoveries !== 'object') {
+      raw.discoveries = freshDiscoveries();
+      restoreDiscoveriesFromPastLives(raw.discoveries, raw.pastLives, data.occupations, data.deathCauseLabels);
+    }
     raw.schemaVersion = SCHEMA_VERSION;
   }
   return raw;
