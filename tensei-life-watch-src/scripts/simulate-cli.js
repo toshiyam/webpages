@@ -102,6 +102,7 @@ console.log('自己テスト: ' + stats.consistency.selfTests.filter(function (t
 console.log('静的チェック - traitWeights内の能力IDキー: ' + stats.consistency.staticChecks.abilityKeysInTraitWeights.length + '件');
 console.log('静的チェック - ids未指定のgoalResolution: ' + stats.consistency.staticChecks.goalResolutionWithoutIds.length + '件');
 console.log('人生ごとの検証 - 進捗100%未満で完遂した人生: ' + stats.consistency.goalProgressViolations.length + '件');
+console.log('人生ごとの検証 - 接触したのにitemOutcomeがunusedのまま/状態はあるが年齢が無い: ' + stats.consistency.itemOutcomeViolations.length + '件');
 console.log('合計整合性違反件数: ' + stats.consistency.totalViolationCount + '件' + (stats.consistency.totalViolationCount === 0 ? '（OK）' : '  !! 要修正'));
 
 console.log('\n--- issue#7 同一候補・付与内容だけを変えた比較試験（各50試行） ---');

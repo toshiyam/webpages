@@ -102,23 +102,31 @@ function worldImpactPhrase(character) {
   return 'その生涯を通じて、' + parts.join('、') + '。';
 }
 
-// 転生準備で選んだ持込アイテムについて、実際に使われたかどうかまで含めて
-// 一文にする。「与えたものが期待どおり使われるとは限らない」ことを、
-// 死亡時要約からも読み取れるようにするための処理。
+// 転生準備で選んだ持込アイテムについて、実際に使われたか・どういう結果に
+// なったかまで含めて一文にする。「与えたものが期待どおり使われるとは限らない」
+// ことを、死亡時要約からも読み取れるようにするための処理。
+// character.itemOutcome.status（'unused'|'used'|'consumed'|'lost'|'rejected'）を
+// 一次情報とし、「役立てた」と「奪われた／使わなかった」を取り違えないようにする。
 function startingItemPhrase(character, name, itemsDef) {
   if (!character.startingItem || !itemsDef) return null;
   var item = itemsDef.filter(function (i) { return i.id === character.startingItem; })[0];
   var label = item ? item.label : character.startingItem;
   var firstUsedAge = character.itemFirstUsedAge ? character.itemFirstUsedAge[character.startingItem] : undefined;
-  var itemState = character.itemState ? character.itemState[character.startingItem] : undefined;
+  var outcome = character.itemOutcome || { status: 'unused', age: null };
 
-  if (firstUsedAge === undefined) {
-    return name + 'は「' + label + '」を持って転生したが、生涯一度も使うことはなかった。';
+  if (outcome.status === 'lost') {
+    return name + 'が持ち込んだ「' + label + '」は、' + outcome.age + '歳の時に奪われ、失われた。';
   }
-  if (itemState && itemState.consumed) {
+  if (outcome.status === 'rejected') {
+    return name + 'は「' + label + '」を持ち込んだが、' + outcome.age + '歳の時にその力を使わずに見送った。';
+  }
+  if (outcome.status === 'consumed') {
     return name + 'は「' + label + '」を' + firstUsedAge + '歳の時に初めて役立て、最後には使い切った。';
   }
-  return name + 'は「' + label + '」を' + firstUsedAge + '歳の時に役立てた。';
+  if (outcome.status === 'used') {
+    return name + 'は「' + label + '」を' + firstUsedAge + '歳の時に役立てた。';
+  }
+  return name + 'は「' + label + '」を持って転生したが、生涯一度も使うことはなかった。';
 }
 
 function startingSkillPhrase(character, name, skillsDef) {

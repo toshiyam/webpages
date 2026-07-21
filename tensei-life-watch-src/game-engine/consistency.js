@@ -1,4 +1,5 @@
 import { applyGoalFormation, applyGoalResolution } from './effect-processor.js';
+import { setItemOutcome, consumeItem, recordContextualItemUse } from './starting-grants.js';
 
 var ABILITY_IDS = ['physical', 'intelligence', 'social', 'willpower', 'sensitivity', 'luck'];
 
@@ -54,6 +55,89 @@ export function runGoalResolutionSelfTests() {
   });
 
   return results;
+}
+
+// 「行使した(used)」「使い切った(consumed)」「奪われた(lost)」「使わずに見送った
+// (rejected)」を取り違えると、死亡時要約・観測画面で意味が逆転してしまう
+// （issue #7 で実際に、指輪の封印維持や銀貨袋の喪失が「役立てた」と表示される
+// バグとして検出された）。乱数シミュレーションでは特定の分岐（例: 封印を維持した
+// 場合だけ）を狙って再現しづらいため、各状態遷移を直接叩く自己テストで守る。
+export function runItemOutcomeSelfTests() {
+  var results = [];
+
+  function check(name, fn) {
+    var passed;
+    try { passed = !!fn(); } catch (e) { passed = false; }
+    results.push({ name: name, passed: passed });
+  }
+
+  function freshCharacter(itemId) {
+    return {
+      age: 20, startingItem: itemId, flags: itemId ? ['item_' + itemId] : [],
+      itemState: {}, itemFirstUsedAge: {}, itemOutcome: { status: 'unused', age: null }
+    };
+  }
+
+  check('拒絶(rejected)は使用(used)扱いにならない', function () {
+    var c = freshCharacter('sealed_ring');
+    setItemOutcome(c, 'sealed_ring', 'rejected');
+    return c.itemOutcome.status === 'rejected' && c.itemOutcome.age === 20;
+  });
+
+  check('喪失(lost)は使用(used)扱いにならない', function () {
+    var c = freshCharacter('silver_purse');
+    setItemOutcome(c, 'silver_purse', 'lost');
+    return c.itemOutcome.status === 'lost';
+  });
+
+  check('自身が持たないアイテムへのsetItemOutcomeは無視される', function () {
+    var c = freshCharacter('compass');
+    setItemOutcome(c, 'sealed_ring', 'used');
+    return c.itemOutcome.status === 'unused';
+  });
+
+  check('consumeItemは残量が尽きるまでusedを保つ', function () {
+    var c = freshCharacter('medical_kit');
+    c.itemState.medical_kit = { usesRemaining: 3, consumed: false };
+    consumeItem(c, 'medical_kit');
+    return c.itemOutcome.status === 'used' && c.itemState.medical_kit.usesRemaining === 2;
+  });
+
+  check('consumeItemは残量が尽きるとconsumedになる', function () {
+    var c = freshCharacter('medical_kit');
+    c.itemState.medical_kit = { usesRemaining: 1, consumed: false };
+    consumeItem(c, 'medical_kit');
+    return c.itemOutcome.status === 'consumed' && c.itemState.medical_kit.consumed === true;
+  });
+
+  check('recordContextualItemUseは選ばれた選択肢がcontextWeightsに自身のアイテムを持つ時だけusedにする', function () {
+    var c = freshCharacter('compass');
+    var ctx = { item_compass: true };
+    recordContextualItemUse(c, { contextWeights: { item_family_photo: 8 } }, ctx);
+    var untouched = c.itemOutcome.status === 'unused';
+    recordContextualItemUse(c, { contextWeights: { item_compass: 6 } }, ctx);
+    var touched = c.itemOutcome.status === 'used';
+    return untouched && touched;
+  });
+
+  return results;
+}
+
+// 「アイテムに接触した(itemFirstUsedAgeが記録された)のにitemOutcome.statusが
+// unusedのまま」（issue #7 で実際に検出された、間接効果アイテムが常に未使用扱い
+// になるバグそのもの）と、「unused以外のstatusなのにageが記録されていない」を
+// 1,000人生シミュレーションで確認する。
+export function findItemOutcomeViolation(character) {
+  if (!character.startingItem) return null;
+  var outcome = character.itemOutcome || { status: 'unused', age: null };
+  var touched = character.itemFirstUsedAge && character.itemFirstUsedAge[character.startingItem] !== undefined;
+  if (touched && outcome.status === 'unused') {
+    return { itemId: character.startingItem, issue: 'touched_but_unused_status' };
+  }
+  if (outcome.status !== 'unused' && outcome.age === null) {
+    return { itemId: character.startingItem, issue: 'status_without_age' };
+  }
+  return null;
 }
 
 // --- 静的チェック（game-data/events.json 全体を1回だけ検証） -------------

@@ -4737,7 +4737,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           "faith": 0.1
         },
         "effects": {
-          "markItemUsed": "sealed_ring"
+          "itemOutcome": {
+            "itemId": "sealed_ring",
+            "status": "rejected"
+          }
         },
         "resultText": "{name}は指輪の力を恐れ、封印を解かないまま持ち続けた。",
         "importance": "major"
@@ -4790,7 +4793,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           "caution": -0.1
         },
         "effects": {
-          "markItemUsed": "silver_purse",
+          "itemOutcome": {
+            "itemId": "silver_purse",
+            "status": "lost"
+          },
           "money": -15,
           "flagsAdd": [
             "item_silver_purse_lost"
@@ -5078,6 +5084,7 @@ function generateCharacter(data) {
     burden: null,
     itemState: {},
     itemFirstUsedAge: {},
+    itemOutcome: { status: 'unused', age: null },
     flags: flags,
     tags: [],
     firedUnique: {},
@@ -5112,6 +5119,7 @@ function cloneCharacterTemplate(template) {
     burden: null,
     itemState: {},
     itemFirstUsedAge: {},
+    itemOutcome: { status: 'unused', age: null },
     flags: template.elements.map(function (id) { return 'element_' + id; }),
     tags: [],
     firedUnique: {},
@@ -5170,6 +5178,7 @@ function applyStartingGrants(character, data, grants) {
     var item = findItem(data, itemId);
     if (item && isItemSelectable(item, character.burden)) {
       character.startingItem = item.id;
+      character.itemOutcome = { status: 'unused', age: null };
       if (character.flags.indexOf('item_' + item.id) === -1) character.flags.push('item_' + item.id);
       if (typeof item.usesRemaining === 'number') {
         character.itemState[item.id] = { usesRemaining: item.usesRemaining, consumed: false };
@@ -5189,16 +5198,45 @@ function applyStartingGrants(character, data, grants) {
   }
 }
 
+// 消耗はしないが「初めて意味のある場面で触れられた」ことだけを記録する内部プリミティブ。
+// 使用結果の意味（役立てた／使い切った／失った／使わなかった）は表さないため、
+// 単独では呼ばず、必ず setItemOutcome とあわせて使う。
+function markItemUsed(character, itemId) {
+  if (!character.itemFirstUsedAge) character.itemFirstUsedAge = {};
+  if (character.itemFirstUsedAge[itemId] === undefined) {
+    character.itemFirstUsedAge[itemId] = character.age;
+  }
+}
+
+// 持込アイテムの「使用結果の意味」を明示的に記録する唯一の入口。
+// character.itemOutcome は startingItem 1つ分の結果だけを保持する
+// （転生準備で持ち込めるアイテムは常に最大1つのため）。
+// status: 'unused' | 'used' | 'consumed' | 'lost' | 'rejected'
+// 'used' はキャラクターが実際にその恩恵を行使した場合、'rejected' は
+// 選択肢自体には触れたが力を使わない道を選んだ場合（例: 指輪の封印を
+// 解かなかった）、'lost' は本人の意志と無関係にアイテムを失った場合
+// （例: 銀貨袋を盗まれた）に使う。「行動した」ことと「結果が肯定的だった」
+// ことは別物なので、この2つを1つの markItemUsed に混在させない。
+function setItemOutcome(character, itemId, status) {
+  if (character.startingItem !== itemId) return;
+  markItemUsed(character, itemId);
+  if (!character.itemOutcome) character.itemOutcome = { status: 'unused', age: null };
+  character.itemOutcome.status = status;
+  character.itemOutcome.age = character.age;
+}
+
 // 消耗品の使用を記録する。初めて使った年齢を character.itemFirstUsedAge に残し、
 // 残り使用回数が尽きたら 'item_<id>' フラグを外して 'item_<id>_used_up' を立てる
-// （以降のイベントは「持っている」前提の補正を受けなくなる）。
+// （以降のイベントは「持っている」前提の補正を受けなくなる）。使用結果は
+// 残量が尽きるまでは 'used'、尽きた時点で 'consumed' として記録する。
 function consumeItem(character, itemId) {
-  markItemUsed(character, itemId);
+  setItemOutcome(character, itemId, 'used');
   var state = character.itemState && character.itemState[itemId];
   if (!state || state.consumed) return;
   state.usesRemaining = Math.max(0, (state.usesRemaining || 0) - 1);
   if (state.usesRemaining === 0) {
     state.consumed = true;
+    setItemOutcome(character, itemId, 'consumed');
     var idx = character.flags.indexOf('item_' + itemId);
     if (idx >= 0) character.flags.splice(idx, 1);
     if (character.flags.indexOf('item_' + itemId + '_used_up') === -1) {
@@ -5207,28 +5245,19 @@ function consumeItem(character, itemId) {
   }
 }
 
-// 消耗はしないが「初めて意味のある場面で使われた」ことだけを記録する
-// （封印指輪を解いた、種子を蒔いた等、一度きりの明確な使用イベント向け）。
-function markItemUsed(character, itemId) {
-  if (!character.itemFirstUsedAge) character.itemFirstUsedAge = {};
-  if (character.itemFirstUsedAge[itemId] === undefined) {
-    character.itemFirstUsedAge[itemId] = character.age;
-  }
-}
-
 // 万能ナイフ・現代の教本・方位磁針・家族写真のように、専用イベントを持たず
 // choice.contextWeights による重み補正だけで人生へ影響するアイテムは、
-// consumeItem/markItemUsedを呼ぶ専用効果が無いため、そのままでは
+// consumeItem/setItemOutcomeを呼ぶ専用効果が無いため、そのままでは
 // 「実際に選択へ影響していても死亡時要約では未使用扱い」になってしまう。
 // 選ばれた選択肢の contextWeights に 'item_<持込アイテムID>' キーがあり、
 // かつそのフラグが実際にコンテキストへ立っていた（=補正が適用され得た）場合
-// にのみ、そのイベント発生時点を初回使用として記録する
+// にのみ、そのイベント発生時点を 'used' として記録する
 // （単に候補イベントになっただけでなく、選択肢が実際に選ばれた時だけ呼ばれる）。
 function recordContextualItemUse(character, choice, ctx) {
   if (!character.startingItem || !choice || !choice.contextWeights) return;
   var key = 'item_' + character.startingItem;
   if (choice.contextWeights[key] !== undefined && ctx[key]) {
-    markItemUsed(character, character.startingItem);
+    setItemOutcome(character, character.startingItem, 'used');
   }
 }
 
@@ -5503,7 +5532,10 @@ function applyEffects(character, relations, world, worldBounds, namePool, effect
     accumulateWorldImpact(character, appliedDeltas);
   }
   if (effects.consumeItem) consumeItem(character, effects.consumeItem);
-  if (effects.markItemUsed) markItemUsed(character, effects.markItemUsed);
+  // markItemUsed: 「役立てた」場合の簡略記法（setItemOutcomeのstatus='used'相当）。
+  // 喪失・拒絶など否定的な結果を表したいイベントは itemOutcome を使うこと。
+  if (effects.markItemUsed) setItemOutcome(character, effects.markItemUsed, 'used');
+  if (effects.itemOutcome) setItemOutcome(character, effects.itemOutcome.itemId, effects.itemOutcome.status);
 }
 
   /* ---- game-engine/mortality.js ---- */
@@ -5658,6 +5690,89 @@ function runGoalResolutionSelfTests() {
   });
 
   return results;
+}
+
+// 「行使した(used)」「使い切った(consumed)」「奪われた(lost)」「使わずに見送った
+// (rejected)」を取り違えると、死亡時要約・観測画面で意味が逆転してしまう
+// （issue #7 で実際に、指輪の封印維持や銀貨袋の喪失が「役立てた」と表示される
+// バグとして検出された）。乱数シミュレーションでは特定の分岐（例: 封印を維持した
+// 場合だけ）を狙って再現しづらいため、各状態遷移を直接叩く自己テストで守る。
+function runItemOutcomeSelfTests() {
+  var results = [];
+
+  function check(name, fn) {
+    var passed;
+    try { passed = !!fn(); } catch (e) { passed = false; }
+    results.push({ name: name, passed: passed });
+  }
+
+  function freshCharacter(itemId) {
+    return {
+      age: 20, startingItem: itemId, flags: itemId ? ['item_' + itemId] : [],
+      itemState: {}, itemFirstUsedAge: {}, itemOutcome: { status: 'unused', age: null }
+    };
+  }
+
+  check('拒絶(rejected)は使用(used)扱いにならない', function () {
+    var c = freshCharacter('sealed_ring');
+    setItemOutcome(c, 'sealed_ring', 'rejected');
+    return c.itemOutcome.status === 'rejected' && c.itemOutcome.age === 20;
+  });
+
+  check('喪失(lost)は使用(used)扱いにならない', function () {
+    var c = freshCharacter('silver_purse');
+    setItemOutcome(c, 'silver_purse', 'lost');
+    return c.itemOutcome.status === 'lost';
+  });
+
+  check('自身が持たないアイテムへのsetItemOutcomeは無視される', function () {
+    var c = freshCharacter('compass');
+    setItemOutcome(c, 'sealed_ring', 'used');
+    return c.itemOutcome.status === 'unused';
+  });
+
+  check('consumeItemは残量が尽きるまでusedを保つ', function () {
+    var c = freshCharacter('medical_kit');
+    c.itemState.medical_kit = { usesRemaining: 3, consumed: false };
+    consumeItem(c, 'medical_kit');
+    return c.itemOutcome.status === 'used' && c.itemState.medical_kit.usesRemaining === 2;
+  });
+
+  check('consumeItemは残量が尽きるとconsumedになる', function () {
+    var c = freshCharacter('medical_kit');
+    c.itemState.medical_kit = { usesRemaining: 1, consumed: false };
+    consumeItem(c, 'medical_kit');
+    return c.itemOutcome.status === 'consumed' && c.itemState.medical_kit.consumed === true;
+  });
+
+  check('recordContextualItemUseは選ばれた選択肢がcontextWeightsに自身のアイテムを持つ時だけusedにする', function () {
+    var c = freshCharacter('compass');
+    var ctx = { item_compass: true };
+    recordContextualItemUse(c, { contextWeights: { item_family_photo: 8 } }, ctx);
+    var untouched = c.itemOutcome.status === 'unused';
+    recordContextualItemUse(c, { contextWeights: { item_compass: 6 } }, ctx);
+    var touched = c.itemOutcome.status === 'used';
+    return untouched && touched;
+  });
+
+  return results;
+}
+
+// 「アイテムに接触した(itemFirstUsedAgeが記録された)のにitemOutcome.statusが
+// unusedのまま」（issue #7 で実際に検出された、間接効果アイテムが常に未使用扱い
+// になるバグそのもの）と、「unused以外のstatusなのにageが記録されていない」を
+// 1,000人生シミュレーションで確認する。
+function findItemOutcomeViolation(character) {
+  if (!character.startingItem) return null;
+  var outcome = character.itemOutcome || { status: 'unused', age: null };
+  var touched = character.itemFirstUsedAge && character.itemFirstUsedAge[character.startingItem] !== undefined;
+  if (touched && outcome.status === 'unused') {
+    return { itemId: character.startingItem, issue: 'touched_but_unused_status' };
+  }
+  if (outcome.status !== 'unused' && outcome.age === null) {
+    return { itemId: character.startingItem, issue: 'status_without_age' };
+  }
+  return null;
 }
 
 // --- 静的チェック（game-data/events.json 全体を1回だけ検証） -------------
@@ -5893,23 +6008,31 @@ function worldImpactPhrase(character) {
   return 'その生涯を通じて、' + parts.join('、') + '。';
 }
 
-// 転生準備で選んだ持込アイテムについて、実際に使われたかどうかまで含めて
-// 一文にする。「与えたものが期待どおり使われるとは限らない」ことを、
-// 死亡時要約からも読み取れるようにするための処理。
+// 転生準備で選んだ持込アイテムについて、実際に使われたか・どういう結果に
+// なったかまで含めて一文にする。「与えたものが期待どおり使われるとは限らない」
+// ことを、死亡時要約からも読み取れるようにするための処理。
+// character.itemOutcome.status（'unused'|'used'|'consumed'|'lost'|'rejected'）を
+// 一次情報とし、「役立てた」と「奪われた／使わなかった」を取り違えないようにする。
 function startingItemPhrase(character, name, itemsDef) {
   if (!character.startingItem || !itemsDef) return null;
   var item = itemsDef.filter(function (i) { return i.id === character.startingItem; })[0];
   var label = item ? item.label : character.startingItem;
   var firstUsedAge = character.itemFirstUsedAge ? character.itemFirstUsedAge[character.startingItem] : undefined;
-  var itemState = character.itemState ? character.itemState[character.startingItem] : undefined;
+  var outcome = character.itemOutcome || { status: 'unused', age: null };
 
-  if (firstUsedAge === undefined) {
-    return name + 'は「' + label + '」を持って転生したが、生涯一度も使うことはなかった。';
+  if (outcome.status === 'lost') {
+    return name + 'が持ち込んだ「' + label + '」は、' + outcome.age + '歳の時に奪われ、失われた。';
   }
-  if (itemState && itemState.consumed) {
+  if (outcome.status === 'rejected') {
+    return name + 'は「' + label + '」を持ち込んだが、' + outcome.age + '歳の時にその力を使わずに見送った。';
+  }
+  if (outcome.status === 'consumed') {
     return name + 'は「' + label + '」を' + firstUsedAge + '歳の時に初めて役立て、最後には使い切った。';
   }
-  return name + 'は「' + label + '」を' + firstUsedAge + '歳の時に役立てた。';
+  if (outcome.status === 'used') {
+    return name + 'は「' + label + '」を' + firstUsedAge + '歳の時に役立てた。';
+  }
+  return name + 'は「' + label + '」を持って転生したが、生涯一度も使うことはなかった。';
 }
 
 function startingSkillPhrase(character, name, skillsDef) {
@@ -6091,6 +6214,7 @@ function runLife(character, data, goalResolutionEventMap) {
     worldImpactByField: character.worldImpact,
     nothingHappened: hadNothingHappen(character),
     goalProgressViolation: findGoalProgressViolation(character),
+    itemOutcomeViolation: findItemOutcomeViolation(character),
     startingItem: character.startingItem,
     startingSkill: character.startingSkill,
     burden: character.burden,
@@ -6167,6 +6291,7 @@ function runBatchSimulation(data, n) {
   var positiveImpactCount = 0, negativeImpactCount = 0;
 
   var goalProgressViolations = [];
+  var itemOutcomeViolations = [];
 
   results.forEach(function (r) {
     occupationCounts[r.occupation] = (occupationCounts[r.occupation] || 0) + 1;
@@ -6178,6 +6303,7 @@ function runBatchSimulation(data, n) {
     if (r.worldImpact) worldImpactCount += 1;
     if (r.nothingHappened) nothingHappenedCount += 1;
     if (r.goalProgressViolation) goalProgressViolations.push(r.goalProgressViolation);
+    if (r.itemOutcomeViolation) itemOutcomeViolations.push(r.itemOutcomeViolation);
     if (!r.startingItem && !r.startingSkill && !r.burden) noGrantCount += 1;
 
     if (r.startingItem) {
@@ -6248,7 +6374,7 @@ function runBatchSimulation(data, n) {
     .filter(function (id) { return firedEventIds.indexOf(id) === -1; });
 
   var staticChecks = runStaticConsistencyChecks(data.events);
-  var selfTests = runGoalResolutionSelfTests();
+  var selfTests = runGoalResolutionSelfTests().concat(runItemOutcomeSelfTests());
 
   var unreachableGoalResolution = {};
   Object.keys(goalStats).forEach(function (id) {
@@ -6286,9 +6412,11 @@ function runBatchSimulation(data, n) {
       selfTestsAllPassed: selfTests.every(function (t) { return t.passed; }),
       staticChecks: staticChecks,
       goalProgressViolations: goalProgressViolations,
+      itemOutcomeViolations: itemOutcomeViolations,
       unreachableGoalResolution: unreachableGoalResolution,
       totalViolationCount:
         goalProgressViolations.length +
+        itemOutcomeViolations.length +
         staticChecks.abilityKeysInTraitWeights.length +
         staticChecks.goalResolutionWithoutIds.length +
         selfTests.filter(function (t) { return !t.passed; }).length
@@ -6336,7 +6464,7 @@ function esc(s) {
   return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; });
 }
 
-var SCHEMA_VERSION = 4;
+var SCHEMA_VERSION = 5;
 var STORAGE_KEY = 'tenseiLifeWatch:v1';
 var MAX_OFFLINE_YEARS = 300;
 
@@ -6396,8 +6524,8 @@ function freshState() {
 }
 
 // schemaVersion 1 (要素/生涯目標/世界状態の拡張前)、2 (worldImpact集計の追加前)、
-// 3 (転生準備フェーズの追加前) の保存データを、新しいフィールドを補いながら
-// 壊さずに引き継ぐ。
+// 3 (転生準備フェーズの追加前)、4 (itemOutcome状態モデルの追加前) の保存データを、
+// 新しいフィールドを補いながら壊さずに引き継ぐ。
 function migrateCharacter(character) {
   if (!character) return character;
   if (!Array.isArray(character.elements)) character.elements = [];
@@ -6409,6 +6537,22 @@ function migrateCharacter(character) {
   if (character.burden === undefined) character.burden = null;
   if (!character.itemState || typeof character.itemState !== 'object') character.itemState = {};
   if (!character.itemFirstUsedAge || typeof character.itemFirstUsedAge !== 'object') character.itemFirstUsedAge = {};
+  if (!character.itemOutcome || typeof character.itemOutcome !== 'object') {
+    // schemaVersion 4以前は「使った/使わなかった」の2値しか持たず、喪失・拒絶を
+    // 区別できていなかった。旧データからは正確に復元できないため、既に何らかの
+    // 接触があった場合は安全側（否定的な結果ではない）の 'used' として引き継ぐ。
+    var itemId = character.startingItem;
+    var status = 'unused', age = null;
+    if (itemId) {
+      var state = character.itemState[itemId];
+      var touchedAge = character.itemFirstUsedAge[itemId];
+      if (state && state.consumed) { status = 'consumed'; age = touchedAge !== undefined ? touchedAge : null; }
+      else if (character.flags && character.flags.indexOf('item_silver_purse_lost') >= 0 && itemId === 'silver_purse') {
+        status = 'lost'; age = touchedAge !== undefined ? touchedAge : null;
+      } else if (touchedAge !== undefined) { status = 'used'; age = touchedAge; }
+    }
+    character.itemOutcome = { status: status, age: age };
+  }
   return character;
 }
 
@@ -6806,12 +6950,16 @@ function itemStatusText(c) {
   var label = item ? item.label : c.startingItem;
   var firstUsedAge = c.itemFirstUsedAge[c.startingItem];
   var itemState = c.itemState[c.startingItem];
+  var outcome = c.itemOutcome || { status: 'unused', age: null };
+
+  if (outcome.status === 'lost') return label + '（' + outcome.age + '歳で喪失）';
+  if (outcome.status === 'rejected') return label + '（' + outcome.age + '歳で使用を見送った）';
   if (itemState) {
     if (itemState.consumed) return label + '（使い切った）';
     if (firstUsedAge !== undefined) return label + '（残り' + itemState.usesRemaining + '回・' + firstUsedAge + '歳で初使用）';
     return label + '（残り' + itemState.usesRemaining + '回・未使用）';
   }
-  if (firstUsedAge !== undefined) {
+  if (outcome.status === 'used' && firstUsedAge !== undefined) {
     return label + '（' + firstUsedAge + '歳の時に活用）';
   }
   return label + '（未使用）';
