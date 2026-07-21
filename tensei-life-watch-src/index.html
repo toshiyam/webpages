@@ -30,8 +30,19 @@
   </nav>
 
   <section id="screenStart">
+    <div class="card" id="introCard">
+      <h2><button type="button" class="introtogglebtn" id="introToggleBtn" aria-expanded="true" aria-controls="introBody">🌌 転生者観測日誌とは <span class="sub" id="introToggleHint"></span></button></h2>
+      <div id="introBody">
+        <p class="introlead">異世界へ送り込んだ転生者が、性格・能力・環境・人間関係に基づいて自律的に生きていく様子を見守る観測ゲームです。あなたが直接操作するのは<b>転生準備</b>（持ち物選び）だけで、その後の人生はキャラクター自身の性格と状況に委ねられます。</p>
+        <ol class="stepguide">
+          <li><b>① 候補者を確認</b> — ランダム生成された転生者の能力・性格・特殊要素を見る（気に入らなければ「別の人物を見る」で選び直せる）</li>
+          <li><b>② 転生準備</b> — 持込アイテム・初期スキル・制約をそれぞれ最大1つまで選ぶ（何も選ばなくてもよい）</li>
+          <li><b>③ 開始</b> — 「この人物で転生を開始」を押すと観測が始まる</li>
+        </ol>
+      </div>
+    </div>
     <div class="card">
-      <h2>候補者の概要 <span class="sub">新しい転生者を送り込む</span></h2>
+      <h2><span class="stepnum">①</span> 候補者の概要 <span class="sub">新しい転生者を送り込む</span></h2>
       <div id="candidateOverviewBox"></div>
       <div class="btnrow single">
         <button class="secondary" id="rerollBtn" type="button">別の人物を見る</button>
@@ -43,7 +54,7 @@
     </div>
 
     <div class="card">
-      <h2>転生準備 <span class="sub">持込アイテム・初期スキル・制約を、それぞれ最大1つまで選べる</span></h2>
+      <h2><span class="stepnum">②</span> 転生準備 <span class="sub">持込アイテム・初期スキル・制約を、それぞれ最大1つまで選べる（任意）</span></h2>
       <details class="prepgroup" open>
         <summary>持込アイテム<span class="prepcurrent" id="itemCurrentLabel"></span></summary>
         <div class="preplist" id="itemChoiceList"></div>
@@ -63,7 +74,8 @@
       <div id="grantSummary"></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="startCard">
+      <h2><span class="stepnum">③</span> 開始</h2>
       <div class="btnrow single">
         <button class="primary" id="startBtn" type="button">この人物で転生を開始</button>
       </div>

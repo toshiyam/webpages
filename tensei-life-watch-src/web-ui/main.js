@@ -518,7 +518,25 @@ function renderPrepSection() {
     '<div class="rowline"><span class="k">制約</span><span class="v">' + esc(burdenLabel || 'なし') + '</span></div>';
 }
 
+var introExpanded = null;
+
+function renderIntro() {
+  // 初めての転生前（lifetimeCount === 0）は説明を開いて表示し、2回目以降の
+  // 転生準備画面ではプレイヤーがゲームの概要を既に知っている前提で折りたたむ。
+  // トグル操作（toggleIntro）で明示的に開閉した場合はその状態を優先する。
+  if (introExpanded === null) introExpanded = (state.lifetimeCount === 0);
+  document.getElementById('introBody').hidden = !introExpanded;
+  document.getElementById('introToggleHint').textContent = introExpanded ? '（タップで折りたたむ）' : '（タップで表示）';
+  document.getElementById('introToggleBtn').setAttribute('aria-expanded', introExpanded ? 'true' : 'false');
+}
+
+function toggleIntro() {
+  introExpanded = !introExpanded;
+  renderIntro();
+}
+
 function renderStart() {
+  renderIntro();
   var c = state.candidate;
   var overviewHtml = '';
   overviewHtml += '<div class="rowline"><span class="k">名前</span><span class="v">' + esc(c.name) + '（' + c.genderLabel + '）</span></div>';
@@ -766,6 +784,7 @@ async function init() {
 
   document.getElementById('startBtn').addEventListener('click', function () { clearBanner(); startLife(); });
   document.getElementById('rerollBtn').addEventListener('click', rerollCandidate);
+  document.getElementById('introToggleBtn').addEventListener('click', toggleIntro);
   document.getElementById('nextLifeBtn').addEventListener('click', function () { clearBanner(); nextLife(); });
   document.getElementById('advanceBtn').addEventListener('click', function () { clearBanner(); advanceOneYear(); });
   document.getElementById('playPauseBtn').addEventListener('click', function () {
