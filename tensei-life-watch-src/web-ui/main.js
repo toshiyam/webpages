@@ -580,12 +580,20 @@ function renderStart() {
   }
 }
 
+// 健康を数値だけでなく文言でも示す（色だけに依存した状態表示を避けるため）。
+function healthLabel(health) {
+  if (health >= 70) return '良好';
+  if (health >= 40) return '普通';
+  if (health >= 15) return '注意';
+  return '危険';
+}
+
 function renderObserve() {
   var c = state.character;
   document.getElementById('charTitle').textContent = c.name + '（' + c.genderLabel + '・' + c.age + '歳）';
   document.getElementById('ovAge').textContent = c.age + '歳';
   document.getElementById('ovOcc').textContent = data.occupations[c.occupation];
-  document.getElementById('ovHealth').textContent = c.health + ' / 100';
+  document.getElementById('ovHealth').textContent = c.health + ' / 100（' + healthLabel(c.health) + '）';
   document.getElementById('ovMoney').textContent = c.money + ' G';
   document.getElementById('ovRegion').textContent = c.region;
 
