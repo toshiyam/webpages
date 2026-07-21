@@ -3,7 +3,7 @@ import { applyStartingGrants, isItemSelectable } from './starting-grants.js';
 import { simulateYear } from './time-processor.js';
 import { determineLifeRank, hasEnteredAnyArc, hasReachedArcClimax, hadNothingHappen } from './life-rank.js';
 import { buildContextSet, filterEligibleEvents } from './event-selector.js';
-import { findGoalProgressViolation, runStaticConsistencyChecks, runGoalResolutionSelfTests, findItemOutcomeViolation, runItemOutcomeSelfTests, findImmortalityViolation, runWorldYearDriftSelfTests, runDiscoveryUnlockSelfTests } from './consistency.js';
+import { findGoalProgressViolation, runStaticConsistencyChecks, runGoalResolutionSelfTests, findItemOutcomeViolation, runItemOutcomeSelfTests, findImmortalityViolation, runWorldYearDriftSelfTests, runDiscoveryUnlockSelfTests, runEndLifeSelfTests } from './consistency.js';
 import { freshDiscoveries, recordLifeDiscoveries, isItemUnlocked, isSkillUnlocked, isBurdenUnlocked } from './discovery.js';
 import { pick } from './rng.js';
 
@@ -267,7 +267,7 @@ export function runBatchSimulation(data, n) {
     .filter(function (id) { return firedEventIds.indexOf(id) === -1; });
 
   var staticChecks = runStaticConsistencyChecks(data.events);
-  var selfTests = runGoalResolutionSelfTests().concat(runItemOutcomeSelfTests()).concat(runWorldYearDriftSelfTests()).concat(runDiscoveryUnlockSelfTests());
+  var selfTests = runGoalResolutionSelfTests().concat(runItemOutcomeSelfTests()).concat(runWorldYearDriftSelfTests()).concat(runDiscoveryUnlockSelfTests()).concat(runEndLifeSelfTests());
 
   var unreachableGoalResolution = {};
   Object.keys(goalStats).forEach(function (id) {
