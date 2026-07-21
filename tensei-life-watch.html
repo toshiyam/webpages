@@ -397,7 +397,8 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
     "battle": "戦闘",
     "crime": "犯罪・処刑",
     "starvation": "飢餓",
-    "special": "不慮の出来事"
+    "special": "不慮の出来事",
+    "immortality_ascension": "不老不死への到達（観測終了）"
   },
   "initial": {
     "yearEra": 0,
@@ -4529,6 +4530,9 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
           },
           "abilities": {
             "luck": 3
+          },
+          "endLife": {
+            "cause": "immortality_ascension"
           }
         },
         "resultText": "{name}はついに、不老不死と呼べる境地に手を伸ばした。",
@@ -5689,6 +5693,26 @@ function runGoalResolutionSelfTests() {
     return character.goal.id === 'protect_family';
   });
 
+  check('不老不死を達成し、不老不死終了で死ねば矛盾なし', function () {
+    var character = { goal: { id: 'become_immortal', status: 'completed' } };
+    return findImmortalityViolation(character, { cause: 'immortality_ascension' }) === null;
+  });
+
+  check('不老不死を達成したのに通常死亡すれば矛盾として検出される', function () {
+    var character = { goal: { id: 'become_immortal', status: 'completed' } };
+    return findImmortalityViolation(character, { cause: 'illness' }) !== null;
+  });
+
+  check('不老不死を達成していないのに不老不死終了になれば矛盾として検出される', function () {
+    var character = { goal: { id: 'become_immortal', status: 'failed' } };
+    return findImmortalityViolation(character, { cause: 'immortality_ascension' }) !== null;
+  });
+
+  check('無関係な目標・通常死亡は矛盾として検出されない', function () {
+    var character = { goal: { id: 'protect_family', status: 'completed' } };
+    return findImmortalityViolation(character, { cause: 'illness' }) === null;
+  });
+
   return results;
 }
 
@@ -5758,6 +5782,45 @@ function runItemOutcomeSelfTests() {
   return results;
 }
 
+// driftWorld() が world.yearEra（暦）を「初期値0へ回帰する世界統計」として
+// 扱ってしまい、暦が毎年わずかに巻き戻り、かつ小数化するバグ（issue #11）が
+// あった。driftWorld を何度呼んでも yearEra が完全に不変であることを直接
+// 検証する（ドリフト対象6項目は変動してよいが、暦だけは絶対に動いてはならない）。
+function runWorldYearDriftSelfTests() {
+  var results = [];
+
+  function check(name, fn) {
+    var passed;
+    try { passed = !!fn(); } catch (e) { passed = false; }
+    results.push({ name: name, passed: passed });
+  }
+
+  var initialWorld = {
+    yearEra: 0, unrest: false, stability: 50, warThreat: 15, demonThreat: 15,
+    religiousInfluence: 50, techLevel: 30, economy: 50
+  };
+
+  check('driftWorldはyearEraを1回の呼び出しでも変化させない', function () {
+    var world = Object.assign({}, initialWorld, { yearEra: 45 });
+    driftWorld(world, initialWorld, { min: 0, max: 100 });
+    return world.yearEra === 45;
+  });
+
+  check('driftWorldを100回連続で呼んでもyearEraは不変・整数のまま', function () {
+    var world = Object.assign({}, initialWorld, { yearEra: 88 });
+    for (var i = 0; i < 100; i++) driftWorld(world, initialWorld, { min: 0, max: 100 });
+    return world.yearEra === 88 && Number.isInteger(world.yearEra);
+  });
+
+  check('driftWorldは通常の世界統計(stability等)には引き続き作用する', function () {
+    var world = Object.assign({}, initialWorld, { yearEra: 10, stability: 90 });
+    driftWorld(world, initialWorld, { min: 0, max: 100 });
+    return world.stability !== 90;
+  });
+
+  return results;
+}
+
 // 「アイテムに接触した(itemFirstUsedAgeが記録された)のにitemOutcome.statusが
 // unusedのまま」（issue #7 で実際に検出された、間接効果アイテムが常に未使用扱い
 // になるバグそのもの）と、「unused以外のstatusなのにageが記録されていない」を
@@ -5811,10 +5874,31 @@ function findGoalResolutionWithoutIds(events) {
   return violations;
 }
 
+// 「不老不死になる」を completed にする選択肢は、必ず同時に
+// effects.endLife（cause: 'immortality_ascension'）で通常の死亡判定を
+// 経ずにその場で人生を終えなければならない（issue #10）。今後の編集で
+// 新しい到達経路が goalResolution だけ追加され、endLife の対応を忘れる
+// 再発を静的に検出する。
+function findImmortalGoalWithoutEndLife(events) {
+  var violations = [];
+  events.forEach(function (evt) {
+    (evt.choices || []).forEach(function (choice) {
+      var gr = choice.effects && choice.effects.goalResolution;
+      if (!gr || gr.status !== 'completed' || !Array.isArray(gr.ids) || gr.ids.indexOf('become_immortal') === -1) return;
+      var endLife = choice.effects.endLife;
+      if (!endLife || endLife.cause !== 'immortality_ascension') {
+        violations.push({ eventId: evt.id, choiceId: choice.id });
+      }
+    });
+  });
+  return violations;
+}
+
 function runStaticConsistencyChecks(events) {
   return {
     abilityKeysInTraitWeights: findAbilityKeysInTraitWeights(events),
-    goalResolutionWithoutIds: findGoalResolutionWithoutIds(events)
+    goalResolutionWithoutIds: findGoalResolutionWithoutIds(events),
+    immortalGoalWithoutEndLife: findImmortalGoalWithoutEndLife(events)
   };
 }
 
@@ -5829,13 +5913,38 @@ function findGoalProgressViolation(character) {
   return null;
 }
 
+// 「不老不死になる」を達成したのに、通常の老衰・病気などで死亡する（issue #10で
+// 実際に検出された意味的矛盾）ことがないかを確認する。達成時は必ず
+// effects.endLife（cause: 'immortality_ascension'）でその場の観測を終えるため、
+// 死因がそれ以外になっていれば矛盾。逆に、目標を達成していないのに
+// immortality_ascension で終わることも無いはずなので合わせて検出する。
+function findImmortalityViolation(character, deathInfo) {
+  var achieved = !!(character.goal && character.goal.id === 'become_immortal' && character.goal.status === 'completed');
+  var cause = deathInfo ? deathInfo.cause : null;
+  if (achieved && cause !== 'immortality_ascension') {
+    return { issue: 'immortal_but_normal_death', cause: cause };
+  }
+  if (!achieved && cause === 'immortality_ascension') {
+    return { issue: 'immortality_ascension_without_goal' };
+  }
+  return null;
+}
+
   /* ---- game-engine/time-processor.js ---- */
+// 0〜100の範囲で初期値へ緩やかに回帰させる、ドリフト対象の世界統計フィールド。
+// world.yearEra は共有世界の通算年であり「初期値0へ回帰すべき統計値」ではない
+// ため、ここには含めない。過去に Object.keys(initialWorld) をそのまま回して
+// yearEra まで数値統計として扱ってしまい、暦が毎年0へ引き戻され小数化する
+// バグ（issue #11）があったため、対象フィールドを明示的なリストに限定する
+// （summary-generator.js の WORLD_IMPACT_LABELS で同種の混入を修正した際と同じ教訓）。
+var WORLD_DRIFT_FIELDS = ['stability', 'warThreat', 'demonThreat', 'religiousInfluence', 'techLevel', 'economy'];
+
 // 世界状態を初期値へ緩やかに回帰させつつ小さなノイズを与える（暴走を防ぐ）。
 function driftWorld(world, initialWorld, bounds) {
   var lo = (bounds && bounds.min) || 0;
   var hi = (bounds && bounds.max) || 100;
-  Object.keys(initialWorld).forEach(function (key) {
-    if (typeof world[key] !== 'number') return;
+  WORLD_DRIFT_FIELDS.forEach(function (key) {
+    if (typeof world[key] !== 'number' || typeof initialWorld[key] !== 'number') return;
     var baseline = initialWorld[key];
     var pull = (baseline - world[key]) * 0.02;
     world[key] = clamp(world[key] + pull + randInt(-1, 1), lo, hi);
@@ -5885,6 +5994,22 @@ function simulateYear(gameState, data) {
         year: world.yearEra, age: character.age, eventId: evt.id, choiceId: choice.id,
         text: text, importance: importance
       });
+
+      // 不老不死の達成など、通常の老衰・病気による死亡判定を経ずに人生を
+      // 終える特殊な結末（endLife）。以降の老衰・寿命に基づく死亡ロールは
+      // 一切行わず、その場で観測を終了する（issue #10: 達成後に通常死亡する
+      // 意味的矛盾を避けるため、寿命判定そのものを迎えさせない設計）。
+      if (choice.effects && choice.effects.endLife) {
+        character.alive = false;
+        var endCause = choice.effects.endLife.cause;
+        var endDeathInfo = { cause: endCause, age: character.age, special: true };
+        newLogs.push({
+          year: world.yearEra, age: character.age, eventId: 'special_ending', choiceId: endCause,
+          text: character.name + 'は' + character.age + '歳で、' + data.deathCauseLabels[endCause] + '。',
+          importance: 'historic'
+        });
+        return { logs: newLogs, died: true, deathInfo: endDeathInfo };
+      }
     }
   }
 
@@ -6056,7 +6181,11 @@ function burdenPhrase(character, name, burdensDef) {
 function generateSummary(character, relations, deathInfo, occupations, traitsDef, deathCauseLabels, itemsDef, skillsDef, burdensDef) {
   var name = character.name;
   var parts = [];
-  parts.push(name + 'は' + character.age + '歳で、' + deathCauseLabels[deathInfo.cause] + 'によりその生涯を閉じた。');
+  if (deathInfo.special) {
+    parts.push(name + 'は' + character.age + '歳で、' + deathCauseLabels[deathInfo.cause] + '。老いや死の理から離れ、その観測はここで終わりを迎えた。');
+  } else {
+    parts.push(name + 'は' + character.age + '歳で、' + deathCauseLabels[deathInfo.cause] + 'によりその生涯を閉じた。');
+  }
   parts.push('最終的な身分は「' + occupations[character.occupation] + '」であった。');
 
   if (character.elements.length > 0) {
@@ -6168,6 +6297,7 @@ function runLife(character, data, goalResolutionEventMap) {
   var married = false;
   var deathInfo = null;
   var eligibleEverSeen = {};
+  var yearRollbackCount = 0;
 
   for (var i = 0; i < MAX_LIFE_YEARS; i++) {
     if (goalResolutionEventMap && character.goal && character.goal.status === 'active') {
@@ -6177,7 +6307,13 @@ function runLife(character, data, goalResolutionEventMap) {
       });
     }
 
+    var yearBefore = world.yearEra;
     var result = simulateYear(gameState, data);
+    // 暦(world.yearEra)は共有世界の通算年であり、1年ごとに厳密に+1され、
+    // 巻き戻り・NaN・小数化のいずれも起きてはならない（issue #11）。
+    if (!Number.isInteger(world.yearEra) || !Number.isFinite(world.yearEra) || world.yearEra <= yearBefore) {
+      yearRollbackCount += 1;
+    }
     result.logs.forEach(function (l) { eventCounts[l.eventId] = (eventCounts[l.eventId] || 0) + 1; });
     if (character.flags.indexOf('married') >= 0) married = true;
     if (result.died) { deathInfo = result.deathInfo; break; }
@@ -6215,6 +6351,8 @@ function runLife(character, data, goalResolutionEventMap) {
     nothingHappened: hadNothingHappen(character),
     goalProgressViolation: findGoalProgressViolation(character),
     itemOutcomeViolation: findItemOutcomeViolation(character),
+    immortalityViolation: findImmortalityViolation(character, deathInfo),
+    yearRollbackCount: yearRollbackCount,
     startingItem: character.startingItem,
     startingSkill: character.startingSkill,
     burden: character.burden,
@@ -6292,6 +6430,8 @@ function runBatchSimulation(data, n) {
 
   var goalProgressViolations = [];
   var itemOutcomeViolations = [];
+  var immortalityViolations = [];
+  var yearRollbackCount = 0;
 
   results.forEach(function (r) {
     occupationCounts[r.occupation] = (occupationCounts[r.occupation] || 0) + 1;
@@ -6304,6 +6444,8 @@ function runBatchSimulation(data, n) {
     if (r.nothingHappened) nothingHappenedCount += 1;
     if (r.goalProgressViolation) goalProgressViolations.push(r.goalProgressViolation);
     if (r.itemOutcomeViolation) itemOutcomeViolations.push(r.itemOutcomeViolation);
+    if (r.immortalityViolation) immortalityViolations.push(r.immortalityViolation);
+    yearRollbackCount += r.yearRollbackCount || 0;
     if (!r.startingItem && !r.startingSkill && !r.burden) noGrantCount += 1;
 
     if (r.startingItem) {
@@ -6374,7 +6516,7 @@ function runBatchSimulation(data, n) {
     .filter(function (id) { return firedEventIds.indexOf(id) === -1; });
 
   var staticChecks = runStaticConsistencyChecks(data.events);
-  var selfTests = runGoalResolutionSelfTests().concat(runItemOutcomeSelfTests());
+  var selfTests = runGoalResolutionSelfTests().concat(runItemOutcomeSelfTests()).concat(runWorldYearDriftSelfTests());
 
   var unreachableGoalResolution = {};
   Object.keys(goalStats).forEach(function (id) {
@@ -6413,12 +6555,17 @@ function runBatchSimulation(data, n) {
       staticChecks: staticChecks,
       goalProgressViolations: goalProgressViolations,
       itemOutcomeViolations: itemOutcomeViolations,
+      immortalityViolations: immortalityViolations,
+      yearRollbackCount: yearRollbackCount,
       unreachableGoalResolution: unreachableGoalResolution,
       totalViolationCount:
         goalProgressViolations.length +
         itemOutcomeViolations.length +
+        immortalityViolations.length +
+        yearRollbackCount +
         staticChecks.abilityKeysInTraitWeights.length +
         staticChecks.goalResolutionWithoutIds.length +
+        staticChecks.immortalGoalWithoutEndLife.length +
         selfTests.filter(function (t) { return !t.passed; }).length
     }
   };
@@ -6464,7 +6611,7 @@ function esc(s) {
   return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; });
 }
 
-var SCHEMA_VERSION = 5;
+var SCHEMA_VERSION = 6;
 var STORAGE_KEY = 'tenseiLifeWatch:v1';
 var MAX_OFFLINE_YEARS = 300;
 
@@ -6524,8 +6671,9 @@ function freshState() {
 }
 
 // schemaVersion 1 (要素/生涯目標/世界状態の拡張前)、2 (worldImpact集計の追加前)、
-// 3 (転生準備フェーズの追加前)、4 (itemOutcome状態モデルの追加前) の保存データを、
-// 新しいフィールドを補いながら壊さずに引き継ぐ。
+// 3 (転生準備フェーズの追加前)、4 (itemOutcome状態モデルの追加前)、
+// 5 (暦のdriftWorld混入バグ修正前) の保存データを、新しいフィールドを補いながら
+// 壊さずに引き継ぐ。
 function migrateCharacter(character) {
   if (!character) return character;
   if (!Array.isArray(character.elements)) character.elements = [];
@@ -6561,6 +6709,14 @@ function migrateWorld(world) {
   Object.keys(data.initialWorld).forEach(function (key) {
     if (typeof world[key] !== 'number') world[key] = data.initialWorld[key];
   });
+  // schemaVersion 5以前は driftWorld() が yearEra（暦）まで「初期値へ回帰する
+  // 世界統計」として扱ってしまい、暦が毎年0へ引き戻され小数化するバグ
+  // （issue #11）があった。既存セーブに残った小数・負値を整数へ丸めて引き継ぐ
+  // （巻き戻り自体は今後発生しなくなるが、既に汚染された値の見た目は直せないため
+  // 四捨五入のみ行う）。
+  if (typeof world.yearEra === 'number') {
+    world.yearEra = Math.max(0, Math.round(world.yearEra));
+  }
   return world;
 }
 
@@ -6769,7 +6925,7 @@ function logListHtml(entries) {
 }
 
 function renderAll() {
-  document.getElementById('genLine').textContent = '第' + (state.lifetimeCount || 1) + '転生 / 暦' + state.world.yearEra + '年';
+  document.getElementById('genLine').textContent = '第' + (state.lifetimeCount || 1) + '転生 / 暦' + Math.round(state.world.yearEra) + '年';
 
   var hasLiving = state.character && state.character.alive;
   var showDeath = state.character && !state.character.alive;
@@ -6986,7 +7142,7 @@ function renderLog() {
 
 function renderWorld() {
   var w = state.world;
-  document.getElementById('wYear').textContent = w.yearEra + '年';
+  document.getElementById('wYear').textContent = Math.round(w.yearEra) + '年';
   document.getElementById('wUnrest').textContent =
     '安定' + Math.round(w.stability) + ' / 戦争' + Math.round(w.warThreat) + ' / 魔' + Math.round(w.demonThreat) +
     ' / 信仰' + Math.round(w.religiousInfluence) + ' / 技術' + Math.round(w.techLevel) + ' / 経済' + Math.round(w.economy);

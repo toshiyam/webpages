@@ -150,7 +150,11 @@ function burdenPhrase(character, name, burdensDef) {
 export function generateSummary(character, relations, deathInfo, occupations, traitsDef, deathCauseLabels, itemsDef, skillsDef, burdensDef) {
   var name = character.name;
   var parts = [];
-  parts.push(name + 'は' + character.age + '歳で、' + deathCauseLabels[deathInfo.cause] + 'によりその生涯を閉じた。');
+  if (deathInfo.special) {
+    parts.push(name + 'は' + character.age + '歳で、' + deathCauseLabels[deathInfo.cause] + '。老いや死の理から離れ、その観測はここで終わりを迎えた。');
+  } else {
+    parts.push(name + 'は' + character.age + '歳で、' + deathCauseLabels[deathInfo.cause] + 'によりその生涯を閉じた。');
+  }
   parts.push('最終的な身分は「' + occupations[character.occupation] + '」であった。');
 
   if (character.elements.length > 0) {

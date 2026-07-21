@@ -1,5 +1,6 @@
 import { applyGoalFormation, applyGoalResolution } from './effect-processor.js';
 import { setItemOutcome, consumeItem, recordContextualItemUse } from './starting-grants.js';
+import { driftWorld } from './time-processor.js';
 
 var ABILITY_IDS = ['physical', 'intelligence', 'social', 'willpower', 'sensitivity', 'luck'];
 
@@ -52,6 +53,26 @@ export function runGoalResolutionSelfTests() {
     var character = { age: 20, goal: { id: 'protect_family', label: '家族を守る', status: 'active', progress: 0, resolvedAtAge: null } };
     applyGoalFormation(character, { id: 'become_king', label: '王になる' });
     return character.goal.id === 'protect_family';
+  });
+
+  check('不老不死を達成し、不老不死終了で死ねば矛盾なし', function () {
+    var character = { goal: { id: 'become_immortal', status: 'completed' } };
+    return findImmortalityViolation(character, { cause: 'immortality_ascension' }) === null;
+  });
+
+  check('不老不死を達成したのに通常死亡すれば矛盾として検出される', function () {
+    var character = { goal: { id: 'become_immortal', status: 'completed' } };
+    return findImmortalityViolation(character, { cause: 'illness' }) !== null;
+  });
+
+  check('不老不死を達成していないのに不老不死終了になれば矛盾として検出される', function () {
+    var character = { goal: { id: 'become_immortal', status: 'failed' } };
+    return findImmortalityViolation(character, { cause: 'immortality_ascension' }) !== null;
+  });
+
+  check('無関係な目標・通常死亡は矛盾として検出されない', function () {
+    var character = { goal: { id: 'protect_family', status: 'completed' } };
+    return findImmortalityViolation(character, { cause: 'illness' }) === null;
   });
 
   return results;
@@ -123,6 +144,45 @@ export function runItemOutcomeSelfTests() {
   return results;
 }
 
+// driftWorld() が world.yearEra（暦）を「初期値0へ回帰する世界統計」として
+// 扱ってしまい、暦が毎年わずかに巻き戻り、かつ小数化するバグ（issue #11）が
+// あった。driftWorld を何度呼んでも yearEra が完全に不変であることを直接
+// 検証する（ドリフト対象6項目は変動してよいが、暦だけは絶対に動いてはならない）。
+export function runWorldYearDriftSelfTests() {
+  var results = [];
+
+  function check(name, fn) {
+    var passed;
+    try { passed = !!fn(); } catch (e) { passed = false; }
+    results.push({ name: name, passed: passed });
+  }
+
+  var initialWorld = {
+    yearEra: 0, unrest: false, stability: 50, warThreat: 15, demonThreat: 15,
+    religiousInfluence: 50, techLevel: 30, economy: 50
+  };
+
+  check('driftWorldはyearEraを1回の呼び出しでも変化させない', function () {
+    var world = Object.assign({}, initialWorld, { yearEra: 45 });
+    driftWorld(world, initialWorld, { min: 0, max: 100 });
+    return world.yearEra === 45;
+  });
+
+  check('driftWorldを100回連続で呼んでもyearEraは不変・整数のまま', function () {
+    var world = Object.assign({}, initialWorld, { yearEra: 88 });
+    for (var i = 0; i < 100; i++) driftWorld(world, initialWorld, { min: 0, max: 100 });
+    return world.yearEra === 88 && Number.isInteger(world.yearEra);
+  });
+
+  check('driftWorldは通常の世界統計(stability等)には引き続き作用する', function () {
+    var world = Object.assign({}, initialWorld, { yearEra: 10, stability: 90 });
+    driftWorld(world, initialWorld, { min: 0, max: 100 });
+    return world.stability !== 90;
+  });
+
+  return results;
+}
+
 // 「アイテムに接触した(itemFirstUsedAgeが記録された)のにitemOutcome.statusが
 // unusedのまま」（issue #7 で実際に検出された、間接効果アイテムが常に未使用扱い
 // になるバグそのもの）と、「unused以外のstatusなのにageが記録されていない」を
@@ -176,10 +236,31 @@ export function findGoalResolutionWithoutIds(events) {
   return violations;
 }
 
+// 「不老不死になる」を completed にする選択肢は、必ず同時に
+// effects.endLife（cause: 'immortality_ascension'）で通常の死亡判定を
+// 経ずにその場で人生を終えなければならない（issue #10）。今後の編集で
+// 新しい到達経路が goalResolution だけ追加され、endLife の対応を忘れる
+// 再発を静的に検出する。
+export function findImmortalGoalWithoutEndLife(events) {
+  var violations = [];
+  events.forEach(function (evt) {
+    (evt.choices || []).forEach(function (choice) {
+      var gr = choice.effects && choice.effects.goalResolution;
+      if (!gr || gr.status !== 'completed' || !Array.isArray(gr.ids) || gr.ids.indexOf('become_immortal') === -1) return;
+      var endLife = choice.effects.endLife;
+      if (!endLife || endLife.cause !== 'immortality_ascension') {
+        violations.push({ eventId: evt.id, choiceId: choice.id });
+      }
+    });
+  });
+  return violations;
+}
+
 export function runStaticConsistencyChecks(events) {
   return {
     abilityKeysInTraitWeights: findAbilityKeysInTraitWeights(events),
-    goalResolutionWithoutIds: findGoalResolutionWithoutIds(events)
+    goalResolutionWithoutIds: findGoalResolutionWithoutIds(events),
+    immortalGoalWithoutEndLife: findImmortalGoalWithoutEndLife(events)
   };
 }
 
@@ -190,6 +271,23 @@ export function runStaticConsistencyChecks(events) {
 export function findGoalProgressViolation(character) {
   if (character.goal && character.goal.status === 'completed' && character.goal.progress !== 100) {
     return { goalId: character.goal.id, progress: character.goal.progress };
+  }
+  return null;
+}
+
+// 「不老不死になる」を達成したのに、通常の老衰・病気などで死亡する（issue #10で
+// 実際に検出された意味的矛盾）ことがないかを確認する。達成時は必ず
+// effects.endLife（cause: 'immortality_ascension'）でその場の観測を終えるため、
+// 死因がそれ以外になっていれば矛盾。逆に、目標を達成していないのに
+// immortality_ascension で終わることも無いはずなので合わせて検出する。
+export function findImmortalityViolation(character, deathInfo) {
+  var achieved = !!(character.goal && character.goal.id === 'become_immortal' && character.goal.status === 'completed');
+  var cause = deathInfo ? deathInfo.cause : null;
+  if (achieved && cause !== 'immortality_ascension') {
+    return { issue: 'immortal_but_normal_death', cause: cause };
+  }
+  if (!achieved && cause === 'immortality_ascension') {
+    return { issue: 'immortality_ascension_without_goal' };
   }
   return null;
 }

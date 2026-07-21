@@ -4108,6 +4108,9 @@
           },
           "abilities": {
             "luck": 3
+          },
+          "endLife": {
+            "cause": "immortality_ascension"
           }
         },
         "resultText": "{name}はついに、不老不死と呼べる境地に手を伸ばした。",

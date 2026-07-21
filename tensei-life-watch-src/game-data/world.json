@@ -25,7 +25,8 @@
     "battle": "戦闘",
     "crime": "犯罪・処刑",
     "starvation": "飢餓",
-    "special": "不慮の出来事"
+    "special": "不慮の出来事",
+    "immortality_ascension": "不老不死への到達（観測終了）"
   },
   "initial": {
     "yearEra": 0,
