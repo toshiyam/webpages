@@ -4316,7 +4316,10 @@
           "faith": 0.1
         },
         "effects": {
-          "markItemUsed": "sealed_ring"
+          "itemOutcome": {
+            "itemId": "sealed_ring",
+            "status": "rejected"
+          }
         },
         "resultText": "{name}は指輪の力を恐れ、封印を解かないまま持ち続けた。",
         "importance": "major"
@@ -4369,7 +4372,10 @@
           "caution": -0.1
         },
         "effects": {
-          "markItemUsed": "silver_purse",
+          "itemOutcome": {
+            "itemId": "silver_purse",
+            "status": "lost"
+          },
           "money": -15,
           "flagsAdd": [
             "item_silver_purse_lost"

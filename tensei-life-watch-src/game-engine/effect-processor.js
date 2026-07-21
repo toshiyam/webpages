@@ -1,5 +1,5 @@
 import { clamp, pick, randInt, uid } from './rng.js';
-import { consumeItem, markItemUsed } from './starting-grants.js';
+import { consumeItem, setItemOutcome } from './starting-grants.js';
 
 var MAX_RELATIONS = 9;
 
@@ -135,5 +135,8 @@ export function applyEffects(character, relations, world, worldBounds, namePool,
     accumulateWorldImpact(character, appliedDeltas);
   }
   if (effects.consumeItem) consumeItem(character, effects.consumeItem);
-  if (effects.markItemUsed) markItemUsed(character, effects.markItemUsed);
+  // markItemUsed: 「役立てた」場合の簡略記法（setItemOutcomeのstatus='used'相当）。
+  // 喪失・拒絶など否定的な結果を表したいイベントは itemOutcome を使うこと。
+  if (effects.markItemUsed) setItemOutcome(character, effects.markItemUsed, 'used');
+  if (effects.itemOutcome) setItemOutcome(character, effects.itemOutcome.itemId, effects.itemOutcome.status);
 }

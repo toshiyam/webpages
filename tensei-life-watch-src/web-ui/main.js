@@ -8,7 +8,7 @@ function esc(s) {
   return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; });
 }
 
-var SCHEMA_VERSION = 4;
+var SCHEMA_VERSION = 5;
 var STORAGE_KEY = 'tenseiLifeWatch:v1';
 var MAX_OFFLINE_YEARS = 300;
 
@@ -78,8 +78,8 @@ function freshState() {
 }
 
 // schemaVersion 1 (要素/生涯目標/世界状態の拡張前)、2 (worldImpact集計の追加前)、
-// 3 (転生準備フェーズの追加前) の保存データを、新しいフィールドを補いながら
-// 壊さずに引き継ぐ。
+// 3 (転生準備フェーズの追加前)、4 (itemOutcome状態モデルの追加前) の保存データを、
+// 新しいフィールドを補いながら壊さずに引き継ぐ。
 function migrateCharacter(character) {
   if (!character) return character;
   if (!Array.isArray(character.elements)) character.elements = [];
@@ -91,6 +91,22 @@ function migrateCharacter(character) {
   if (character.burden === undefined) character.burden = null;
   if (!character.itemState || typeof character.itemState !== 'object') character.itemState = {};
   if (!character.itemFirstUsedAge || typeof character.itemFirstUsedAge !== 'object') character.itemFirstUsedAge = {};
+  if (!character.itemOutcome || typeof character.itemOutcome !== 'object') {
+    // schemaVersion 4以前は「使った/使わなかった」の2値しか持たず、喪失・拒絶を
+    // 区別できていなかった。旧データからは正確に復元できないため、既に何らかの
+    // 接触があった場合は安全側（否定的な結果ではない）の 'used' として引き継ぐ。
+    var itemId = character.startingItem;
+    var status = 'unused', age = null;
+    if (itemId) {
+      var state = character.itemState[itemId];
+      var touchedAge = character.itemFirstUsedAge[itemId];
+      if (state && state.consumed) { status = 'consumed'; age = touchedAge !== undefined ? touchedAge : null; }
+      else if (character.flags && character.flags.indexOf('item_silver_purse_lost') >= 0 && itemId === 'silver_purse') {
+        status = 'lost'; age = touchedAge !== undefined ? touchedAge : null;
+      } else if (touchedAge !== undefined) { status = 'used'; age = touchedAge; }
+    }
+    character.itemOutcome = { status: status, age: age };
+  }
   return character;
 }
 
@@ -488,12 +504,16 @@ function itemStatusText(c) {
   var label = item ? item.label : c.startingItem;
   var firstUsedAge = c.itemFirstUsedAge[c.startingItem];
   var itemState = c.itemState[c.startingItem];
+  var outcome = c.itemOutcome || { status: 'unused', age: null };
+
+  if (outcome.status === 'lost') return label + '（' + outcome.age + '歳で喪失）';
+  if (outcome.status === 'rejected') return label + '（' + outcome.age + '歳で使用を見送った）';
   if (itemState) {
     if (itemState.consumed) return label + '（使い切った）';
     if (firstUsedAge !== undefined) return label + '（残り' + itemState.usesRemaining + '回・' + firstUsedAge + '歳で初使用）';
     return label + '（残り' + itemState.usesRemaining + '回・未使用）';
   }
-  if (firstUsedAge !== undefined) {
+  if (outcome.status === 'used' && firstUsedAge !== undefined) {
     return label + '（' + firstUsedAge + '歳の時に活用）';
   }
   return label + '（未使用）';

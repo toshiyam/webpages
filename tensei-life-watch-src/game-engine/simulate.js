@@ -3,7 +3,7 @@ import { applyStartingGrants, isItemSelectable } from './starting-grants.js';
 import { simulateYear } from './time-processor.js';
 import { determineLifeRank, hasEnteredAnyArc, hasReachedArcClimax, hadNothingHappen } from './life-rank.js';
 import { buildContextSet, filterEligibleEvents } from './event-selector.js';
-import { findGoalProgressViolation, runStaticConsistencyChecks, runGoalResolutionSelfTests } from './consistency.js';
+import { findGoalProgressViolation, runStaticConsistencyChecks, runGoalResolutionSelfTests, findItemOutcomeViolation, runItemOutcomeSelfTests } from './consistency.js';
 import { pick } from './rng.js';
 
 var MAX_LIFE_YEARS = 130;
@@ -93,6 +93,7 @@ function runLife(character, data, goalResolutionEventMap) {
     worldImpactByField: character.worldImpact,
     nothingHappened: hadNothingHappen(character),
     goalProgressViolation: findGoalProgressViolation(character),
+    itemOutcomeViolation: findItemOutcomeViolation(character),
     startingItem: character.startingItem,
     startingSkill: character.startingSkill,
     burden: character.burden,
@@ -169,6 +170,7 @@ export function runBatchSimulation(data, n) {
   var positiveImpactCount = 0, negativeImpactCount = 0;
 
   var goalProgressViolations = [];
+  var itemOutcomeViolations = [];
 
   results.forEach(function (r) {
     occupationCounts[r.occupation] = (occupationCounts[r.occupation] || 0) + 1;
@@ -180,6 +182,7 @@ export function runBatchSimulation(data, n) {
     if (r.worldImpact) worldImpactCount += 1;
     if (r.nothingHappened) nothingHappenedCount += 1;
     if (r.goalProgressViolation) goalProgressViolations.push(r.goalProgressViolation);
+    if (r.itemOutcomeViolation) itemOutcomeViolations.push(r.itemOutcomeViolation);
     if (!r.startingItem && !r.startingSkill && !r.burden) noGrantCount += 1;
 
     if (r.startingItem) {
@@ -250,7 +253,7 @@ export function runBatchSimulation(data, n) {
     .filter(function (id) { return firedEventIds.indexOf(id) === -1; });
 
   var staticChecks = runStaticConsistencyChecks(data.events);
-  var selfTests = runGoalResolutionSelfTests();
+  var selfTests = runGoalResolutionSelfTests().concat(runItemOutcomeSelfTests());
 
   var unreachableGoalResolution = {};
   Object.keys(goalStats).forEach(function (id) {
@@ -288,9 +291,11 @@ export function runBatchSimulation(data, n) {
       selfTestsAllPassed: selfTests.every(function (t) { return t.passed; }),
       staticChecks: staticChecks,
       goalProgressViolations: goalProgressViolations,
+      itemOutcomeViolations: itemOutcomeViolations,
       unreachableGoalResolution: unreachableGoalResolution,
       totalViolationCount:
         goalProgressViolations.length +
+        itemOutcomeViolations.length +
         staticChecks.abilityKeysInTraitWeights.length +
         staticChecks.goalResolutionWithoutIds.length +
         selfTests.filter(function (t) { return !t.passed; }).length
