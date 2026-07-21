@@ -8,7 +8,7 @@ function esc(s) {
   return String(s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; });
 }
 
-var SCHEMA_VERSION = 5;
+var SCHEMA_VERSION = 6;
 var STORAGE_KEY = 'tenseiLifeWatch:v1';
 var MAX_OFFLINE_YEARS = 300;
 
@@ -78,8 +78,9 @@ function freshState() {
 }
 
 // schemaVersion 1 (要素/生涯目標/世界状態の拡張前)、2 (worldImpact集計の追加前)、
-// 3 (転生準備フェーズの追加前)、4 (itemOutcome状態モデルの追加前) の保存データを、
-// 新しいフィールドを補いながら壊さずに引き継ぐ。
+// 3 (転生準備フェーズの追加前)、4 (itemOutcome状態モデルの追加前)、
+// 5 (暦のdriftWorld混入バグ修正前) の保存データを、新しいフィールドを補いながら
+// 壊さずに引き継ぐ。
 function migrateCharacter(character) {
   if (!character) return character;
   if (!Array.isArray(character.elements)) character.elements = [];
@@ -115,6 +116,14 @@ function migrateWorld(world) {
   Object.keys(data.initialWorld).forEach(function (key) {
     if (typeof world[key] !== 'number') world[key] = data.initialWorld[key];
   });
+  // schemaVersion 5以前は driftWorld() が yearEra（暦）まで「初期値へ回帰する
+  // 世界統計」として扱ってしまい、暦が毎年0へ引き戻され小数化するバグ
+  // （issue #11）があった。既存セーブに残った小数・負値を整数へ丸めて引き継ぐ
+  // （巻き戻り自体は今後発生しなくなるが、既に汚染された値の見た目は直せないため
+  // 四捨五入のみ行う）。
+  if (typeof world.yearEra === 'number') {
+    world.yearEra = Math.max(0, Math.round(world.yearEra));
+  }
   return world;
 }
 
@@ -323,7 +332,7 @@ function logListHtml(entries) {
 }
 
 function renderAll() {
-  document.getElementById('genLine').textContent = '第' + (state.lifetimeCount || 1) + '転生 / 暦' + state.world.yearEra + '年';
+  document.getElementById('genLine').textContent = '第' + (state.lifetimeCount || 1) + '転生 / 暦' + Math.round(state.world.yearEra) + '年';
 
   var hasLiving = state.character && state.character.alive;
   var showDeath = state.character && !state.character.alive;
@@ -540,7 +549,7 @@ function renderLog() {
 
 function renderWorld() {
   var w = state.world;
-  document.getElementById('wYear').textContent = w.yearEra + '年';
+  document.getElementById('wYear').textContent = Math.round(w.yearEra) + '年';
   document.getElementById('wUnrest').textContent =
     '安定' + Math.round(w.stability) + ' / 戦争' + Math.round(w.warThreat) + ' / 魔' + Math.round(w.demonThreat) +
     ' / 信仰' + Math.round(w.religiousInfluence) + ' / 技術' + Math.round(w.techLevel) + ' / 経済' + Math.round(w.economy);

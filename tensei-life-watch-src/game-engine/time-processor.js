@@ -5,12 +5,20 @@ import { applyEffects } from './effect-processor.js';
 import { mortalityChance, decideDeathCause } from './mortality.js';
 import { recordContextualItemUse } from './starting-grants.js';
 
+// 0〜100の範囲で初期値へ緩やかに回帰させる、ドリフト対象の世界統計フィールド。
+// world.yearEra は共有世界の通算年であり「初期値0へ回帰すべき統計値」ではない
+// ため、ここには含めない。過去に Object.keys(initialWorld) をそのまま回して
+// yearEra まで数値統計として扱ってしまい、暦が毎年0へ引き戻され小数化する
+// バグ（issue #11）があったため、対象フィールドを明示的なリストに限定する
+// （summary-generator.js の WORLD_IMPACT_LABELS で同種の混入を修正した際と同じ教訓）。
+var WORLD_DRIFT_FIELDS = ['stability', 'warThreat', 'demonThreat', 'religiousInfluence', 'techLevel', 'economy'];
+
 // 世界状態を初期値へ緩やかに回帰させつつ小さなノイズを与える（暴走を防ぐ）。
-function driftWorld(world, initialWorld, bounds) {
+export function driftWorld(world, initialWorld, bounds) {
   var lo = (bounds && bounds.min) || 0;
   var hi = (bounds && bounds.max) || 100;
-  Object.keys(initialWorld).forEach(function (key) {
-    if (typeof world[key] !== 'number') return;
+  WORLD_DRIFT_FIELDS.forEach(function (key) {
+    if (typeof world[key] !== 'number' || typeof initialWorld[key] !== 'number') return;
     var baseline = initialWorld[key];
     var pull = (baseline - world[key]) * 0.02;
     world[key] = clamp(world[key] + pull + randInt(-1, 1), lo, hi);
@@ -60,6 +68,22 @@ export function simulateYear(gameState, data) {
         year: world.yearEra, age: character.age, eventId: evt.id, choiceId: choice.id,
         text: text, importance: importance
       });
+
+      // 不老不死の達成など、通常の老衰・病気による死亡判定を経ずに人生を
+      // 終える特殊な結末（endLife）。以降の老衰・寿命に基づく死亡ロールは
+      // 一切行わず、その場で観測を終了する（issue #10: 達成後に通常死亡する
+      // 意味的矛盾を避けるため、寿命判定そのものを迎えさせない設計）。
+      if (choice.effects && choice.effects.endLife) {
+        character.alive = false;
+        var endCause = choice.effects.endLife.cause;
+        var endDeathInfo = { cause: endCause, age: character.age, special: true };
+        newLogs.push({
+          year: world.yearEra, age: character.age, eventId: 'special_ending', choiceId: endCause,
+          text: character.name + 'は' + character.age + '歳で、' + data.deathCauseLabels[endCause] + '。',
+          importance: 'historic'
+        });
+        return { logs: newLogs, died: true, deathInfo: endDeathInfo };
+      }
     }
   }
 

@@ -3,7 +3,7 @@ import { applyStartingGrants, isItemSelectable } from './starting-grants.js';
 import { simulateYear } from './time-processor.js';
 import { determineLifeRank, hasEnteredAnyArc, hasReachedArcClimax, hadNothingHappen } from './life-rank.js';
 import { buildContextSet, filterEligibleEvents } from './event-selector.js';
-import { findGoalProgressViolation, runStaticConsistencyChecks, runGoalResolutionSelfTests, findItemOutcomeViolation, runItemOutcomeSelfTests } from './consistency.js';
+import { findGoalProgressViolation, runStaticConsistencyChecks, runGoalResolutionSelfTests, findItemOutcomeViolation, runItemOutcomeSelfTests, findImmortalityViolation, runWorldYearDriftSelfTests } from './consistency.js';
 import { pick } from './rng.js';
 
 var MAX_LIFE_YEARS = 130;
@@ -47,6 +47,7 @@ function runLife(character, data, goalResolutionEventMap) {
   var married = false;
   var deathInfo = null;
   var eligibleEverSeen = {};
+  var yearRollbackCount = 0;
 
   for (var i = 0; i < MAX_LIFE_YEARS; i++) {
     if (goalResolutionEventMap && character.goal && character.goal.status === 'active') {
@@ -56,7 +57,13 @@ function runLife(character, data, goalResolutionEventMap) {
       });
     }
 
+    var yearBefore = world.yearEra;
     var result = simulateYear(gameState, data);
+    // 暦(world.yearEra)は共有世界の通算年であり、1年ごとに厳密に+1され、
+    // 巻き戻り・NaN・小数化のいずれも起きてはならない（issue #11）。
+    if (!Number.isInteger(world.yearEra) || !Number.isFinite(world.yearEra) || world.yearEra <= yearBefore) {
+      yearRollbackCount += 1;
+    }
     result.logs.forEach(function (l) { eventCounts[l.eventId] = (eventCounts[l.eventId] || 0) + 1; });
     if (character.flags.indexOf('married') >= 0) married = true;
     if (result.died) { deathInfo = result.deathInfo; break; }
@@ -94,6 +101,8 @@ function runLife(character, data, goalResolutionEventMap) {
     nothingHappened: hadNothingHappen(character),
     goalProgressViolation: findGoalProgressViolation(character),
     itemOutcomeViolation: findItemOutcomeViolation(character),
+    immortalityViolation: findImmortalityViolation(character, deathInfo),
+    yearRollbackCount: yearRollbackCount,
     startingItem: character.startingItem,
     startingSkill: character.startingSkill,
     burden: character.burden,
@@ -171,6 +180,8 @@ export function runBatchSimulation(data, n) {
 
   var goalProgressViolations = [];
   var itemOutcomeViolations = [];
+  var immortalityViolations = [];
+  var yearRollbackCount = 0;
 
   results.forEach(function (r) {
     occupationCounts[r.occupation] = (occupationCounts[r.occupation] || 0) + 1;
@@ -183,6 +194,8 @@ export function runBatchSimulation(data, n) {
     if (r.nothingHappened) nothingHappenedCount += 1;
     if (r.goalProgressViolation) goalProgressViolations.push(r.goalProgressViolation);
     if (r.itemOutcomeViolation) itemOutcomeViolations.push(r.itemOutcomeViolation);
+    if (r.immortalityViolation) immortalityViolations.push(r.immortalityViolation);
+    yearRollbackCount += r.yearRollbackCount || 0;
     if (!r.startingItem && !r.startingSkill && !r.burden) noGrantCount += 1;
 
     if (r.startingItem) {
@@ -253,7 +266,7 @@ export function runBatchSimulation(data, n) {
     .filter(function (id) { return firedEventIds.indexOf(id) === -1; });
 
   var staticChecks = runStaticConsistencyChecks(data.events);
-  var selfTests = runGoalResolutionSelfTests().concat(runItemOutcomeSelfTests());
+  var selfTests = runGoalResolutionSelfTests().concat(runItemOutcomeSelfTests()).concat(runWorldYearDriftSelfTests());
 
   var unreachableGoalResolution = {};
   Object.keys(goalStats).forEach(function (id) {
@@ -292,12 +305,17 @@ export function runBatchSimulation(data, n) {
       staticChecks: staticChecks,
       goalProgressViolations: goalProgressViolations,
       itemOutcomeViolations: itemOutcomeViolations,
+      immortalityViolations: immortalityViolations,
+      yearRollbackCount: yearRollbackCount,
       unreachableGoalResolution: unreachableGoalResolution,
       totalViolationCount:
         goalProgressViolations.length +
         itemOutcomeViolations.length +
+        immortalityViolations.length +
+        yearRollbackCount +
         staticChecks.abilityKeysInTraitWeights.length +
         staticChecks.goalResolutionWithoutIds.length +
+        staticChecks.immortalGoalWithoutEndLife.length +
         selfTests.filter(function (t) { return !t.passed; }).length
     }
   };

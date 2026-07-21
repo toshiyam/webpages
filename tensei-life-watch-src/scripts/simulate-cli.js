@@ -101,8 +101,11 @@ console.log('自己テスト: ' + stats.consistency.selfTests.filter(function (t
   (stats.consistency.selfTestsAllPassed ? '' : '  !! FAILED: ' + stats.consistency.selfTests.filter(function (t) { return !t.passed; }).map(function (t) { return t.name; }).join(', ')));
 console.log('静的チェック - traitWeights内の能力IDキー: ' + stats.consistency.staticChecks.abilityKeysInTraitWeights.length + '件');
 console.log('静的チェック - ids未指定のgoalResolution: ' + stats.consistency.staticChecks.goalResolutionWithoutIds.length + '件');
+console.log('静的チェック - endLife未対応の不老不死completed: ' + stats.consistency.staticChecks.immortalGoalWithoutEndLife.length + '件');
 console.log('人生ごとの検証 - 進捗100%未満で完遂した人生: ' + stats.consistency.goalProgressViolations.length + '件');
 console.log('人生ごとの検証 - 接触したのにitemOutcomeがunusedのまま/状態はあるが年齢が無い: ' + stats.consistency.itemOutcomeViolations.length + '件');
+console.log('人生ごとの検証 - 不老不死達成後に通常死亡/未達成なのに不老不死終了: ' + stats.consistency.immortalityViolations.length + '件');
+console.log('人生ごとの検証 - 暦(yearEra)の巻き戻り/非整数/非有限: ' + stats.consistency.yearRollbackCount + '件');
 console.log('合計整合性違反件数: ' + stats.consistency.totalViolationCount + '件' + (stats.consistency.totalViolationCount === 0 ? '（OK）' : '  !! 要修正'));
 
 console.log('\n--- issue#7 同一候補・付与内容だけを変えた比較試験（各50試行） ---');
