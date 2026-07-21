@@ -519,12 +519,21 @@ function renderPrepSection() {
 }
 
 var introExpanded = null;
+// 直近にintroExpandedの既定値を決めた時点のstate.lifetimeCount。転生準備
+// 画面への「新しい滞在」（＝前の人生が終わりlifetimeCountが変わった）ごとに
+// 既定値を再評価するための目印。同じ滞在中の候補者再抽選・アイテム選択の
+// 再描画では変化しないため、その間はユーザーの開閉操作を保持する。
+var introDecidedForLifetimeCount = null;
 
 function renderIntro() {
-  // 初めての転生前（lifetimeCount === 0）は説明を開いて表示し、2回目以降の
-  // 転生準備画面ではプレイヤーがゲームの概要を既に知っている前提で折りたたむ。
-  // トグル操作（toggleIntro）で明示的に開閉した場合はその状態を優先する。
-  if (introExpanded === null) introExpanded = (state.lifetimeCount === 0);
+  // 転生準備画面への新しい滞在（lifetimeCountが前回決定時から変わった）
+  // ごとに、初めての転生前（lifetimeCount === 0）なら展開・2回目以降なら
+  // 折りたたみへ既定値を再評価する。同じ滞在内の再描画（候補者再抽選など）
+  // では再評価せず、トグル操作（toggleIntro）で明示的に開閉した状態を保つ。
+  if (introDecidedForLifetimeCount !== state.lifetimeCount) {
+    introExpanded = (state.lifetimeCount === 0);
+    introDecidedForLifetimeCount = state.lifetimeCount;
+  }
   document.getElementById('introBody').hidden = !introExpanded;
   document.getElementById('introToggleHint').textContent = introExpanded ? '（タップで折りたたむ）' : '（タップで表示）';
   document.getElementById('introToggleBtn').setAttribute('aria-expanded', introExpanded ? 'true' : 'false');
