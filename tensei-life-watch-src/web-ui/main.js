@@ -2,6 +2,7 @@ import {
   buildDataBundle, generateCharacter, simulateYear, generateSummary, runBatchSimulation,
   applyStartingGrants, isItemSelectable, determineLifeRank, lifeRankLabel,
   freshDiscoveries, recordLifeDiscoveries, isItemUnlocked, isSkillUnlocked, isBurdenUnlocked, buildLifeRecord,
+  restoreDiscoveriesFromPastLives,
   TAG_SHORT_LABELS
 } from '../game-engine/index.js';
 
@@ -139,10 +140,14 @@ function migrateState(raw) {
     migrateWorld(raw.world);
     if (!raw.pendingGrants) raw.pendingGrants = freshPendingGrants();
     // schemaVersion 6以前のセーブには discoveries（転生記録図鑑の発見状況）が
-    // 存在しない。空の状態から積み上げ直すことになるが、これは既存の過去人生
-    // データを破棄するわけではなく単に発見済み扱いにならないだけなので、
-    // セーブそのものは壊さずに引き継げる。
-    if (!raw.discoveries || typeof raw.discoveries !== 'object') raw.discoveries = freshDiscoveries();
+    // 存在しない。既存のpastLives（過去人生一覧）から復元可能な範囲を
+    // ここで一度だけ積み上げる（issue #15）。この分岐に入るのは
+    // schemaVersion が初めて7未満から7へ上がる移行の瞬間だけなので、
+    // 同じセーブを何度読み込んでも二重加算にはならない。
+    if (!raw.discoveries || typeof raw.discoveries !== 'object') {
+      raw.discoveries = freshDiscoveries();
+      restoreDiscoveriesFromPastLives(raw.discoveries, raw.pastLives, data.occupations, data.deathCauseLabels);
+    }
     raw.schemaVersion = SCHEMA_VERSION;
   }
   return raw;

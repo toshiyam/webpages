@@ -3,7 +3,7 @@ import { applyStartingGrants, isItemSelectable } from './starting-grants.js';
 import { simulateYear } from './time-processor.js';
 import { determineLifeRank, hasEnteredAnyArc, hasReachedArcClimax, hadNothingHappen } from './life-rank.js';
 import { buildContextSet, filterEligibleEvents } from './event-selector.js';
-import { findGoalProgressViolation, runStaticConsistencyChecks, runGoalResolutionSelfTests, findItemOutcomeViolation, runItemOutcomeSelfTests, findImmortalityViolation, runWorldYearDriftSelfTests, runDiscoveryUnlockSelfTests, runEndLifeSelfTests } from './consistency.js';
+import { findGoalProgressViolation, runStaticConsistencyChecks, runGoalResolutionSelfTests, findItemOutcomeViolation, runItemOutcomeSelfTests, findImmortalityViolation, runWorldYearDriftSelfTests, runDiscoveryUnlockSelfTests, runEndLifeSelfTests, runDiscoveryRestoreSelfTests, findEndLifeConsistencyViolation } from './consistency.js';
 import { freshDiscoveries, recordLifeDiscoveries, isItemUnlocked, isSkillUnlocked, isBurdenUnlocked } from './discovery.js';
 import { pick } from './rng.js';
 
@@ -47,8 +47,13 @@ function runLife(character, data, goalResolutionEventMap) {
   var eventCounts = {};
   var married = false;
   var deathInfo = null;
+  var died = false;
   var eligibleEverSeen = {};
   var yearRollbackCount = 0;
+  // 死亡・特殊終端まわりの状態不変条件(issue #14)は、間引き・再構成した
+  // 集計データではなく実際のログ列そのものを検証しないと再発を検出できない
+  // （レビュー指摘）。ここで各年のsimulateYear結果を素通しで連結する。
+  var fullLog = [];
 
   for (var i = 0; i < MAX_LIFE_YEARS; i++) {
     if (goalResolutionEventMap && character.goal && character.goal.status === 'active') {
@@ -65,9 +70,12 @@ function runLife(character, data, goalResolutionEventMap) {
     if (!Number.isInteger(world.yearEra) || !Number.isFinite(world.yearEra) || world.yearEra <= yearBefore) {
       yearRollbackCount += 1;
     }
-    result.logs.forEach(function (l) { eventCounts[l.eventId] = (eventCounts[l.eventId] || 0) + 1; });
+    result.logs.forEach(function (l) {
+      eventCounts[l.eventId] = (eventCounts[l.eventId] || 0) + 1;
+      fullLog.push(l);
+    });
     if (character.flags.indexOf('married') >= 0) married = true;
-    if (result.died) { deathInfo = result.deathInfo; break; }
+    if (result.died) { died = true; deathInfo = result.deathInfo; break; }
   }
 
   var worldImpact = Object.keys(character.worldImpact).some(function (key) {
@@ -103,6 +111,7 @@ function runLife(character, data, goalResolutionEventMap) {
     goalProgressViolation: findGoalProgressViolation(character),
     itemOutcomeViolation: findItemOutcomeViolation(character),
     immortalityViolation: findImmortalityViolation(character, deathInfo),
+    endLifeViolation: findEndLifeConsistencyViolation(fullLog, character, died, deathInfo),
     yearRollbackCount: yearRollbackCount,
     startingItem: character.startingItem,
     startingSkill: character.startingSkill,
@@ -182,6 +191,7 @@ export function runBatchSimulation(data, n) {
   var goalProgressViolations = [];
   var itemOutcomeViolations = [];
   var immortalityViolations = [];
+  var endLifeViolations = [];
   var yearRollbackCount = 0;
 
   results.forEach(function (r) {
@@ -196,6 +206,7 @@ export function runBatchSimulation(data, n) {
     if (r.goalProgressViolation) goalProgressViolations.push(r.goalProgressViolation);
     if (r.itemOutcomeViolation) itemOutcomeViolations.push(r.itemOutcomeViolation);
     if (r.immortalityViolation) immortalityViolations.push(r.immortalityViolation);
+    if (r.endLifeViolation) endLifeViolations.push(r.endLifeViolation);
     yearRollbackCount += r.yearRollbackCount || 0;
     if (!r.startingItem && !r.startingSkill && !r.burden) noGrantCount += 1;
 
@@ -267,7 +278,7 @@ export function runBatchSimulation(data, n) {
     .filter(function (id) { return firedEventIds.indexOf(id) === -1; });
 
   var staticChecks = runStaticConsistencyChecks(data.events);
-  var selfTests = runGoalResolutionSelfTests().concat(runItemOutcomeSelfTests()).concat(runWorldYearDriftSelfTests()).concat(runDiscoveryUnlockSelfTests()).concat(runEndLifeSelfTests());
+  var selfTests = runGoalResolutionSelfTests().concat(runItemOutcomeSelfTests()).concat(runWorldYearDriftSelfTests()).concat(runDiscoveryUnlockSelfTests()).concat(runEndLifeSelfTests()).concat(runDiscoveryRestoreSelfTests());
 
   var unreachableGoalResolution = {};
   Object.keys(goalStats).forEach(function (id) {
@@ -307,12 +318,14 @@ export function runBatchSimulation(data, n) {
       goalProgressViolations: goalProgressViolations,
       itemOutcomeViolations: itemOutcomeViolations,
       immortalityViolations: immortalityViolations,
+      endLifeViolations: endLifeViolations,
       yearRollbackCount: yearRollbackCount,
       unreachableGoalResolution: unreachableGoalResolution,
       totalViolationCount:
         goalProgressViolations.length +
         itemOutcomeViolations.length +
         immortalityViolations.length +
+        endLifeViolations.length +
         yearRollbackCount +
         staticChecks.abilityKeysInTraitWeights.length +
         staticChecks.goalResolutionWithoutIds.length +

@@ -54,6 +54,43 @@ export function isBurdenUnlocked(burden, discoveries) {
   return evaluateUnlockCondition(burden && burden.unlockCondition, discoveries);
 }
 
+// schemaVersion 6以前からschemaVersion 7へ初めて移行する既存セーブ向けの
+// 一回限りの復元処理（issue #15）。discoveriesが存在しない状態で移行される
+// ため、そのままでは既に複数人生を観測済みのプレイヤーでも発見状態が
+// 空へ巻き戻って見えてしまう。既存のpastLives（過去人生一覧、最大20件）
+// から復元可能な範囲だけを加算する。呼び出し側（migrateState）が
+// discoveriesが存在しなかった移行の瞬間にのみ1回呼ぶことで二重加算を防ぐ
+// （この関数自体は加算のみを行う一括処理であり、多重呼び出しの防止は
+// 呼び出し側の責務）。
+//
+// 過去人生の記録形式は2種類ある。
+// - schemaVersion 7の詳細レコード（buildLifeRecordが生成、elementsを持つ）:
+//   occupation/deathCauseはID、elements/goal.id/tagsも直接復元できる
+// - schemaVersion 6以前の簡易レコード（elementsを持たない）:
+//   occupation/causeはラベル文字列のみで、IDへ逆引きできた場合のみ復元する
+// いずれの形式にも発生イベントIDの履歴（eventCounts相当）は保存されて
+// いないため、events カテゴリは復元不能であり、推測で埋めない。
+export function restoreDiscoveriesFromPastLives(discoveries, pastLives, occupations, deathCauseLabels) {
+  var occupationIdByLabel = {};
+  Object.keys(occupations || {}).forEach(function (id) { occupationIdByLabel[occupations[id]] = id; });
+  var deathCauseIdByLabel = {};
+  Object.keys(deathCauseLabels || {}).forEach(function (id) { deathCauseIdByLabel[deathCauseLabels[id]] = id; });
+
+  (pastLives || []).forEach(function (p) {
+    if (!p) return;
+    if (p.elements !== undefined) {
+      bump(discoveries.occupations, p.occupation);
+      bump(discoveries.deathCauses, p.deathCause);
+      (p.elements || []).forEach(function (id) { bump(discoveries.elements, id); });
+      if (p.goal && p.goal.id) bump(discoveries.goals, p.goal.id);
+      (p.tags || []).forEach(function (id) { bump(discoveries.tags, id); });
+    } else {
+      bump(discoveries.occupations, occupationIdByLabel[p.occupation]);
+      bump(discoveries.deathCauses, deathCauseIdByLabel[p.cause]);
+    }
+  });
+}
+
 // 死亡時のスナップショットを1件分の「転生記録図鑑」エントリとして組み立てる。
 // character/relations/log/deathInfo/lifeRank のみを情報源とする
 // （LLM不使用の要約と同じ方針）。過去人生一覧・人生詳細画面の両方で

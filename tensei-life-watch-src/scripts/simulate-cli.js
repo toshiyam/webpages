@@ -110,6 +110,13 @@ stats.consistency.staticChecks.deathWordingCandidates.forEach(function (c) {
 console.log('人生ごとの検証 - 進捗100%未満で完遂した人生: ' + stats.consistency.goalProgressViolations.length + '件');
 console.log('人生ごとの検証 - 接触したのにitemOutcomeがunusedのまま/状態はあるが年齢が無い: ' + stats.consistency.itemOutcomeViolations.length + '件');
 console.log('人生ごとの検証 - 不老不死達成後に通常死亡/未達成なのに不老不死終了: ' + stats.consistency.immortalityViolations.length + '件');
+console.log('人生ごとの検証 - 死亡/特殊終端ログ後も人生が継続・二重生成・alive/died/deathInfo不一致(issue#14): ' + stats.consistency.endLifeViolations.length + '件');
+stats.consistency.endLifeViolations.forEach(function (v) {
+  console.log('  [' + v.type + '] characterId=' + v.characterId + ' age=' + v.age +
+    ' alive=' + v.alive + ' died=' + v.died + ' deathInfo=' + JSON.stringify(v.deathInfo) +
+    ' detail=' + JSON.stringify(v.detail));
+  console.log('    log: ' + JSON.stringify(v.log));
+});
 console.log('人生ごとの検証 - 暦(yearEra)の巻き戻り/非整数/非有限: ' + stats.consistency.yearRollbackCount + '件');
 console.log('合計整合性違反件数: ' + stats.consistency.totalViolationCount + '件' + (stats.consistency.totalViolationCount === 0 ? '（OK）' : '  !! 要修正'));
 
