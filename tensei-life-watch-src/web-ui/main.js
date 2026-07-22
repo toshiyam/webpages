@@ -781,6 +781,15 @@ function healthLabel(health) {
   return '危険';
 }
 
+// summarizeWorldImpact() が返す [{ key, label, diff }] を、観測タブ・世界タブの
+// 両方で使う共通のチップHTMLへ変換する（issue #21: 同じ個人影響を2箇所で
+// 表示するにあたり、文言・閾値の基準がずれないようにするための共有関数）。
+function worldImpactChipsHtml(deltas) {
+  return deltas.map(function (d) {
+    return '<span class="chip"><b>' + esc(d.label) + '</b>' + (d.diff > 0 ? '上昇' : '低下') + '</span>';
+  }).join('');
+}
+
 function renderObserve() {
   var c = state.character;
   document.getElementById('charTitle').textContent = c.name + '（' + c.genderLabel + '・' + c.age + '歳）';
@@ -835,9 +844,7 @@ function renderObserve() {
     document.getElementById('worldImpactChips').innerHTML = '';
   } else {
     worldImpactEmpty.hidden = true;
-    document.getElementById('worldImpactChips').innerHTML = worldImpactDeltas.map(function (d) {
-      return '<span class="chip"><b>' + esc(d.label) + '</b>' + (d.diff > 0 ? '上昇' : '低下') + '</span>';
-    }).join('');
+    document.getElementById('worldImpactChips').innerHTML = worldImpactChipsHtml(worldImpactDeltas);
   }
 
   document.getElementById('ovItem').textContent = itemStatusText(c);
@@ -919,6 +926,22 @@ function renderWorld() {
     ' / 信仰' + Math.round(w.religiousInfluence) + ' / 技術' + Math.round(w.techLevel) + ' / 経済' + Math.round(w.economy);
   document.getElementById('wLifetimes').textContent = state.lifetimeCount + '人';
   document.getElementById('wSaved').textContent = formatSavedAt(state.lastSavedAt, 'toLocaleString');
+
+  // 世界タブでは「世界全体の状態」（上のカード、歴代転生者・自然ドリフトの
+  // 積み重ね）と「この人生の個人影響」（character.worldImpactのみ）を
+  // はっきり別カードに分けて見せる（issue #21）。個人影響は観測タブの
+  // worldImpactChipsと同じ関数・同じ閾値を共有しているため、2画面で数値や
+  // 文言が食い違うことはない。
+  var worldImpactDeltas2 = summarizeWorldImpact(state.character);
+  var worldImpactEmpty2 = document.getElementById('worldImpactEmpty2');
+  if (worldImpactDeltas2.length === 0) {
+    worldImpactEmpty2.hidden = false;
+    document.getElementById('worldImpactChips2').innerHTML = '';
+  } else {
+    worldImpactEmpty2.hidden = true;
+    document.getElementById('worldImpactChips2').innerHTML = worldImpactChipsHtml(worldImpactDeltas2);
+  }
+
   document.getElementById('pastLivesList2').innerHTML = state.pastLives.length ? pastLivesHtml(state.pastLives) : '<div class="empty">まだ記録がない。</div>';
 }
 
