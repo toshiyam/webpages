@@ -51,6 +51,8 @@ header.top .brand { display: flex; align-items: center; gap: 8px; }
 header.top .brand .icon { font-size: 1.5rem; }
 header.top h1 { font-size: 1.05rem; margin: 0; }
 header.top .genline { font-size: 0.72rem; color: var(--muted); }
+header.top .savestatus { font-size: 0.68rem; color: var(--muted); margin-top: 1px; }
+header.top .savestatus.save-error { color: var(--danger); font-weight: 700; }
 
 nav.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px; }
 nav.tabs[hidden] { display: none; }
@@ -81,6 +83,7 @@ nav.tabs button.active { background: var(--accent); color: #1a1424; border-color
 .btnrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
 .btnrow.single { grid-template-columns: 1fr; }
 button.primary { min-height: 50px; border: 0; border-radius: 14px; background: var(--accent); color: #1a1424; font-weight: 800; font-size: 0.98rem; }
+button.primary.danger { background: var(--danger); color: #2a0e0e; }
 button.secondary { min-height: 50px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-soft); color: var(--text); font-weight: 700; font-size: 0.9rem; }
 button.small { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft); color: var(--text); font-size: 0.8rem; font-weight: 700; }
 button:disabled { opacity: 0.5; }
@@ -161,3 +164,16 @@ details.prepgroup summary .prepcurrent { font-weight: 400; font-size: 0.76rem; c
 #startCard { border-color: var(--accent); }
 
 footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margin-top: 18px; }
+
+.modaloverlay {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55);
+  display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 100;
+}
+.modaloverlay[hidden] { display: none; }
+.modalcard {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+  padding: 16px; max-width: 420px; width: 100%; max-height: 90vh; overflow-y: auto;
+}
+.modalcard h2 { margin: 0 0 10px; font-size: 1rem; }
+.modalcard ul { margin: 0; padding-left: 1.2em; font-size: 0.86rem; display: grid; gap: 6px; }
+.modalcard .modalwarn { color: var(--danger); font-weight: 700; font-size: 0.86rem; margin-top: 10px; }
