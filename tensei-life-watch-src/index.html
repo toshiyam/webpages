@@ -15,12 +15,24 @@
       <div>
         <h1>転生者観測日誌</h1>
         <div class="genline" id="genLine">読み込み中...</div>
+        <div class="savestatus" id="saveStatusLine"></div>
       </div>
     </div>
     <button class="small" id="resetBtn" type="button" title="全データを削除してやり直す">初期化</button>
   </header>
 
   <div id="bannerBox" role="status" aria-live="polite"></div>
+
+  <div class="modaloverlay" id="resetConfirmOverlay" hidden>
+    <div class="modalcard" role="alertdialog" aria-modal="true" aria-labelledby="resetConfirmTitle" aria-describedby="resetConfirmBody">
+      <h2 id="resetConfirmTitle">初期化の確認</h2>
+      <div id="resetConfirmBody"></div>
+      <div class="btnrow">
+        <button class="secondary" id="resetCancelBtn" type="button">キャンセル</button>
+        <button class="primary danger" id="resetConfirmBtn" type="button">初期化する</button>
+      </div>
+    </div>
+  </div>
 
   <nav class="tabs" id="tabNav" hidden role="tablist" aria-label="表示切り替え">
     <button type="button" id="tabBtnObserve" data-tab="observe" class="active" role="tab" aria-selected="true" aria-controls="screenObserve" tabindex="0">観測</button>

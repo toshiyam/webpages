@@ -78,9 +78,17 @@ function freshState() {
     lifetimeCount: 0,
     pastLives: [],
     discoveries: freshDiscoveries(),
-    lastSavedAt: Date.now(),
+    // まだ一度も保存していないことが分かるようnullにする（保存状態表示が
+    // 「最終保存: 現在時刻」という実態と異なる表示にならないようにする、
+    // issue #23）。saveState()が呼ばれた時点で実際の保存時刻に置き換わる。
+    lastSavedAt: null,
     speedIndex: 1
   };
+}
+
+function formatSavedAt(ts, fmt) {
+  if (typeof ts !== 'number') return '未保存';
+  return new Date(ts)[fmt]('ja-JP');
 }
 
 // schemaVersion 1 (要素/生涯目標/世界状態の拡張前)、2 (worldImpact集計の追加前)、
@@ -168,17 +176,47 @@ function sanitizeLoaded(raw) {
   }
 }
 
+// localStorageが無効化・使用不可（プライベートブラウズ、容量超過、アクセス
+// 拒否等）な環境でも画面が壊れないよう、読み込み・保存はどちらもtry/catchで
+// 包み、失敗時は「保存されない」ことを明示した上でメモリ上の状態だけで
+// 続行する（issue #23）。
+var lastSaveOk = true;
+
 function loadState() {
-  var raw = null;
+  // getItem()自体が例外を投げる場合（プライベートブラウズ等でlocalStorageへの
+  // アクセスそのものがブロックされている）と、JSON.parse()だけが例外を投げる
+  // 場合（アクセスはできるが保存データの中身が壊れている）を区別する。前者は
+  // 今後の書き込みもほぼ確実に失敗するため lastSaveOk を直ちに false へ同期し、
+  // ヘッダーの保存状態表示が「まだ保存されていません」という誤った印象を
+  // 与えないようにする。後者はストレージ自体は生きているため、書き込みは
+  // 通常どおり試みられる想定で lastSaveOk はtrueのままにする（レビュー対応）。
+  var text = null;
   try {
-    var text = window.localStorage.getItem(STORAGE_KEY);
-    if (text) raw = JSON.parse(text);
+    text = window.localStorage.getItem(STORAGE_KEY);
   } catch (e) {
-    showBanner('保存データの読み込みに失敗したため、新しく開始します。', 'warn');
+    lastSaveOk = false;
+    addBanner('保存データの読み込みに失敗したため、新しく開始します。', 'warn');
     return freshState();
   }
+  var raw = null;
+  if (text) {
+    try {
+      raw = JSON.parse(text);
+    } catch (e) {
+      addBanner('保存データの読み込みに失敗したため、新しく開始します。', 'warn');
+      return freshState();
+    }
+  }
+  if (!raw) return freshState();
+  var loadedVersion = typeof raw.schemaVersion === 'number' ? raw.schemaVersion : null;
   var sanitized = sanitizeLoaded(raw);
-  if (!sanitized) return freshState();
+  if (!sanitized) {
+    addBanner('保存データが壊れていたため、新しく開始します。', 'warn');
+    return freshState();
+  }
+  if (loadedVersion !== null && loadedVersion < SCHEMA_VERSION) {
+    addBanner('セーブデータを最新の形式に更新しました。', 'info');
+  }
   if (!sanitized.candidate) sanitized.candidate = generateCharacter(data);
   if (!sanitized.pendingGrants) sanitized.pendingGrants = freshPendingGrants();
   if (!sanitized.pastLives) sanitized.pastLives = [];
@@ -188,16 +226,44 @@ function loadState() {
 }
 
 function saveState() {
+  // 失敗時にlastSavedAtだけ進んで「保存できていないのに保存時刻が更新される」
+  // という虚偽表示にならないよう、成功した場合だけ確定させる。また自動再生中は
+  // 毎年advanceOneYearからsaveStateが呼ばれるため、失敗バナーは状態が変化した
+  // 瞬間だけ出す（失敗し続けている間、年数分積み増され続けるのを防ぐ）。
+  var previousSavedAt = state.lastSavedAt;
+  var wasOk = lastSaveOk;
   state.lastSavedAt = Date.now();
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    lastSaveOk = true;
   } catch (e) {
-    showBanner('保存に失敗しました。この端末では続行できない可能性があります。', 'warn');
+    state.lastSavedAt = previousSavedAt;
+    lastSaveOk = false;
+    if (wasOk) addBanner('保存に失敗しました。この端末には保存されません。', 'warn');
   }
+  renderSaveStatus();
 }
 
-function showBanner(msg, type) {
-  document.getElementById('bannerBox').innerHTML = '<div class="banner ' + (type || 'info') + '">' + esc(msg) + '</div>';
+function renderSaveStatus() {
+  var el = document.getElementById('saveStatusLine');
+  if (!el) return;
+  if (!lastSaveOk) {
+    el.textContent = '保存失敗（この端末には保存されていません）';
+    el.classList.add('save-error');
+    return;
+  }
+  el.classList.remove('save-error');
+  el.textContent = typeof state.lastSavedAt === 'number'
+    ? '最終保存: ' + formatSavedAt(state.lastSavedAt, 'toLocaleTimeString')
+    : 'まだ保存されていません';
+}
+
+// 起動時の複数の状態通知（移行・破損復旧・オフライン経過など）を、互いを
+// 消さずに積み増して並べて出せるようにする（issue #23）。
+function addBanner(msg, type) {
+  var box = document.getElementById('bannerBox');
+  if (!box) return;
+  box.insertAdjacentHTML('beforeend', '<div class="banner ' + (type || 'info') + '">' + esc(msg) + '</div>');
 }
 function clearBanner() {
   document.getElementById('bannerBox').innerHTML = '';
@@ -224,7 +290,7 @@ function catchUpOffline() {
     if (majorLogs.length > 0) {
       msg += '（主な出来事: ' + majorLogs.slice(-3).map(function (l) { return l.text; }).join(' / ') + '）';
     }
-    showBanner(msg, 'info');
+    addBanner(msg, 'info');
   }
 }
 
@@ -760,7 +826,7 @@ function renderWorld() {
     '安定' + Math.round(w.stability) + ' / 戦争' + Math.round(w.warThreat) + ' / 魔' + Math.round(w.demonThreat) +
     ' / 信仰' + Math.round(w.religiousInfluence) + ' / 技術' + Math.round(w.techLevel) + ' / 経済' + Math.round(w.economy);
   document.getElementById('wLifetimes').textContent = state.lifetimeCount + '人';
-  document.getElementById('wSaved').textContent = new Date(state.lastSavedAt).toLocaleString('ja-JP');
+  document.getElementById('wSaved').textContent = formatSavedAt(state.lastSavedAt, 'toLocaleString');
   document.getElementById('pastLivesList2').innerHTML = state.pastLives.length ? pastLivesHtml(state.pastLives) : '<div class="empty">まだ記録がない。</div>';
 }
 
@@ -856,6 +922,7 @@ async function init() {
   state = loadState();
   catchUpOffline();
   renderAll();
+  renderSaveStatus();
 
   document.getElementById('startBtn').addEventListener('click', function () { clearBanner(); startLife(); });
   document.getElementById('rerollBtn').addEventListener('click', rerollCandidate);
@@ -990,14 +1057,67 @@ async function init() {
     }, 30);
   });
 
-  document.getElementById('resetBtn').addEventListener('click', function () {
-    if (!window.confirm('全ての観測データを削除して最初からやり直します。よろしいですか？')) return;
+  // ブラウザ標準のconfirm()は、Enterキーの連打や「よくある確認ダイアログ」への
+  // 慣れで誤って押し抜けやすい。何が消えるかをその場で具体的に示すカードを
+  // 挟み、明示的な「初期化する」ボタンを押さないと実行されないようにする
+  // （issue #23: 初期化ボタンの誤操作防止）。
+  function openResetConfirm() {
+    var lines = [];
+    lines.push('現在観測中の転生者' + (state.character ? '（' + esc(state.character.name) + '）' : '（なし）'));
+    lines.push('これまでの転生数: ' + (state.lifetimeCount || 0) + '回');
+    lines.push('保存されている過去人生の記録: ' + (state.pastLives ? state.pastLives.length : 0) + '件');
+    lines.push('転生記録図鑑の発見状況');
+    lines.push('世界の状態（暦・情勢など）');
+    document.getElementById('resetConfirmBody').innerHTML =
+      '<p>この操作を行うと、次のデータがすべて削除され、最初からやり直しになります。</p>' +
+      '<ul>' + lines.map(function (l) { return '<li>' + l + '</li>'; }).join('') + '</ul>' +
+      '<p class="modalwarn">この操作は取り消せません。</p>';
+    document.getElementById('resetConfirmOverlay').hidden = false;
+    document.getElementById('resetCancelBtn').focus();
+  }
+  function closeResetConfirm() {
+    document.getElementById('resetConfirmOverlay').hidden = true;
+    document.getElementById('resetBtn').focus();
+  }
+
+  document.getElementById('resetBtn').addEventListener('click', openResetConfirm);
+  document.getElementById('resetCancelBtn').addEventListener('click', closeResetConfirm);
+  document.getElementById('resetConfirmOverlay').addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { closeResetConfirm(); return; }
+    // role="alertdialog"のモーダル内にフォーカスを閉じ込める（フォーカストラップ）。
+    // モーダル内の可視な操作対象は「キャンセル」「初期化する」の2ボタンのみなので、
+    // その両端でTab/Shift+Tabを折り返す。これが無いと、オーバーレイの背後に
+    // 隠れている画面（観測画面のボタン等）へフォーカスが抜けてしまい、
+    // 見えない場所を操作することになる（issue #23レビュー対応）。
+    if (e.key !== 'Tab') return;
+    var cancelBtn = document.getElementById('resetCancelBtn');
+    var confirmBtn = document.getElementById('resetConfirmBtn');
+    if (e.shiftKey && document.activeElement === cancelBtn) {
+      e.preventDefault();
+      confirmBtn.focus();
+    } else if (!e.shiftKey && document.activeElement === confirmBtn) {
+      e.preventDefault();
+      cancelBtn.focus();
+    }
+  });
+  document.getElementById('resetConfirmBtn').addEventListener('click', function () {
     stopTimer();
     isPlaying = false;
-    try { window.localStorage.removeItem(STORAGE_KEY); } catch (e) {}
     state = freshState();
     currentTab = 'observe';
     syncTabButtons();
+    clearBanner();
+    document.getElementById('resetConfirmOverlay').hidden = true;
+    // localStorage.removeItem()の成否を無視して常に成功扱いにすると、削除に
+    // 失敗した場合でも画面上は初期化済みに見え、再読み込みすると古いデータが
+    // 復活する（issue #23レビュー対応）。removeItem()の結果に関わらず、
+    // 実際に書き込みが成功したかどうかはsaveState()の既存の成否判定に委ねる
+    // （新しいfreshState()をSTORAGE_KEYへ上書き保存する形で、削除の成否によらず
+    // 「保存領域の中身が初期化後の状態と一致しているか」だけを基準にする）。
+    saveState();
+    if (!lastSaveOk) {
+      addBanner('画面上は初期化されましたが、保存領域への書き込みに失敗しました。再読み込みすると元のデータが復元される可能性があります。', 'warn');
+    }
     renderAll();
   });
 
