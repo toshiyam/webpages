@@ -981,9 +981,14 @@ function discoveryCatalogHtml(category, catalog, discoveredMap) {
   return catalog.map(function (entry) {
     var count = discoveredMap[entry.id] || 0;
     if (count <= 0) return '<span class="chip locked"><b>？？？</b></span>';
+    // 見た目のラベルは「項目名 × 発見数」のままだが、スクリーンリーダー向けには
+    // aria-labelでボタンの実際の操作（過去人生一覧の絞り込み）を明示する
+    // （issue #32: 発見済みチップが何をするボタンなのか読み上げで分かるようにする）。
+    var ariaLabel = esc(entry.label) + 'を含む過去人生を表示';
     return '<button type="button" class="chip" data-filter-category="' + category +
       '" data-filter-id="' + esc(entry.id) + '" data-filter-label="' + esc(entry.label) +
-      '"><b>' + esc(entry.label) + '</b>×' + count + '</button>';
+      '" aria-label="' + ariaLabel + '"><b>' + esc(entry.label) + '</b>×' + count +
+      '<span class="chip-filter-icon" aria-hidden="true">›</span></button>';
   }).join('');
 }
 
