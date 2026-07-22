@@ -4,6 +4,40 @@ import { pickChoice } from './decision-engine.js';
 import { applyEffects } from './effect-processor.js';
 import { mortalityChance, decideDeathCause } from './mortality.js';
 import { recordContextualItemUse } from './starting-grants.js';
+import { WORLD_IMPACT_THRESHOLD, WORLD_IMPACT_LABELS } from './summary-generator.js';
+
+// applyEffectsが返すchangesから、そのイベントが人生の「転機」だったかを
+// 判定し、ログエントリに添える turningPoints（配列）を組み立てる。
+// 既存セーブのログエントリにはこのフィールドが無いが、UI側は
+// `l.turningPoints || []` として読むため、フィールドの有無だけで
+// 保存形式の互換性を壊さない（issue #24の完了条件）。
+// affinityの微増減のような背景ノイズは対象外とし（applyRelationEffect側で
+// 除外済み）、世界影響は1イベント単体の増減がWORLD_IMPACT_THRESHOLD以上の
+// 項目だけを転機として扱う（死亡時要約・観測画面の累計表示と同じ閾値・
+// ラベルを共有し、基準の食い違いを避ける）。
+function buildTurningPoints(character, changes) {
+  var points = [];
+  if (changes.goalFormed) {
+    points.push({ type: 'goal', kind: 'formed', label: changes.goalFormed });
+  } else if (changes.goalStatus) {
+    points.push({ type: 'goal', kind: changes.goalStatus, label: character.goal ? character.goal.label : null });
+  } else if (changes.goalProgressed) {
+    points.push({ type: 'goal', kind: 'progress', label: character.goal ? character.goal.label : null });
+  }
+  if (changes.occupation) {
+    points.push({ type: 'occupation', from: changes.occupation.from, to: changes.occupation.to });
+  }
+  if (changes.relation) {
+    points.push({ type: 'relation', kind: changes.relation.kind, name: changes.relation.name, role: changes.relation.role });
+  }
+  if (changes.worldDeltas) {
+    var deltas = Object.keys(changes.worldDeltas)
+      .filter(function (k) { return Math.abs(changes.worldDeltas[k]) >= WORLD_IMPACT_THRESHOLD; })
+      .map(function (k) { return { key: k, label: WORLD_IMPACT_LABELS[k] || k, diff: changes.worldDeltas[k] }; });
+    if (deltas.length > 0) points.push({ type: 'world', deltas: deltas });
+  }
+  return points;
+}
 
 // 0〜100の範囲で初期値へ緩やかに回帰させる、ドリフト対象の世界統計フィールド。
 // world.yearEra は共有世界の通算年であり「初期値0へ回帰すべき統計値」ではない
@@ -42,7 +76,8 @@ function finishYear(newLogs, character, relations, world, data) {
     newLogs.push({
       year: world.yearEra, age: character.age, eventId: 'death', choiceId: cause,
       text: character.name + 'は' + character.age + '歳で、' + data.deathCauseLabels[cause] + 'によりその生涯を閉じた。',
-      importance: 'historic'
+      importance: 'historic',
+      turningPoints: [{ type: 'death', cause: cause, label: data.deathCauseLabels[cause] }]
     });
   }
 
@@ -89,14 +124,14 @@ export function simulateYear(gameState, data) {
       // 万一発生した場合は「この年は何も起きなかった」ものとして扱う。
       if (!choice) return finishYear(newLogs, character, relations, world, data);
       recordContextualItemUse(character, choice, ctx);
-      applyEffects(character, relations, world, data.worldFieldBounds, data.namePool, choice.effects);
+      var changes = applyEffects(character, relations, world, data.worldFieldBounds, data.namePool, choice.effects);
       character.eventHistory[evt.id] = world.yearEra;
       if (evt.unique) character.firedUnique[evt.id] = true;
       var text = fillName(choice.resultText || evt.text, character.name);
       var importance = choice.importance || (evt.eventType === 'historic' ? 'historic' : (evt.eventType === 'branch' ? 'major' : 'minor'));
       newLogs.push({
         year: world.yearEra, age: character.age, eventId: evt.id, choiceId: choice.id,
-        text: text, importance: importance
+        text: text, importance: importance, turningPoints: buildTurningPoints(character, changes)
       });
 
       // 不老不死の達成など、通常の老衰・病気による死亡判定を経ずに人生を
@@ -110,7 +145,8 @@ export function simulateYear(gameState, data) {
         newLogs.push({
           year: world.yearEra, age: character.age, eventId: 'special_ending', choiceId: endCause,
           text: character.name + 'は' + character.age + '歳で、' + data.deathCauseLabels[endCause] + '。',
-          importance: 'historic'
+          importance: 'historic',
+          turningPoints: [{ type: 'death', cause: endCause, label: data.deathCauseLabels[endCause] }]
         });
         return { logs: newLogs, died: true, deathInfo: endDeathInfo };
       }

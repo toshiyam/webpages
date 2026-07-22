@@ -126,6 +126,13 @@ button.chip:hover, button.chip:focus-visible { border-color: var(--accent); }
 .logentry.historic { border-left-color: var(--gold); background: linear-gradient(90deg, var(--accent-soft), transparent); border-radius: 0 8px 8px 0; }
 .logentry .meta { font-size: 0.7rem; color: var(--muted); margin-bottom: 2px; }
 .logentry .txt { color: var(--text); }
+.logentry.turning { border-left-width: 5px; }
+.tpbadges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.tpbadge {
+  font-size: 0.68rem; font-weight: 700; padding: 1px 8px; border-radius: 999px;
+  background: var(--accent-soft); border: 1px solid var(--accent); color: var(--text);
+}
+.tpbadge.tp-death { background: var(--gold); border-color: var(--gold); color: #1a1424; }
 
 .empty { text-align: center; color: var(--muted); padding: 28px 10px; font-size: 0.9rem; }
 
@@ -136,6 +143,10 @@ button.chip:hover, button.chip:focus-visible { border-color: var(--accent); }
 .deathwrap { text-align: center; }
 .deathwrap .causebadge { display: inline-block; padding: 8px 20px; border-radius: 999px; background: var(--panel-soft); color: var(--danger); font-weight: 800; margin-bottom: 10px; border: 1px solid var(--line); }
 .summarytext { text-align: left; font-size: 0.9rem; margin: 12px 0; white-space: pre-wrap; }
+
+.deathlog { text-align: left; margin: 0 0 14px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--panel-soft); }
+.deathlog summary { cursor: pointer; font-weight: 700; font-size: 0.84rem; min-height: 30px; display: flex; align-items: center; }
+.deathlog .loglist { margin-top: 8px; max-height: 40vh; }
 
 .pastlives { display: grid; gap: 6px; }
 .pastlife { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); border-bottom: 1px dashed var(--line); padding: 4px 0; }
@@ -463,6 +474,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
       <div class="causebadge" id="deathCause"></div>
       <h2 id="deathName"></h2>
       <div class="summarytext" id="deathSummary"></div>
+      <details class="deathlog" id="deathLogDetails">
+        <summary>この生涯の記録を振り返る</summary>
+        <div class="loglist" id="deathLogList"></div>
+      </details>
       <div class="btnrow single">
         <button class="primary" id="nextLifeBtn" type="button">次の転生を開始</button>
       </div>
@@ -5445,7 +5460,18 @@ function buildLifeRecord(character, relations, deathInfo, lifeRank, log) {
     relations: (relations || []).map(function (r) { return { name: r.name, type: r.type, role: r.role }; }),
     historicEvents: (log || [])
       .filter(function (l) { return l.importance === 'historic'; })
-      .map(function (l) { return { year: l.year, age: l.age, text: l.text }; })
+      .map(function (l) { return { year: l.year, age: l.age, text: l.text, importance: 'historic', turningPoints: l.turningPoints || [] }; }),
+    // 転機(turningPoints)は重要度がmajor/minorのログにも付く（例: 職業変更や
+    // 関係の追加は多くの場合historicではない）。historicEventsは重要度
+    // 'historic'のみという既存の絞り込み基準を保存互換性のため変更できない
+    // ので、それ以外で転機を持つログだけを別枠で保存する。historic分は
+    // historicEvents側に既に含まれているため、ここでは対象外とすることで
+    // 過去人生詳細の表示側が二重に持たなくて済むようにしている
+    // （issue #24レビュー対応: 過去人生化した時点でmajor/minorの転機が
+    // 失われていた不具合の修正）。
+    turningEvents: (log || [])
+      .filter(function (l) { return l.importance !== 'historic' && l.turningPoints && l.turningPoints.length > 0; })
+      .map(function (l) { return { year: l.year, age: l.age, text: l.text, importance: l.importance, turningPoints: l.turningPoints }; })
   };
 }
 
@@ -5749,10 +5775,18 @@ function createRelation(namePool, type, role) {
   };
 }
 
+// 戻り値は「このイベントで実際に起きた関係の増減・格上げ」の1件のみ
+// （{ kind: 'added'|'removed'|'promoted', name, role }、無ければnull）。
+// affinityの微増減は毎年のように起こる揺らぎであり、ログ上で目立たせるべき
+// 「転機」ではないため、この戻り値には含めない（issue #24: 転機が埋もれない
+// ようにする要件のうち、何が転機で何が背景ノイズかを区別するための設計）。
 function applyRelationEffect(relations, namePool, relEffect) {
-  if (!relEffect) return;
+  if (!relEffect) return null;
+  var change = null;
   if (relEffect.add && relations.length < MAX_RELATIONS) {
-    relations.push(createRelation(namePool, relEffect.add.type, relEffect.add.role));
+    var newRel = createRelation(namePool, relEffect.add.type, relEffect.add.role);
+    relations.push(newRel);
+    change = { kind: 'added', name: newRel.name, role: newRel.role };
   }
   if (relEffect.affinity) {
     var idx = findRelationIndex(relations, relEffect.affinity.type);
@@ -5760,37 +5794,51 @@ function applyRelationEffect(relations, namePool, relEffect) {
   }
   if (relEffect.remove) {
     var idx2 = findRelationIndex(relations, relEffect.remove.type);
-    if (idx2 >= 0) relations.splice(idx2, 1);
+    if (idx2 >= 0) {
+      var removedRel = relations[idx2];
+      relations.splice(idx2, 1);
+      change = { kind: 'removed', name: removedRel.name, role: removedRel.role };
+    }
   }
   if (relEffect.promote) {
     var idx3 = findRelationIndex(relations, relEffect.promote.from);
     if (idx3 >= 0) {
       relations[idx3].type = relEffect.promote.to;
       relations[idx3].role = relEffect.promote.role || relEffect.promote.to;
+      change = { kind: 'promoted', name: relations[idx3].name, role: relations[idx3].role };
     }
   }
+  return change;
 }
 
 // 生涯目標の新規形成。goal: {id, label} を渡すと未設定時のみ新規形成する。
+// 実際に形成した場合はtrueを返す（既に目標を持っている場合は何もせずfalse）。
 function applyGoalFormation(character, goalEffect) {
   if (goalEffect && !character.goal) {
     character.goal = {
       id: goalEffect.id, label: goalEffect.label, status: 'active',
       formedAtAge: character.age, progress: 0, resolvedAtAge: null
     };
+    return true;
   }
+  return false;
 }
 
 // 生涯目標の進捗・状態変化。goalResolution.ids に現在の character.goal.id が
 // 含まれている場合にのみ適用する。無関係なアーク（例: 目標が「家族を守る」の
 // 転生者が勇者アークの結末に遭遇した場合など）が、たまたま手元にある目標を
 // 誤って達成/失敗扱いにしてしまわないようにするための必須チェック。
+// 戻り値は「このイベントで実際に生涯目標へ起きた変化」
+// ({ progressed: bool, status: string|null })。idsが現在の目標と無関係、
+// または目標が未設定の場合はnullを返す。
 function applyGoalResolution(character, goalResolution) {
-  if (!goalResolution || !character.goal) return;
+  if (!goalResolution || !character.goal) return null;
   var ids = goalResolution.ids;
-  if (ids && ids.indexOf(character.goal.id) === -1) return;
+  if (ids && ids.indexOf(character.goal.id) === -1) return null;
+  var change = { progressed: false, status: null };
   if (typeof goalResolution.progress === 'number') {
     character.goal.progress = clamp(character.goal.progress + goalResolution.progress, 0, 100);
+    change.progressed = true;
   }
   if (goalResolution.status) {
     character.goal.status = goalResolution.status;
@@ -5801,7 +5849,9 @@ function applyGoalResolution(character, goalResolution) {
     if (goalResolution.status === 'completed') {
       character.goal.progress = 100;
     }
+    change.status = goalResolution.status;
   }
+  return change;
 }
 
 function applyWorldEffect(world, bounds, worldEffect) {
@@ -5832,8 +5882,15 @@ function accumulateWorldImpact(character, appliedDeltas) {
 }
 
 // イベント選択肢の effects を転生者・人間関係・生涯目標・世界状態へ反映する。
+// 戻り値はこの1回の適用で「実際に」起きた変化のまとめ（changes）。
+// ログのタイムライン表示（issue #24）が、職業・生涯目標・関係・世界影響の
+// うちどれが転機だったかを、テキストの自然言語解析に頼らず機械的に判定
+// できるようにするための構造化情報であり、以下のフィールドはすべて
+// 「実際に変化が起きた場合のみ」truthyになる（要求されたが無効だった、
+// 変化前後で値が同じだった、等の場合はnull/falseのまま）。
 function applyEffects(character, relations, world, worldBounds, namePool, effects) {
-  if (!effects) return;
+  var changes = { occupation: null, goalFormed: null, goalProgressed: false, goalStatus: null, relation: null, worldDeltas: null };
+  if (!effects) return changes;
   if (effects.abilities) {
     for (var k in effects.abilities) {
       character.abilities[k] = clamp(character.abilities[k] + effects.abilities[k], 0, 100);
@@ -5842,7 +5899,12 @@ function applyEffects(character, relations, world, worldBounds, namePool, effect
   if (typeof effects.health === 'number') character.health = clamp(character.health + effects.health, 0, 100);
   if (typeof effects.money === 'number') character.money = Math.max(0, character.money + effects.money);
   if (typeof effects.fame === 'number') character.fame = clamp(character.fame + effects.fame, 0, 100);
-  if (effects.occupation) character.occupation = effects.occupation;
+  if (effects.occupation && effects.occupation !== character.occupation) {
+    changes.occupation = { from: character.occupation, to: effects.occupation };
+    character.occupation = effects.occupation;
+  } else if (effects.occupation) {
+    character.occupation = effects.occupation;
+  }
   if (effects.flagsAdd) {
     effects.flagsAdd.forEach(function (f) {
       if (character.flags.indexOf(f) === -1) character.flags.push(f);
@@ -5859,18 +5921,29 @@ function applyEffects(character, relations, world, worldBounds, namePool, effect
       if (character.tags.indexOf(t) === -1) character.tags.push(t);
     });
   }
-  if (effects.relation) applyRelationEffect(relations, namePool, effects.relation);
-  if (effects.goal) applyGoalFormation(character, effects.goal);
-  if (effects.goalResolution) applyGoalResolution(character, effects.goalResolution);
+  if (effects.relation) changes.relation = applyRelationEffect(relations, namePool, effects.relation);
+  if (effects.goal) {
+    var formed = applyGoalFormation(character, effects.goal);
+    if (formed) changes.goalFormed = effects.goal.label;
+  }
+  if (effects.goalResolution) {
+    var goalChange = applyGoalResolution(character, effects.goalResolution);
+    if (goalChange) {
+      changes.goalProgressed = goalChange.progressed;
+      changes.goalStatus = goalChange.status;
+    }
+  }
   if (effects.world) {
     var appliedDeltas = applyWorldEffect(world, worldBounds, effects.world);
     accumulateWorldImpact(character, appliedDeltas);
+    changes.worldDeltas = appliedDeltas;
   }
   if (effects.consumeItem) consumeItem(character, effects.consumeItem);
   // markItemUsed: 「役立てた」場合の簡略記法（setItemOutcomeのstatus='used'相当）。
   // 喪失・拒絶など否定的な結果を表したいイベントは itemOutcome を使うこと。
   if (effects.markItemUsed) setItemOutcome(character, effects.markItemUsed, 'used');
   if (effects.itemOutcome) setItemOutcome(character, effects.itemOutcome.itemId, effects.itemOutcome.status);
+  return changes;
 }
 
   /* ---- game-engine/mortality.js ---- */
@@ -6635,6 +6708,39 @@ function findEndLifeConsistencyViolation(log, character, died, deathInfo) {
 }
 
   /* ---- game-engine/time-processor.js ---- */
+// applyEffectsが返すchangesから、そのイベントが人生の「転機」だったかを
+// 判定し、ログエントリに添える turningPoints（配列）を組み立てる。
+// 既存セーブのログエントリにはこのフィールドが無いが、UI側は
+// `l.turningPoints || []` として読むため、フィールドの有無だけで
+// 保存形式の互換性を壊さない（issue #24の完了条件）。
+// affinityの微増減のような背景ノイズは対象外とし（applyRelationEffect側で
+// 除外済み）、世界影響は1イベント単体の増減がWORLD_IMPACT_THRESHOLD以上の
+// 項目だけを転機として扱う（死亡時要約・観測画面の累計表示と同じ閾値・
+// ラベルを共有し、基準の食い違いを避ける）。
+function buildTurningPoints(character, changes) {
+  var points = [];
+  if (changes.goalFormed) {
+    points.push({ type: 'goal', kind: 'formed', label: changes.goalFormed });
+  } else if (changes.goalStatus) {
+    points.push({ type: 'goal', kind: changes.goalStatus, label: character.goal ? character.goal.label : null });
+  } else if (changes.goalProgressed) {
+    points.push({ type: 'goal', kind: 'progress', label: character.goal ? character.goal.label : null });
+  }
+  if (changes.occupation) {
+    points.push({ type: 'occupation', from: changes.occupation.from, to: changes.occupation.to });
+  }
+  if (changes.relation) {
+    points.push({ type: 'relation', kind: changes.relation.kind, name: changes.relation.name, role: changes.relation.role });
+  }
+  if (changes.worldDeltas) {
+    var deltas = Object.keys(changes.worldDeltas)
+      .filter(function (k) { return Math.abs(changes.worldDeltas[k]) >= WORLD_IMPACT_THRESHOLD; })
+      .map(function (k) { return { key: k, label: WORLD_IMPACT_LABELS[k] || k, diff: changes.worldDeltas[k] }; });
+    if (deltas.length > 0) points.push({ type: 'world', deltas: deltas });
+  }
+  return points;
+}
+
 // 0〜100の範囲で初期値へ緩やかに回帰させる、ドリフト対象の世界統計フィールド。
 // world.yearEra は共有世界の通算年であり「初期値0へ回帰すべき統計値」ではない
 // ため、ここには含めない。過去に Object.keys(initialWorld) をそのまま回して
@@ -6672,7 +6778,8 @@ function finishYear(newLogs, character, relations, world, data) {
     newLogs.push({
       year: world.yearEra, age: character.age, eventId: 'death', choiceId: cause,
       text: character.name + 'は' + character.age + '歳で、' + data.deathCauseLabels[cause] + 'によりその生涯を閉じた。',
-      importance: 'historic'
+      importance: 'historic',
+      turningPoints: [{ type: 'death', cause: cause, label: data.deathCauseLabels[cause] }]
     });
   }
 
@@ -6719,14 +6826,14 @@ function simulateYear(gameState, data) {
       // 万一発生した場合は「この年は何も起きなかった」ものとして扱う。
       if (!choice) return finishYear(newLogs, character, relations, world, data);
       recordContextualItemUse(character, choice, ctx);
-      applyEffects(character, relations, world, data.worldFieldBounds, data.namePool, choice.effects);
+      var changes = applyEffects(character, relations, world, data.worldFieldBounds, data.namePool, choice.effects);
       character.eventHistory[evt.id] = world.yearEra;
       if (evt.unique) character.firedUnique[evt.id] = true;
       var text = fillName(choice.resultText || evt.text, character.name);
       var importance = choice.importance || (evt.eventType === 'historic' ? 'historic' : (evt.eventType === 'branch' ? 'major' : 'minor'));
       newLogs.push({
         year: world.yearEra, age: character.age, eventId: evt.id, choiceId: choice.id,
-        text: text, importance: importance
+        text: text, importance: importance, turningPoints: buildTurningPoints(character, changes)
       });
 
       // 不老不死の達成など、通常の老衰・病気による死亡判定を経ずに人生を
@@ -6740,7 +6847,8 @@ function simulateYear(gameState, data) {
         newLogs.push({
           year: world.yearEra, age: character.age, eventId: 'special_ending', choiceId: endCause,
           text: character.name + 'は' + character.age + '歳で、' + data.deathCauseLabels[endCause] + '。',
-          importance: 'historic'
+          importance: 'historic',
+          turningPoints: [{ type: 'death', cause: endCause, label: data.deathCauseLabels[endCause] }]
         });
         return { logs: newLogs, died: true, deathInfo: endDeathInfo };
       }
@@ -6854,6 +6962,13 @@ var WORLD_IMPACT_LABELS = {
   religiousInfluence: '宗教の影響力', techLevel: '技術水準', economy: '経済'
 };
 
+// 「世界への影響として言及するに値する増減」とみなす閾値。死亡時要約
+// （worldImpactPhrase、累計値ベース）・観測画面（worldImpactChips、累計値
+// ベース）・人生ログのタイムライン（issue #24、1イベント単体の増減ベース）
+// の3箇所が同じ基準を共有することで、「ログでは転機扱いなのに要約には
+// 出てこない」といった食い違いを避ける。
+var WORLD_IMPACT_THRESHOLD = 12;
+
 // character.worldImpact は「この人生のイベント効果が実際に世界状態へ与えた
 // 増減の累計」のみを保持している（driftWorld() による自然変動や、前の転生者
 // が残した変化は一切含まれない）。そのため世界の生の値を初期値と比較するの
@@ -6863,7 +6978,7 @@ var WORLD_IMPACT_LABELS = {
 // ためにここへ切り出している（issue #17: 観測中も世界への影響を読み取れる
 // ようにする要件への対応）。
 function summarizeWorldImpact(character, threshold) {
-  var th = typeof threshold === 'number' ? threshold : 12;
+  var th = typeof threshold === 'number' ? threshold : WORLD_IMPACT_THRESHOLD;
   var deltas = [];
   Object.keys(WORLD_IMPACT_LABELS).forEach(function (key) {
     var diff = character.worldImpact[key];
@@ -7717,7 +7832,7 @@ function startLife() {
   state.log = [{
     year: state.world.yearEra, age: 0, eventId: 'birth', choiceId: 'birth',
     text: state.character.name + 'が' + state.character.region + 'に転生した。',
-    importance: 'historic'
+    importance: 'historic', turningPoints: [{ type: 'birth' }]
   }];
   state.lifetimeCount += 1;
   saveState();
@@ -7926,15 +8041,73 @@ function lifeDetailHtml(p) {
       return '<span class="chip"><b>' + esc(r.name) + '</b>' + esc(r.role) + '</span>';
     }).join('') + '</div>');
   }
-  if (p.historicEvents && p.historicEvents.length > 0) {
-    parts.push('<div class="loglist" style="margin-top:8px">' + logListHtml(p.historicEvents) + '</div>');
+  var logEntries = pastLifeLogEntries(p);
+  if (logEntries.length > 0) {
+    parts.push('<div class="loglist" style="margin-top:8px">' + logListHtml(logEntries) + '</div>');
   }
   return parts.join('');
 }
 
+// historicEvents（重要度'historic'のログ）と turningEvents（それ以外で
+// 転機を持つログ）は互いに排他（buildLifeRecord側でhistoricを除外して
+// 作っている）なので、単純に連結して時系列に並べ直すだけで重複なく
+// 一体のタイムラインになる。turningEvents が無い旧セーブ（issue #24より
+// 前に記録された過去人生）では historicEvents のみになり、従来どおりの
+// 表示にフォールバックする。
+function pastLifeLogEntries(p) {
+  var historic = p.historicEvents || [];
+  var turning = p.turningEvents || [];
+  return historic.concat(turning).sort(function (a, b) {
+    if (a.year !== b.year) return a.year - b.year;
+    return a.age - b.age;
+  });
+}
+
+// 生涯目標の形成/進捗/決着・職業・関係・世界影響・死という「転機」の
+// 種類ごとの短いバッジ文言を組み立てる。エンジン側(time-processor.js)が
+// 既に「実際に何が変化したか」を構造化データ(turningPoints)として渡して
+// くるため、ここではテキストのパターンマッチではなく型に基づいて表示する
+// （issue #24: 転機を機械的かつ確実に目立たせるための設計）。
+var GOAL_TURNING_LABELS = {
+  formed: '目標形成', progress: '目標前進', completed: '目標達成',
+  failed: '目標未達成', abandoned: '目標断念', distorted: '目標変容'
+};
+var RELATION_TURNING_LABELS = { added: '出会い', removed: '離別', promoted: '関係進展' };
+
+function turningPointLabel(tp) {
+  if (tp.type === 'goal') {
+    var goalKind = GOAL_TURNING_LABELS[tp.kind] || '目標変化';
+    return goalKind + (tp.label ? '「' + esc(tp.label) + '」' : '');
+  }
+  if (tp.type === 'occupation') {
+    var fromLabel = (data.occupations && data.occupations[tp.from]) || tp.from;
+    var toLabel = (data.occupations && data.occupations[tp.to]) || tp.to;
+    return '転職: ' + esc(fromLabel) + '→' + esc(toLabel);
+  }
+  if (tp.type === 'relation') {
+    var relKind = RELATION_TURNING_LABELS[tp.kind] || '関係変化';
+    return relKind + ': ' + esc(tp.name) + (tp.role ? '（' + esc(tp.role) + '）' : '');
+  }
+  if (tp.type === 'world') {
+    return '世界: ' + tp.deltas.map(function (d) { return esc(d.label) + (d.diff > 0 ? '↑' : '↓'); }).join(' ');
+  }
+  if (tp.type === 'death') return '生涯の終わり: ' + esc(tp.label || '');
+  if (tp.type === 'birth') return '転生';
+  return '';
+}
+
+function turningPointsHtml(points) {
+  if (!points || points.length === 0) return '';
+  return '<div class="tpbadges">' + points.map(function (tp) {
+    return '<span class="tpbadge tp-' + esc(tp.type) + '">' + turningPointLabel(tp) + '</span>';
+  }).join('') + '</div>';
+}
+
 function logListHtml(entries) {
   return entries.map(function (l) {
-    return '<div class="logentry ' + l.importance + '"><div class="meta">暦' + l.year + '年 / ' + l.age + '歳</div><div class="txt">' + esc(l.text) + '</div></div>';
+    var points = l.turningPoints || [];
+    var cls = 'logentry ' + l.importance + (points.length > 0 ? ' turning' : '');
+    return '<div class="' + cls + '"><div class="meta">暦' + l.year + '年 / ' + l.age + '歳</div><div class="txt">' + esc(l.text) + '</div>' + turningPointsHtml(points) + '</div>';
   }).join('');
 }
 
@@ -8424,6 +8597,13 @@ function renderDeath() {
   document.getElementById('deathCause').textContent = data.deathCauseLabels[info.cause];
   document.getElementById('deathName').textContent = state.character.name + 'の生涯';
   document.getElementById('deathSummary').textContent = state.lastDeathSummary || '';
+  // 人生要約（テンプレート文）が「なぜそう評価されたか」を裏付ける生ログを、
+  // 同じ画面から遡って確認できるようにする（issue #24: 死亡後の要約とログが
+  // 自然につながるようにする要件への対応）。出生から死まで時系列（古い順）
+  // に並べ、「物語を読み返す」体験に寄せる（観測中のタブは新しい順）。
+  document.getElementById('deathLogList').innerHTML = state.log.length
+    ? logListHtml(state.log)
+    : '<div class="empty">記録がない。</div>';
 }
 
 /* ---- 初期化 ---- */
