@@ -99,8 +99,14 @@ button.small.active { background: var(--accent); color: #1a1424; border-color: v
 .chip b { color: var(--text); }
 .chip.locked { opacity: 0.5; }
 .chip.locked b { color: var(--muted); }
-button.chip { font: inherit; cursor: pointer; min-height: 30px; }
-button.chip:hover, button.chip:focus-visible { border-color: var(--accent); }
+button.chip {
+  font: inherit; cursor: pointer; min-height: 44px; padding: 6px 12px;
+  background: var(--accent-soft); border-color: var(--accent); color: var(--text);
+}
+button.chip b { color: var(--text); }
+button.chip:hover, button.chip:focus-visible { background: var(--accent); color: #1a1424; }
+button.chip:hover b, button.chip:focus-visible b { color: #1a1424; }
+.chip-filter-icon { margin-left: 1px; opacity: 0.75; }
 .dischint { font-size: 0.76rem; color: var(--muted); margin: 0 0 6px; }
 .filterbox {
   display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
