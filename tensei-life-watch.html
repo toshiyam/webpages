@@ -75,7 +75,10 @@ nav.tabs button.active { background: var(--accent); color: #1a1424; border-color
 
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
 .card h2 { margin: 0 0 10px; font-size: 0.98rem; }
-.card h2 .sub { color: var(--muted); font-weight: 400; font-size: 0.78rem; }
+.card h2 .sub, .sub { color: var(--muted); font-weight: 400; font-size: 0.78rem; }
+.speedrow + .sub { margin-top: 6px; }
+#speedDesc, #offlineExplain { display: block; }
+#speedDesc + #offlineExplain { margin-top: 4px; }
 
 .rowline { display: flex; justify-content: space-between; gap: 8px; font-size: 0.86rem; padding: 4px 0; border-bottom: 1px dashed var(--line); }
 .rowline:last-child { border-bottom: none; }
@@ -344,6 +347,8 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
         <button class="secondary" id="advanceBtn" type="button">1年進める</button>
       </div>
       <div class="speedrow" id="speedRow"></div>
+      <div class="sub" id="speedDesc"></div>
+      <div class="sub" id="offlineExplain"></div>
     </div>
     <div class="card">
       <h2>最新ログ</h2>
@@ -7553,6 +7558,16 @@ function esc(s) {
 
 var SCHEMA_VERSION = 7;
 var STORAGE_KEY = 'tenseiLifeWatch:v1';
+// index.html側には値を固定文言として書かない。#offlineExplain の表示文言は
+// renderObserve() がこの定数から都度組み立てるため、表示とロジックが
+// 乖離することはない（issue #19レビュー対応: 表示値をJS側と分離して
+// 固定しないこと）。
+// なお、mortality.jsのmortalityChance()はage>=100で必ず1（=Math.random()の
+// 返り値がどうであれ確実に死亡）を返し、年齢はsimulateYearで毎年必ず+1
+// されるため、誕生（age=0）から数えて約100年以内に必ず死亡する。つまり
+// この上限（300）に達する前に必ず人生が終わるため、「上限に達したため
+// 打ち切った」という通知はこのゲームの死亡則の下では実際には発生しえない
+// （到達不能なコードになるため、catchUpOffline側にはあえて実装していない）。
 var MAX_OFFLINE_YEARS = 300;
 
 var ELEMENT_LABELS = {
@@ -7563,10 +7578,13 @@ var ELEMENT_LABELS = {
 
 var GOAL_STATUS_LABELS = { active: '追求中', completed: '達成', abandoned: '放棄', failed: '未達成', distorted: '変質' };
 
+// desc: 「速度変更の意味を短く表示する」（issue #19）ための、1年あたりの
+// 実時間を短い日本語で示す文言。yearMsから動的に算出せず固定文言にしている
+// のは、四捨五入や単位（秒/ミリ秒）の表記揺れを避けるため。
 var SPEEDS = [
-  { id: 'slow', label: '遅い', yearMs: 8000 },
-  { id: 'normal', label: '標準', yearMs: 3000 },
-  { id: 'fast', label: '速い', yearMs: 900 }
+  { id: 'slow', label: '遅い', yearMs: 8000, desc: '1年 ≈ 8秒' },
+  { id: 'normal', label: '標準', yearMs: 3000, desc: '1年 ≈ 3秒' },
+  { id: 'fast', label: '速い', yearMs: 900, desc: '1年 ≈ 0.9秒' }
 ];
 
 var data = null;
@@ -8406,6 +8424,21 @@ function renderObserve() {
   document.getElementById('speedRow').innerHTML = SPEEDS.map(function (s, i) {
     return '<button class="small' + (i === state.speedIndex ? ' active' : '') + '" data-speed="' + i + '" type="button">' + s.label + '</button>';
   }).join('');
+  // 選択中の速度が具体的に何を意味するか（1年あたりの実時間）を短く表示する
+  // （issue #19: 「速度変更の意味を短く表示する」要件への対応）。
+  var speed = SPEEDS[state.speedIndex];
+  document.getElementById('speedDesc').textContent = speed.desc;
+  // catchUpOffline()は不在時間(ms)を「選択中の速度のyearMs」で年数に換算する
+  // ため、速い速度を選んだまま短時間離れただけでも大量の年数が処理されうる
+  // （例: 速い=1年≈0.9秒なら、約90秒の不在で約100年、通常はその途中で死亡
+  // する）。この「選択中の速度がオフライン換算にも使われる」という事実を
+  // 明示しないと、「勝手に進みすぎた」という事故感の主因を説明できていない
+  // ことになる（issue #19レビュー対応）。数値(MAX_OFFLINE_YEARS)は
+  // index.html側に固定文言として持たず、ここで組み立てることで表示と
+  // 実際の上限値が乖離しないようにする。
+  document.getElementById('offlineExplain').textContent =
+    '不在時間もこの速度（' + speed.label + '）で換算されるため、速い速度のまま長く離れると一気に年月が進みます。' +
+    '不在中は最大' + MAX_OFFLINE_YEARS + '年分まで自動処理し、死亡・特殊結末に至った場合はそこで停止します。';
 }
 
 function itemStatusText(c) {

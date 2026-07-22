@@ -61,7 +61,10 @@ nav.tabs button.active { background: var(--accent); color: #1a1424; border-color
 
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
 .card h2 { margin: 0 0 10px; font-size: 0.98rem; }
-.card h2 .sub { color: var(--muted); font-weight: 400; font-size: 0.78rem; }
+.card h2 .sub, .sub { color: var(--muted); font-weight: 400; font-size: 0.78rem; }
+.speedrow + .sub { margin-top: 6px; }
+#speedDesc, #offlineExplain { display: block; }
+#speedDesc + #offlineExplain { margin-top: 4px; }
 
 .rowline { display: flex; justify-content: space-between; gap: 8px; font-size: 0.86rem; padding: 4px 0; border-bottom: 1px dashed var(--line); }
 .rowline:last-child { border-bottom: none; }
