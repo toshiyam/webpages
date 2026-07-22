@@ -204,6 +204,10 @@
     <div id="encyclopediaLivesView">
       <div class="card" id="encyclopediaListCard">
         <h2>過去人生一覧 <span class="sub" id="encyclopediaCount"></span></h2>
+        <div class="filterbox" id="encyclopediaFilterBox" hidden>
+          <span id="encyclopediaFilterLabel"></span>
+          <button class="small" id="encyclopediaFilterClearBtn" type="button">絞り込みを解除</button>
+        </div>
         <div class="pastlives" id="encyclopediaList"></div>
         <div class="empty" id="encyclopediaEmpty" hidden>まだ記録がない。</div>
       </div>
@@ -222,24 +226,40 @@
       </div>
       <div class="card">
         <h2>特殊要素</h2>
+        <div class="dischint" id="discoveryElementsHint"></div>
         <div class="relchips" id="discoveryElements"></div>
       </div>
       <div class="card">
         <h2>生涯目標</h2>
+        <div class="dischint" id="discoveryGoalsHint"></div>
         <div class="relchips" id="discoveryGoals"></div>
       </div>
       <div class="card">
         <h2>職業</h2>
+        <div class="dischint" id="discoveryOccupationsHint"></div>
         <div class="relchips" id="discoveryOccupations"></div>
       </div>
       <div class="card">
         <h2>死因</h2>
+        <div class="dischint" id="discoveryDeathCausesHint"></div>
         <div class="relchips" id="discoveryDeathCauses"></div>
       </div>
       <div class="card">
         <h2>実績・人生アークの結末</h2>
+        <div class="dischint" id="discoveryTagsHint"></div>
         <div class="relchips" id="discoveryTags"></div>
-        <div class="empty" id="discoveryTagsEmpty" hidden>まだ何も発見していない。</div>
+      </div>
+      <div class="card">
+        <h2>持込アイテムの解禁状況 <span class="sub">転生準備画面と同じ基準</span></h2>
+        <div class="preplist" id="discoveryItems"></div>
+      </div>
+      <div class="card">
+        <h2>初期スキルの解禁状況 <span class="sub">転生準備画面と同じ基準</span></h2>
+        <div class="preplist" id="discoverySkills"></div>
+      </div>
+      <div class="card">
+        <h2>制約・代償の解禁状況 <span class="sub">転生準備画面と同じ基準</span></h2>
+        <div class="preplist" id="discoveryBurdens"></div>
       </div>
     </div>
   </section>

@@ -96,6 +96,14 @@ button.small.active { background: var(--accent); color: #1a1424; border-color: v
 .chip b { color: var(--text); }
 .chip.locked { opacity: 0.5; }
 .chip.locked b { color: var(--muted); }
+button.chip { font: inherit; cursor: pointer; min-height: 30px; }
+button.chip:hover, button.chip:focus-visible { border-color: var(--accent); }
+.dischint { font-size: 0.76rem; color: var(--muted); margin: 0 0 6px; }
+.filterbox {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+  background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 10px;
+  padding: 6px 10px; margin-bottom: 8px; font-size: 0.8rem;
+}
 
 .logfilter { display: flex; gap: 6px; margin-bottom: 10px; }
 .loglist { display: grid; gap: 8px; max-height: 60vh; overflow-y: auto; }
