@@ -2,7 +2,7 @@ import {
   buildDataBundle, generateCharacter, simulateYear, generateSummary, runBatchSimulation,
   applyStartingGrants, isItemSelectable, determineLifeRank, lifeRankLabel,
   freshDiscoveries, recordLifeDiscoveries, isItemUnlocked, isSkillUnlocked, isBurdenUnlocked, buildLifeRecord,
-  restoreDiscoveriesFromPastLives,
+  restoreDiscoveriesFromPastLives, summarizeWorldImpact,
   TAG_SHORT_LABELS
 } from '../game-engine/index.js';
 
@@ -623,6 +623,29 @@ function renderObserve() {
   document.getElementById('goalLine').textContent = c.goal
     ? c.goal.label + '（' + (GOAL_STATUS_LABELS[c.goal.status] || c.goal.status) + '・進捗' + c.goal.progress + '）'
     : '未形成';
+  var goalProgressBox = document.getElementById('goalProgressBox');
+  if (c.goal) {
+    goalProgressBox.hidden = false;
+    document.getElementById('goalProgressFill').style.width = c.goal.progress + '%';
+    document.getElementById('goalProgressVal').textContent = c.goal.progress + '%';
+  } else {
+    goalProgressBox.hidden = true;
+  }
+
+  // 世界への影響（issue #17）: character.worldImpact のうち閾値以上の増減が
+  // あった項目だけを、死亡時要約と同じ基準（summarizeWorldImpact）で
+  // 観測中からも読み取れるようにする。色だけに頼らず「上昇/低下」を文言で示す。
+  var worldImpactDeltas = summarizeWorldImpact(c);
+  var worldImpactEmpty = document.getElementById('worldImpactEmpty');
+  if (worldImpactDeltas.length === 0) {
+    worldImpactEmpty.hidden = false;
+    document.getElementById('worldImpactChips').innerHTML = '';
+  } else {
+    worldImpactEmpty.hidden = true;
+    document.getElementById('worldImpactChips').innerHTML = worldImpactDeltas.map(function (d) {
+      return '<span class="chip"><b>' + esc(d.label) + '</b>' + (d.diff > 0 ? '上昇' : '低下') + '</span>';
+    }).join('');
+  }
 
   document.getElementById('ovItem').textContent = itemStatusText(c);
   document.getElementById('ovSkill').textContent = c.startingSkill
