@@ -434,6 +434,17 @@ function logListHtml(entries) {
   }).join('');
 }
 
+// currentTab（JS側の選択状態）と、タブボタンの見た目・aria-selectedを一致
+// させる。タブクリック以外の経路（初期化ボタン等）でcurrentTabを直接
+// 書き換えた場合にも呼び、両者が食い違わないようにする。
+function syncTabButtons() {
+  Array.prototype.forEach.call(document.querySelectorAll('#tabNav button'), function (b) {
+    var isSelected = b.getAttribute('data-tab') === currentTab;
+    b.classList.toggle('active', isSelected);
+    b.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+  });
+}
+
 function renderAll() {
   document.getElementById('genLine').textContent = '第' + (state.lifetimeCount || 1) + '転生 / 暦' + Math.round(state.world.yearEra) + '年';
 
@@ -461,8 +472,8 @@ function renderAll() {
 function prepCardHtml(def, kind, selectedId, locked, lockNote) {
   var isActive = selectedId === def.id;
   var classes = 'prepcard' + (isActive ? ' active' : '') + (locked ? ' locked' : '');
-  var html = '<button type="button" class="' + classes + '" data-' + kind + '="' + esc(def.id) + '"' + (locked ? ' disabled' : '') + '>';
-  html += '<div class="pc-title"><span>' + esc(def.label) + '</span></div>';
+  var html = '<button type="button" class="' + classes + '" data-' + kind + '="' + esc(def.id) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '"' + (locked ? ' disabled' : '') + '>';
+  html += '<div class="pc-title"><span>' + esc(def.label) + '</span>' + (isActive ? '<span class="pc-selected">選択中</span>' : '') + '</div>';
   html += '<div class="pc-desc">' + esc(def.description) + '</div>';
   if (def.benefit) html += '<div class="pc-benefit">恩恵: ' + esc(def.benefit) + '</div>';
   if (def.risk && def.risk !== '特になし。') html += '<div class="pc-risk">注意: ' + esc(def.risk) + '</div>';
@@ -473,8 +484,8 @@ function prepCardHtml(def, kind, selectedId, locked, lockNote) {
 
 function noneCardHtml(kind, selectedId, label) {
   var isActive = !selectedId;
-  return '<button type="button" class="prepcard' + (isActive ? ' active' : '') + '" data-' + kind + '="none">' +
-    '<div class="pc-title"><span>' + esc(label || 'なし') + '</span></div>' +
+  return '<button type="button" class="prepcard' + (isActive ? ' active' : '') + '" data-' + kind + '="none" aria-pressed="' + (isActive ? 'true' : 'false') + '">' +
+    '<div class="pc-title"><span>' + esc(label || 'なし') + '</span>' + (isActive ? '<span class="pc-selected">選択中</span>' : '') + '</div>' +
     '<div class="pc-desc">何も持ち込まない。</div>' +
     '</button>';
 }
@@ -862,9 +873,7 @@ async function init() {
     var btn = e.target.closest('[data-tab]');
     if (!btn) return;
     currentTab = btn.getAttribute('data-tab');
-    Array.prototype.forEach.call(document.querySelectorAll('#tabNav button'), function (b) {
-      b.classList.toggle('active', b === btn);
-    });
+    syncTabButtons();
     renderAll();
   });
 
@@ -959,6 +968,7 @@ async function init() {
     try { window.localStorage.removeItem(STORAGE_KEY); } catch (e) {}
     state = freshState();
     currentTab = 'observe';
+    syncTabButtons();
     renderAll();
   });
 

@@ -20,13 +20,13 @@
     <button class="small" id="resetBtn" type="button" title="全データを削除してやり直す">初期化</button>
   </header>
 
-  <div id="bannerBox"></div>
+  <div id="bannerBox" role="status" aria-live="polite"></div>
 
-  <nav class="tabs" id="tabNav" hidden>
-    <button type="button" data-tab="observe" class="active">観測</button>
-    <button type="button" data-tab="log">人生記録</button>
-    <button type="button" data-tab="world">世界</button>
-    <button type="button" data-tab="encyclopedia">図鑑</button>
+  <nav class="tabs" id="tabNav" hidden role="tablist" aria-label="表示切り替え">
+    <button type="button" id="tabBtnObserve" data-tab="observe" class="active" role="tab" aria-selected="true" aria-controls="screenObserve">観測</button>
+    <button type="button" id="tabBtnLog" data-tab="log" role="tab" aria-selected="false" aria-controls="screenLog">人生記録</button>
+    <button type="button" id="tabBtnWorld" data-tab="world" role="tab" aria-selected="false" aria-controls="screenWorld">世界</button>
+    <button type="button" id="tabBtnEncyclopedia" data-tab="encyclopedia" role="tab" aria-selected="false" aria-controls="screenEncyclopedia">図鑑</button>
   </nav>
 
   <section id="screenStart">
@@ -96,7 +96,7 @@
     </div>
   </section>
 
-  <section id="screenObserve" hidden>
+  <section id="screenObserve" hidden role="tabpanel" aria-labelledby="tabBtnObserve">
     <div class="card">
       <h2 id="charTitle">観測対象</h2>
       <div class="rowline"><span class="k">年齢</span><span class="v" id="ovAge"></span></div>
@@ -153,7 +153,7 @@
     </div>
   </section>
 
-  <section id="screenLog" hidden>
+  <section id="screenLog" hidden role="tabpanel" aria-labelledby="tabBtnLog">
     <div class="card">
       <h2>人生記録 <span class="sub" id="logSpan"></span></h2>
       <div class="logfilter">
@@ -166,7 +166,7 @@
     </div>
   </section>
 
-  <section id="screenWorld" hidden>
+  <section id="screenWorld" hidden role="tabpanel" aria-labelledby="tabBtnWorld">
     <div class="card">
       <h2>世界の状態</h2>
       <div class="rowline"><span class="k">暦</span><span class="v" id="wYear"></span></div>
@@ -180,7 +180,7 @@
     </div>
   </section>
 
-  <section id="screenEncyclopedia" hidden>
+  <section id="screenEncyclopedia" hidden role="tabpanel" aria-labelledby="tabBtnEncyclopedia">
     <div class="card">
       <h2>転生記録図鑑</h2>
       <div class="btnrow">
