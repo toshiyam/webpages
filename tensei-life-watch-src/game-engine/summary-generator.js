@@ -99,7 +99,7 @@ function dominantTrait(character, traitsDef) {
   return best;
 }
 
-var WORLD_IMPACT_LABELS = {
+export var WORLD_IMPACT_LABELS = {
   stability: '王国の安定', warThreat: '戦争の脅威', demonThreat: '魔の勢力',
   religiousInfluence: '宗教の影響力', techLevel: '技術水準', economy: '経済'
 };
@@ -107,16 +107,26 @@ var WORLD_IMPACT_LABELS = {
 // character.worldImpact は「この人生のイベント効果が実際に世界状態へ与えた
 // 増減の累計」のみを保持している（driftWorld() による自然変動や、前の転生者
 // が残した変化は一切含まれない）。そのため世界の生の値を初期値と比較するの
-// ではなく、必ずこの積算値だけを参照する。
-function worldImpactPhrase(character) {
+// ではなく、必ずこの積算値だけを参照する。閾値以上の増減があった項目だけを
+// { key, label, diff } の配列で返す。死亡時要約（worldImpactPhrase）と
+// 観測中のライブ表示（web-ui/main.js）の両方が、同じ閾値・ラベルを共有する
+// ためにここへ切り出している（issue #17: 観測中も世界への影響を読み取れる
+// ようにする要件への対応）。
+export function summarizeWorldImpact(character, threshold) {
+  var th = typeof threshold === 'number' ? threshold : 12;
   var deltas = [];
   Object.keys(WORLD_IMPACT_LABELS).forEach(function (key) {
     var diff = character.worldImpact[key];
-    if (typeof diff === 'number' && Math.abs(diff) >= 12) deltas.push({ key: key, diff: diff });
+    if (typeof diff === 'number' && Math.abs(diff) >= th) deltas.push({ key: key, label: WORLD_IMPACT_LABELS[key], diff: diff });
   });
+  return deltas;
+}
+
+function worldImpactPhrase(character) {
+  var deltas = summarizeWorldImpact(character);
   if (deltas.length === 0) return null;
   var parts = deltas.map(function (d) {
-    return WORLD_IMPACT_LABELS[d.key] + 'が' + (d.diff > 0 ? '大きく高まった' : '大きく損なわれた');
+    return d.label + 'が' + (d.diff > 0 ? '大きく高まった' : '大きく損なわれた');
   });
   return 'その生涯を通じて、' + parts.join('、') + '。';
 }

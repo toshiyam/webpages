@@ -273,6 +273,14 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
       <div class="relchips" id="elementChips"></div>
       <div class="empty" id="elementEmpty" hidden>特別な要素は宿っていない。</div>
       <div class="rowline" style="margin-top:8px"><span class="k">生涯目標</span><span class="v" id="goalLine">未形成</span></div>
+      <div class="barlist" id="goalProgressBox" style="margin-top:6px" hidden>
+        <div class="bar-item"><span class="label">進捗</span><div class="bar-track"><div class="bar-fill" id="goalProgressFill"></div></div><span class="val" id="goalProgressVal"></span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>世界への影響 <span class="sub">この人生がもたらした変化</span></h2>
+      <div class="relchips" id="worldImpactChips"></div>
+      <div class="empty" id="worldImpactEmpty" hidden>まだ目立った影響を与えていない。</div>
     </div>
     <div class="card">
       <h2>時間進行</h2>
@@ -6786,16 +6794,26 @@ var WORLD_IMPACT_LABELS = {
 // character.worldImpact は「この人生のイベント効果が実際に世界状態へ与えた
 // 増減の累計」のみを保持している（driftWorld() による自然変動や、前の転生者
 // が残した変化は一切含まれない）。そのため世界の生の値を初期値と比較するの
-// ではなく、必ずこの積算値だけを参照する。
-function worldImpactPhrase(character) {
+// ではなく、必ずこの積算値だけを参照する。閾値以上の増減があった項目だけを
+// { key, label, diff } の配列で返す。死亡時要約（worldImpactPhrase）と
+// 観測中のライブ表示（web-ui/main.js）の両方が、同じ閾値・ラベルを共有する
+// ためにここへ切り出している（issue #17: 観測中も世界への影響を読み取れる
+// ようにする要件への対応）。
+function summarizeWorldImpact(character, threshold) {
+  var th = typeof threshold === 'number' ? threshold : 12;
   var deltas = [];
   Object.keys(WORLD_IMPACT_LABELS).forEach(function (key) {
     var diff = character.worldImpact[key];
-    if (typeof diff === 'number' && Math.abs(diff) >= 12) deltas.push({ key: key, diff: diff });
+    if (typeof diff === 'number' && Math.abs(diff) >= th) deltas.push({ key: key, label: WORLD_IMPACT_LABELS[key], diff: diff });
   });
+  return deltas;
+}
+
+function worldImpactPhrase(character) {
+  var deltas = summarizeWorldImpact(character);
   if (deltas.length === 0) return null;
   var parts = deltas.map(function (d) {
-    return WORLD_IMPACT_LABELS[d.key] + 'が' + (d.diff > 0 ? '大きく高まった' : '大きく損なわれた');
+    return d.label + 'が' + (d.diff > 0 ? '大きく高まった' : '大きく損なわれた');
   });
   return 'その生涯を通じて、' + parts.join('、') + '。';
 }
@@ -7952,6 +7970,29 @@ function renderObserve() {
   document.getElementById('goalLine').textContent = c.goal
     ? c.goal.label + '（' + (GOAL_STATUS_LABELS[c.goal.status] || c.goal.status) + '・進捗' + c.goal.progress + '）'
     : '未形成';
+  var goalProgressBox = document.getElementById('goalProgressBox');
+  if (c.goal) {
+    goalProgressBox.hidden = false;
+    document.getElementById('goalProgressFill').style.width = c.goal.progress + '%';
+    document.getElementById('goalProgressVal').textContent = c.goal.progress + '%';
+  } else {
+    goalProgressBox.hidden = true;
+  }
+
+  // 世界への影響（issue #17）: character.worldImpact のうち閾値以上の増減が
+  // あった項目だけを、死亡時要約と同じ基準（summarizeWorldImpact）で
+  // 観測中からも読み取れるようにする。色だけに頼らず「上昇/低下」を文言で示す。
+  var worldImpactDeltas = summarizeWorldImpact(c);
+  var worldImpactEmpty = document.getElementById('worldImpactEmpty');
+  if (worldImpactDeltas.length === 0) {
+    worldImpactEmpty.hidden = false;
+    document.getElementById('worldImpactChips').innerHTML = '';
+  } else {
+    worldImpactEmpty.hidden = true;
+    document.getElementById('worldImpactChips').innerHTML = worldImpactDeltas.map(function (d) {
+      return '<span class="chip"><b>' + esc(d.label) + '</b>' + (d.diff > 0 ? '上昇' : '低下') + '</span>';
+    }).join('');
+  }
 
   document.getElementById('ovItem').textContent = itemStatusText(c);
   document.getElementById('ovSkill').textContent = c.startingSkill
