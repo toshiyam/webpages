@@ -120,6 +120,17 @@ export function buildLifeRecord(character, relations, deathInfo, lifeRank, log) 
     relations: (relations || []).map(function (r) { return { name: r.name, type: r.type, role: r.role }; }),
     historicEvents: (log || [])
       .filter(function (l) { return l.importance === 'historic'; })
-      .map(function (l) { return { year: l.year, age: l.age, text: l.text }; })
+      .map(function (l) { return { year: l.year, age: l.age, text: l.text, importance: 'historic', turningPoints: l.turningPoints || [] }; }),
+    // 転機(turningPoints)は重要度がmajor/minorのログにも付く（例: 職業変更や
+    // 関係の追加は多くの場合historicではない）。historicEventsは重要度
+    // 'historic'のみという既存の絞り込み基準を保存互換性のため変更できない
+    // ので、それ以外で転機を持つログだけを別枠で保存する。historic分は
+    // historicEvents側に既に含まれているため、ここでは対象外とすることで
+    // 過去人生詳細の表示側が二重に持たなくて済むようにしている
+    // （issue #24レビュー対応: 過去人生化した時点でmajor/minorの転機が
+    // 失われていた不具合の修正）。
+    turningEvents: (log || [])
+      .filter(function (l) { return l.importance !== 'historic' && l.turningPoints && l.turningPoints.length > 0; })
+      .map(function (l) { return { year: l.year, age: l.age, text: l.text, importance: l.importance, turningPoints: l.turningPoints }; })
   };
 }

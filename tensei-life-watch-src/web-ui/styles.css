@@ -112,6 +112,13 @@ button.chip:hover, button.chip:focus-visible { border-color: var(--accent); }
 .logentry.historic { border-left-color: var(--gold); background: linear-gradient(90deg, var(--accent-soft), transparent); border-radius: 0 8px 8px 0; }
 .logentry .meta { font-size: 0.7rem; color: var(--muted); margin-bottom: 2px; }
 .logentry .txt { color: var(--text); }
+.logentry.turning { border-left-width: 5px; }
+.tpbadges { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.tpbadge {
+  font-size: 0.68rem; font-weight: 700; padding: 1px 8px; border-radius: 999px;
+  background: var(--accent-soft); border: 1px solid var(--accent); color: var(--text);
+}
+.tpbadge.tp-death { background: var(--gold); border-color: var(--gold); color: #1a1424; }
 
 .empty { text-align: center; color: var(--muted); padding: 28px 10px; font-size: 0.9rem; }
 
@@ -122,6 +129,10 @@ button.chip:hover, button.chip:focus-visible { border-color: var(--accent); }
 .deathwrap { text-align: center; }
 .deathwrap .causebadge { display: inline-block; padding: 8px 20px; border-radius: 999px; background: var(--panel-soft); color: var(--danger); font-weight: 800; margin-bottom: 10px; border: 1px solid var(--line); }
 .summarytext { text-align: left; font-size: 0.9rem; margin: 12px 0; white-space: pre-wrap; }
+
+.deathlog { text-align: left; margin: 0 0 14px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--panel-soft); }
+.deathlog summary { cursor: pointer; font-weight: 700; font-size: 0.84rem; min-height: 30px; display: flex; align-items: center; }
+.deathlog .loglist { margin-top: 8px; max-height: 40vh; }
 
 .pastlives { display: grid; gap: 6px; }
 .pastlife { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); border-bottom: 1px dashed var(--line); padding: 4px 0; }

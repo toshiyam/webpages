@@ -307,7 +307,7 @@ function startLife() {
   state.log = [{
     year: state.world.yearEra, age: 0, eventId: 'birth', choiceId: 'birth',
     text: state.character.name + 'が' + state.character.region + 'に転生した。',
-    importance: 'historic'
+    importance: 'historic', turningPoints: [{ type: 'birth' }]
   }];
   state.lifetimeCount += 1;
   saveState();
@@ -516,15 +516,73 @@ function lifeDetailHtml(p) {
       return '<span class="chip"><b>' + esc(r.name) + '</b>' + esc(r.role) + '</span>';
     }).join('') + '</div>');
   }
-  if (p.historicEvents && p.historicEvents.length > 0) {
-    parts.push('<div class="loglist" style="margin-top:8px">' + logListHtml(p.historicEvents) + '</div>');
+  var logEntries = pastLifeLogEntries(p);
+  if (logEntries.length > 0) {
+    parts.push('<div class="loglist" style="margin-top:8px">' + logListHtml(logEntries) + '</div>');
   }
   return parts.join('');
 }
 
+// historicEvents（重要度'historic'のログ）と turningEvents（それ以外で
+// 転機を持つログ）は互いに排他（buildLifeRecord側でhistoricを除外して
+// 作っている）なので、単純に連結して時系列に並べ直すだけで重複なく
+// 一体のタイムラインになる。turningEvents が無い旧セーブ（issue #24より
+// 前に記録された過去人生）では historicEvents のみになり、従来どおりの
+// 表示にフォールバックする。
+function pastLifeLogEntries(p) {
+  var historic = p.historicEvents || [];
+  var turning = p.turningEvents || [];
+  return historic.concat(turning).sort(function (a, b) {
+    if (a.year !== b.year) return a.year - b.year;
+    return a.age - b.age;
+  });
+}
+
+// 生涯目標の形成/進捗/決着・職業・関係・世界影響・死という「転機」の
+// 種類ごとの短いバッジ文言を組み立てる。エンジン側(time-processor.js)が
+// 既に「実際に何が変化したか」を構造化データ(turningPoints)として渡して
+// くるため、ここではテキストのパターンマッチではなく型に基づいて表示する
+// （issue #24: 転機を機械的かつ確実に目立たせるための設計）。
+var GOAL_TURNING_LABELS = {
+  formed: '目標形成', progress: '目標前進', completed: '目標達成',
+  failed: '目標未達成', abandoned: '目標断念', distorted: '目標変容'
+};
+var RELATION_TURNING_LABELS = { added: '出会い', removed: '離別', promoted: '関係進展' };
+
+function turningPointLabel(tp) {
+  if (tp.type === 'goal') {
+    var goalKind = GOAL_TURNING_LABELS[tp.kind] || '目標変化';
+    return goalKind + (tp.label ? '「' + esc(tp.label) + '」' : '');
+  }
+  if (tp.type === 'occupation') {
+    var fromLabel = (data.occupations && data.occupations[tp.from]) || tp.from;
+    var toLabel = (data.occupations && data.occupations[tp.to]) || tp.to;
+    return '転職: ' + esc(fromLabel) + '→' + esc(toLabel);
+  }
+  if (tp.type === 'relation') {
+    var relKind = RELATION_TURNING_LABELS[tp.kind] || '関係変化';
+    return relKind + ': ' + esc(tp.name) + (tp.role ? '（' + esc(tp.role) + '）' : '');
+  }
+  if (tp.type === 'world') {
+    return '世界: ' + tp.deltas.map(function (d) { return esc(d.label) + (d.diff > 0 ? '↑' : '↓'); }).join(' ');
+  }
+  if (tp.type === 'death') return '生涯の終わり: ' + esc(tp.label || '');
+  if (tp.type === 'birth') return '転生';
+  return '';
+}
+
+function turningPointsHtml(points) {
+  if (!points || points.length === 0) return '';
+  return '<div class="tpbadges">' + points.map(function (tp) {
+    return '<span class="tpbadge tp-' + esc(tp.type) + '">' + turningPointLabel(tp) + '</span>';
+  }).join('') + '</div>';
+}
+
 function logListHtml(entries) {
   return entries.map(function (l) {
-    return '<div class="logentry ' + l.importance + '"><div class="meta">暦' + l.year + '年 / ' + l.age + '歳</div><div class="txt">' + esc(l.text) + '</div></div>';
+    var points = l.turningPoints || [];
+    var cls = 'logentry ' + l.importance + (points.length > 0 ? ' turning' : '');
+    return '<div class="' + cls + '"><div class="meta">暦' + l.year + '年 / ' + l.age + '歳</div><div class="txt">' + esc(l.text) + '</div>' + turningPointsHtml(points) + '</div>';
   }).join('');
 }
 
@@ -1014,6 +1072,13 @@ function renderDeath() {
   document.getElementById('deathCause').textContent = data.deathCauseLabels[info.cause];
   document.getElementById('deathName').textContent = state.character.name + 'の生涯';
   document.getElementById('deathSummary').textContent = state.lastDeathSummary || '';
+  // 人生要約（テンプレート文）が「なぜそう評価されたか」を裏付ける生ログを、
+  // 同じ画面から遡って確認できるようにする（issue #24: 死亡後の要約とログが
+  // 自然につながるようにする要件への対応）。出生から死まで時系列（古い順）
+  // に並べ、「物語を読み返す」体験に寄せる（観測中のタブは新しい順）。
+  document.getElementById('deathLogList').innerHTML = state.log.length
+    ? logListHtml(state.log)
+    : '<div class="empty">記録がない。</div>';
 }
 
 /* ---- 初期化 ---- */

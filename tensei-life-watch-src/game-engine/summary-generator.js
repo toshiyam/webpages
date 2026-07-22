@@ -104,6 +104,13 @@ export var WORLD_IMPACT_LABELS = {
   religiousInfluence: '宗教の影響力', techLevel: '技術水準', economy: '経済'
 };
 
+// 「世界への影響として言及するに値する増減」とみなす閾値。死亡時要約
+// （worldImpactPhrase、累計値ベース）・観測画面（worldImpactChips、累計値
+// ベース）・人生ログのタイムライン（issue #24、1イベント単体の増減ベース）
+// の3箇所が同じ基準を共有することで、「ログでは転機扱いなのに要約には
+// 出てこない」といった食い違いを避ける。
+export var WORLD_IMPACT_THRESHOLD = 12;
+
 // character.worldImpact は「この人生のイベント効果が実際に世界状態へ与えた
 // 増減の累計」のみを保持している（driftWorld() による自然変動や、前の転生者
 // が残した変化は一切含まれない）。そのため世界の生の値を初期値と比較するの
@@ -113,7 +120,7 @@ export var WORLD_IMPACT_LABELS = {
 // ためにここへ切り出している（issue #17: 観測中も世界への影響を読み取れる
 // ようにする要件への対応）。
 export function summarizeWorldImpact(character, threshold) {
-  var th = typeof threshold === 'number' ? threshold : 12;
+  var th = typeof threshold === 'number' ? threshold : WORLD_IMPACT_THRESHOLD;
   var deltas = [];
   Object.keys(WORLD_IMPACT_LABELS).forEach(function (key) {
     var diff = character.worldImpact[key];
