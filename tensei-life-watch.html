@@ -110,6 +110,14 @@ button.small.active { background: var(--accent); color: #1a1424; border-color: v
 .chip b { color: var(--text); }
 .chip.locked { opacity: 0.5; }
 .chip.locked b { color: var(--muted); }
+button.chip { font: inherit; cursor: pointer; min-height: 30px; }
+button.chip:hover, button.chip:focus-visible { border-color: var(--accent); }
+.dischint { font-size: 0.76rem; color: var(--muted); margin: 0 0 6px; }
+.filterbox {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+  background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 10px;
+  padding: 6px 10px; margin-bottom: 8px; font-size: 0.8rem;
+}
 
 .logfilter { display: flex; gap: 6px; margin-bottom: 10px; }
 .loglist { display: grid; gap: 8px; max-height: 60vh; overflow-y: auto; }
@@ -390,6 +398,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
     <div id="encyclopediaLivesView">
       <div class="card" id="encyclopediaListCard">
         <h2>過去人生一覧 <span class="sub" id="encyclopediaCount"></span></h2>
+        <div class="filterbox" id="encyclopediaFilterBox" hidden>
+          <span id="encyclopediaFilterLabel"></span>
+          <button class="small" id="encyclopediaFilterClearBtn" type="button">絞り込みを解除</button>
+        </div>
         <div class="pastlives" id="encyclopediaList"></div>
         <div class="empty" id="encyclopediaEmpty" hidden>まだ記録がない。</div>
       </div>
@@ -408,24 +420,40 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
       </div>
       <div class="card">
         <h2>特殊要素</h2>
+        <div class="dischint" id="discoveryElementsHint"></div>
         <div class="relchips" id="discoveryElements"></div>
       </div>
       <div class="card">
         <h2>生涯目標</h2>
+        <div class="dischint" id="discoveryGoalsHint"></div>
         <div class="relchips" id="discoveryGoals"></div>
       </div>
       <div class="card">
         <h2>職業</h2>
+        <div class="dischint" id="discoveryOccupationsHint"></div>
         <div class="relchips" id="discoveryOccupations"></div>
       </div>
       <div class="card">
         <h2>死因</h2>
+        <div class="dischint" id="discoveryDeathCausesHint"></div>
         <div class="relchips" id="discoveryDeathCauses"></div>
       </div>
       <div class="card">
         <h2>実績・人生アークの結末</h2>
+        <div class="dischint" id="discoveryTagsHint"></div>
         <div class="relchips" id="discoveryTags"></div>
-        <div class="empty" id="discoveryTagsEmpty" hidden>まだ何も発見していない。</div>
+      </div>
+      <div class="card">
+        <h2>持込アイテムの解禁状況 <span class="sub">転生準備画面と同じ基準</span></h2>
+        <div class="preplist" id="discoveryItems"></div>
+      </div>
+      <div class="card">
+        <h2>初期スキルの解禁状況 <span class="sub">転生準備画面と同じ基準</span></h2>
+        <div class="preplist" id="discoverySkills"></div>
+      </div>
+      <div class="card">
+        <h2>制約・代償の解禁状況 <span class="sub">転生準備画面と同じ基準</span></h2>
+        <div class="preplist" id="discoveryBurdens"></div>
       </div>
     </div>
   </section>
@@ -7429,6 +7457,10 @@ var currentTab = 'observe';
 var currentLogFilter = 'all';
 var encyclopediaSubTab = 'lives';
 var encyclopediaDetailIndex = null;
+// 発見項目タブのチップから「この項目を含む過去人生だけ見る」ボタンとして
+// 遷移してきた場合の絞り込み条件（issue #20: 発見項目と過去人生一覧を
+// 相互参照しやすくする）。{ category, id, label } またはnull。
+var encyclopediaLifeFilter = null;
 
 async function loadJson(path) {
   var res = await fetch(path);
@@ -7821,12 +7853,36 @@ function pastLivesHtml(list) {
   }).join('');
 }
 
-function encyclopediaListHtml(list) {
-  return list.map(function (p, i) {
+// indicesを渡した場合はその添字だけを描画する（絞り込み表示用）。
+// data-life-indexは常にpastLives（絞り込み前の全件配列）に対する添字を
+// 指すため、詳細画面へ渡す際に絞り込みの有無で意味がずれることはない。
+function encyclopediaListHtml(pastLives, indices) {
+  var idxList = indices || pastLives.map(function (_, i) { return i; });
+  return idxList.map(function (i) {
+    var p = pastLives[i];
     return '<button type="button" class="pastlife pastlife-btn" data-life-index="' + i + '">' +
       '<span><b>' + esc(p.name) + '</b>（' + esc(pastLifeOccupationLabel(p)) + '）</span>' +
       '<span>享年' + pastLifeAge(p) + '歳・' + esc(pastLifeCauseLabel(p)) + '</span></button>';
   }).join('');
+}
+
+// 発見項目タブのチップから遷移してきた絞り込み条件に、1件の過去人生が
+// 合致するかどうかを判定する。schemaVersion 6以前の簡易レコード
+// （p.elements === undefined）は職業・死因のラベル文字列しか持たないため、
+// それ以外のカテゴリでは合致しようがない（推測で一致させない）。
+function pastLifeMatchesFilter(p, filter) {
+  if (!filter) return true;
+  if (p.elements === undefined) {
+    if (filter.category === 'occupations') return pastLifeOccupationLabel(p) === filter.label;
+    if (filter.category === 'deathCauses') return pastLifeCauseLabel(p) === filter.label;
+    return false;
+  }
+  if (filter.category === 'elements') return (p.elements || []).indexOf(filter.id) >= 0;
+  if (filter.category === 'goals') return !!(p.goal && p.goal.id === filter.id);
+  if (filter.category === 'occupations') return p.occupation === filter.id;
+  if (filter.category === 'deathCauses') return p.deathCause === filter.id;
+  if (filter.category === 'tags') return (p.tags || []).indexOf(filter.id) >= 0;
+  return false;
 }
 
 function lifeDetailHtml(p) {
@@ -7962,6 +8018,12 @@ function noneCardHtml(kind, selectedId, label) {
     '</button>';
 }
 
+// requiresBurden指定のアイテム（例: silver_purse）は発見条件（discoveries）
+// を満たしていても、同じ転生準備セッション内で制約を1つ選んでいなければ
+// 選択できない。この文言は図鑑側の解禁状況表示（unlockListHtml）でも
+// そのまま再利用し、両画面で説明が食い違わないようにする（issue #20）。
+var BURDEN_REQUIRED_NOTE = '制約を1つ選ぶと持ち込めるようになる';
+
 function renderPrepSection() {
   var grants = state.pendingGrants;
 
@@ -7969,7 +8031,7 @@ function renderPrepSection() {
   itemHtml += data.items.map(function (item) {
     var burdenLocked = !isItemSelectable(item, grants.burdenId);
     var undiscovered = !isItemUnlocked(item, state.discoveries);
-    var note = undiscovered ? (item.unlockHint || 'まだ発見条件を満たしていない。') : '制約を1つ選ぶと持ち込めるようになる';
+    var note = undiscovered ? (item.unlockHint || 'まだ発見条件を満たしていない。') : BURDEN_REQUIRED_NOTE;
     return prepCardHtml(item, 'item', grants.itemId, burdenLocked || undiscovered, note);
   }).join('');
   document.getElementById('itemChoiceList').innerHTML = itemHtml;
@@ -8214,11 +8276,15 @@ function renderWorld() {
 
 // 発見済み/未発見のカタログをチップ一覧のHTMLへ変換する。未発見は名称を伏せ、
 // 存在だけを示す（issue #9: 「未発見項目は名称を伏せるか、存在だけを示す」）。
-function discoveryCatalogHtml(catalog, discoveredMap) {
+// 発見済みチップはボタンにし、クリックすると過去人生一覧をその項目で
+// 絞り込める（issue #20: 発見項目から関連する過去人生を振り返りやすくする）。
+function discoveryCatalogHtml(category, catalog, discoveredMap) {
   return catalog.map(function (entry) {
     var count = discoveredMap[entry.id] || 0;
     if (count <= 0) return '<span class="chip locked"><b>？？？</b></span>';
-    return '<span class="chip"><b>' + esc(entry.label) + '</b>×' + count + '</span>';
+    return '<button type="button" class="chip" data-filter-category="' + category +
+      '" data-filter-id="' + esc(entry.id) + '" data-filter-label="' + esc(entry.label) +
+      '"><b>' + esc(entry.label) + '</b>×' + count + '</button>';
   }).join('');
 }
 
@@ -8226,6 +8292,49 @@ function discoveryRateOf(catalog, discoveredMap) {
   var total = catalog.length;
   var found = catalog.filter(function (e) { return (discoveredMap[e.id] || 0) > 0; }).length;
   return { found: found, total: total };
+}
+
+// 未発見項目そのもののネタバレにはならない範囲で、次に何を試せば出会える
+// 可能性が高まるかを示す、カテゴリ単位の一般的なヒント（issue #20）。
+// 個々の項目名や発生条件の詳細までは明かさない。
+var DISCOVERY_HINTS = {
+  elements: '特殊要素は転生のたびにランダムで宿る。多くの人物を送り込むほど出会いやすくなる。',
+  goals: '生涯目標は青年期までに形成される。転生者の性格によって形成されやすい目標が変わる。',
+  occupations: '実際にその職に就く人生を送ると発見できる。',
+  deathCauses: 'その死に方・結末を実際に迎えると発見できる。',
+  tags: '人生アークを進め、特定の結末（成功・失敗どちらも含む）へ至ると発見できる。'
+};
+// 戻り値はtextContentへそのまま代入する前提のプレーンテキスト（HTMLでは
+// ない）ため、呼び出し側でescを挟まない。
+function discoveryHintText(category, catalog, discoveredMap) {
+  var hasUndiscovered = catalog.some(function (e) { return !((discoveredMap[e.id] || 0) > 0); });
+  if (!hasUndiscovered || !DISCOVERY_HINTS[category]) return '';
+  return 'ヒント: ' + DISCOVERY_HINTS[category];
+}
+
+// 持込アイテム・初期スキル・制約の解禁状況を図鑑側にも表示する。転生準備
+// 画面と同じisXUnlocked()・unlockHintを使うため、両画面の表示が食い違う
+// ことがない（issue #20: 転生準備項目の解禁条件と図鑑側の表示が矛盾しない）。
+// extraNoteFnは、発見条件（unlockCondition）としては解禁済みでも、同じ
+// 転生準備セッション内の別条件（例: silver_purseのrequiresBurden）で
+// 選べないことがある項目向けに、転生準備画面と同一の注記を追加するための
+// 任意の関数。無ければ何も付け足さない。
+function unlockListHtml(list, isUnlockedFn, extraNoteFn) {
+  return list.map(function (def) {
+    var unlocked = isUnlockedFn(def, state.discoveries);
+    var html = '<div class="prepcard' + (unlocked ? '' : ' locked') + '">' +
+      '<div class="pc-title"><span>' + (unlocked ? esc(def.label) : '？？？') + '</span>' +
+      (unlocked ? '<span class="pc-selected">解禁済み</span>' : '') + '</div>';
+    if (unlocked) {
+      html += '<div class="pc-desc">' + esc(def.description) + '</div>';
+      var extra = extraNoteFn && extraNoteFn(def);
+      if (extra) html += '<div class="pc-note">※ ' + esc(extra) + '</div>';
+    } else {
+      html += '<div class="pc-note">※ ' + esc(def.unlockHint || 'まだ解禁条件を満たしていない。') + '</div>';
+    }
+    html += '</div>';
+    return html;
+  }).join('');
 }
 
 function renderEncyclopedia() {
@@ -8241,14 +8350,29 @@ function renderEncyclopedia() {
     if (showDetail) {
       document.getElementById('encyclopediaDetail').innerHTML = lifeDetailHtml(state.pastLives[encyclopediaDetailIndex]);
     } else {
-      document.getElementById('encyclopediaCount').textContent = '（全' + state.pastLives.length + '件）';
+      var filterBox = document.getElementById('encyclopediaFilterBox');
+      var matchedIndices = null;
+      if (encyclopediaLifeFilter) {
+        matchedIndices = [];
+        state.pastLives.forEach(function (p, i) { if (pastLifeMatchesFilter(p, encyclopediaLifeFilter)) matchedIndices.push(i); });
+        filterBox.hidden = false;
+        document.getElementById('encyclopediaFilterLabel').textContent =
+          '「' + encyclopediaLifeFilter.label + '」を含む人生のみ表示中';
+      } else {
+        filterBox.hidden = true;
+      }
+      var shownCount = matchedIndices ? matchedIndices.length : state.pastLives.length;
+      document.getElementById('encyclopediaCount').textContent = matchedIndices
+        ? '（' + shownCount + '件 / 全' + state.pastLives.length + '件中）'
+        : '（全' + state.pastLives.length + '件）';
       var empty = document.getElementById('encyclopediaEmpty');
-      if (state.pastLives.length === 0) {
+      if (shownCount === 0) {
         empty.hidden = false;
+        empty.textContent = matchedIndices ? '該当する過去人生がない。' : 'まだ記録がない。';
         document.getElementById('encyclopediaList').innerHTML = '';
       } else {
         empty.hidden = true;
-        document.getElementById('encyclopediaList').innerHTML = encyclopediaListHtml(state.pastLives);
+        document.getElementById('encyclopediaList').innerHTML = encyclopediaListHtml(state.pastLives, matchedIndices);
       }
     }
     return;
@@ -8259,12 +8383,16 @@ function renderEncyclopedia() {
   var goalCatalog = data.goals.map(function (g) { return { id: g.id, label: g.label }; });
   var occCatalog = Object.keys(data.occupations).map(function (id) { return { id: id, label: data.occupations[id] }; });
   var causeCatalog = Object.keys(data.deathCauseLabels).map(function (id) { return { id: id, label: data.deathCauseLabels[id] }; });
+  var tagCatalog = Object.keys(TAG_SHORT_LABELS).map(function (id) { return { id: id, label: TAG_SHORT_LABELS[id] }; });
+  var eventCatalog = (data.events || []).map(function (e) { return { id: e.id }; });
 
   var rates = [
     ['特殊要素', discoveryRateOf(elementCatalog, d.elements)],
     ['生涯目標', discoveryRateOf(goalCatalog, d.goals)],
     ['職業', discoveryRateOf(occCatalog, d.occupations)],
-    ['死因', discoveryRateOf(causeCatalog, d.deathCauses)]
+    ['死因', discoveryRateOf(causeCatalog, d.deathCauses)],
+    ['実績・人生アークの結末', discoveryRateOf(tagCatalog, d.tags)],
+    ['発生イベント', discoveryRateOf(eventCatalog, d.events)]
   ];
   document.getElementById('discoveryRateBox').innerHTML = rates.map(function (r) {
     var label = r[0], rate = r[1];
@@ -8272,22 +8400,23 @@ function renderEncyclopedia() {
     return '<div class="rowline"><span class="k">' + label + '</span><span class="v">' + rate.found + ' / ' + rate.total + '（' + pct + '%）</span></div>';
   }).join('');
 
-  document.getElementById('discoveryElements').innerHTML = discoveryCatalogHtml(elementCatalog, d.elements);
-  document.getElementById('discoveryGoals').innerHTML = discoveryCatalogHtml(goalCatalog, d.goals);
-  document.getElementById('discoveryOccupations').innerHTML = discoveryCatalogHtml(occCatalog, d.occupations);
-  document.getElementById('discoveryDeathCauses').innerHTML = discoveryCatalogHtml(causeCatalog, d.deathCauses);
+  document.getElementById('discoveryElementsHint').textContent = discoveryHintText('elements', elementCatalog, d.elements);
+  document.getElementById('discoveryElements').innerHTML = discoveryCatalogHtml('elements', elementCatalog, d.elements);
+  document.getElementById('discoveryGoalsHint').textContent = discoveryHintText('goals', goalCatalog, d.goals);
+  document.getElementById('discoveryGoals').innerHTML = discoveryCatalogHtml('goals', goalCatalog, d.goals);
+  document.getElementById('discoveryOccupationsHint').textContent = discoveryHintText('occupations', occCatalog, d.occupations);
+  document.getElementById('discoveryOccupations').innerHTML = discoveryCatalogHtml('occupations', occCatalog, d.occupations);
+  document.getElementById('discoveryDeathCausesHint').textContent = discoveryHintText('deathCauses', causeCatalog, d.deathCauses);
+  document.getElementById('discoveryDeathCauses').innerHTML = discoveryCatalogHtml('deathCauses', causeCatalog, d.deathCauses);
 
-  var tagIds = Object.keys(d.tags);
-  var tagsEmpty = document.getElementById('discoveryTagsEmpty');
-  if (tagIds.length === 0) {
-    tagsEmpty.hidden = false;
-    document.getElementById('discoveryTags').innerHTML = '';
-  } else {
-    tagsEmpty.hidden = true;
-    document.getElementById('discoveryTags').innerHTML = tagIds.map(function (id) {
-      return '<span class="chip"><b>' + esc(TAG_SHORT_LABELS[id] || id) + '</b>×' + d.tags[id] + '</span>';
-    }).join('');
-  }
+  document.getElementById('discoveryTagsHint').textContent = discoveryHintText('tags', tagCatalog, d.tags);
+  document.getElementById('discoveryTags').innerHTML = discoveryCatalogHtml('tags', tagCatalog, d.tags);
+
+  document.getElementById('discoveryItems').innerHTML = unlockListHtml(data.items, isItemUnlocked, function (item) {
+    return item.requiresBurden ? BURDEN_REQUIRED_NOTE : null;
+  });
+  document.getElementById('discoverySkills').innerHTML = unlockListHtml(data.skills, isSkillUnlocked);
+  document.getElementById('discoveryBurdens').innerHTML = unlockListHtml(data.burdens, isBurdenUnlocked);
 }
 
 function renderDeath() {
@@ -8382,6 +8511,25 @@ async function init() {
   });
   document.getElementById('encyclopediaBackBtn').addEventListener('click', function () {
     encyclopediaDetailIndex = null;
+    renderEncyclopedia();
+  });
+  // 発見項目タブの発見済みチップ（アイテム/スキル/制約以外の6カテゴリ）を
+  // 押すと、その項目を含む過去人生だけに絞り込んで一覧タブへ移る
+  // （issue #20: 過去人生一覧から発見に関係した出来事を振り返りやすくする）。
+  document.getElementById('encyclopediaDiscoveryView').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-filter-category]');
+    if (!btn) return;
+    encyclopediaLifeFilter = {
+      category: btn.getAttribute('data-filter-category'),
+      id: btn.getAttribute('data-filter-id'),
+      label: btn.getAttribute('data-filter-label')
+    };
+    encyclopediaSubTab = 'lives';
+    encyclopediaDetailIndex = null;
+    renderEncyclopedia();
+  });
+  document.getElementById('encyclopediaFilterClearBtn').addEventListener('click', function () {
+    encyclopediaLifeFilter = null;
     renderEncyclopedia();
   });
 
