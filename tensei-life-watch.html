@@ -50,8 +50,15 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
   line-height: 1.6;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 button, select { font: inherit; cursor: pointer; }
+/* キーボード操作時のみフォーカスの輪郭を強調する（マウス操作時は表示しない）。 */
+button:focus-visible, summary:focus-visible, a:focus-visible, [tabindex]:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
 .app { max-width: 560px; margin: 0 auto; padding: 14px 12px 48px; }
 header.top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
 header.top .brand { display: flex; align-items: center; gap: 8px; }
@@ -61,7 +68,7 @@ header.top .genline { font-size: 0.72rem; color: var(--muted); }
 
 nav.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px; }
 nav.tabs[hidden] { display: none; }
-nav.tabs button { min-height: 42px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--muted); font-weight: 700; font-size: 0.86rem; }
+nav.tabs button { min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); color: var(--muted); font-weight: 700; font-size: 0.86rem; }
 nav.tabs button.active { background: var(--accent); color: #1a1424; border-color: var(--accent); }
 
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
@@ -89,7 +96,7 @@ nav.tabs button.active { background: var(--accent); color: #1a1424; border-color
 .btnrow.single { grid-template-columns: 1fr; }
 button.primary { min-height: 50px; border: 0; border-radius: 14px; background: var(--accent); color: #1a1424; font-weight: 800; font-size: 0.98rem; }
 button.secondary { min-height: 50px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel-soft); color: var(--text); font-weight: 700; font-size: 0.9rem; }
-button.small { min-height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft); color: var(--text); font-size: 0.8rem; font-weight: 700; }
+button.small { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-soft); color: var(--text); font-size: 0.8rem; font-weight: 700; }
 button:disabled { opacity: 0.5; }
 button.small.active { background: var(--accent); color: #1a1424; border-color: var(--accent); }
 
@@ -146,7 +153,7 @@ details.prepgroup summary .prepcurrent { font-weight: 400; font-size: 0.76rem; c
 .prepcard .pc-risk { font-size: 0.76rem; color: var(--danger); margin-top: 3px; }
 .prepcard .pc-note { font-size: 0.72rem; color: var(--muted); margin-top: 5px; font-style: italic; }
 .prepcard.active { border-color: var(--accent); background: var(--accent-soft); }
-.prepcard.active .pc-title::after { content: "選択中"; font-size: 0.7rem; font-weight: 800; color: var(--accent); }
+.prepcard .pc-selected { font-size: 0.7rem; font-weight: 800; color: var(--accent); }
 .prepcard.locked { opacity: 0.5; }
 .prepcard:disabled { cursor: not-allowed; }
 
@@ -183,13 +190,13 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
     <button class="small" id="resetBtn" type="button" title="全データを削除してやり直す">初期化</button>
   </header>
 
-  <div id="bannerBox"></div>
+  <div id="bannerBox" role="status" aria-live="polite"></div>
 
-  <nav class="tabs" id="tabNav" hidden>
-    <button type="button" data-tab="observe" class="active">観測</button>
-    <button type="button" data-tab="log">人生記録</button>
-    <button type="button" data-tab="world">世界</button>
-    <button type="button" data-tab="encyclopedia">図鑑</button>
+  <nav class="tabs" id="tabNav" hidden role="tablist" aria-label="表示切り替え">
+    <button type="button" id="tabBtnObserve" data-tab="observe" class="active" role="tab" aria-selected="true" aria-controls="screenObserve">観測</button>
+    <button type="button" id="tabBtnLog" data-tab="log" role="tab" aria-selected="false" aria-controls="screenLog">人生記録</button>
+    <button type="button" id="tabBtnWorld" data-tab="world" role="tab" aria-selected="false" aria-controls="screenWorld">世界</button>
+    <button type="button" id="tabBtnEncyclopedia" data-tab="encyclopedia" role="tab" aria-selected="false" aria-controls="screenEncyclopedia">図鑑</button>
   </nav>
 
   <section id="screenStart">
@@ -259,7 +266,7 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
     </div>
   </section>
 
-  <section id="screenObserve" hidden>
+  <section id="screenObserve" hidden role="tabpanel" aria-labelledby="tabBtnObserve">
     <div class="card">
       <h2 id="charTitle">観測対象</h2>
       <div class="rowline"><span class="k">年齢</span><span class="v" id="ovAge"></span></div>
@@ -316,7 +323,7 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
     </div>
   </section>
 
-  <section id="screenLog" hidden>
+  <section id="screenLog" hidden role="tabpanel" aria-labelledby="tabBtnLog">
     <div class="card">
       <h2>人生記録 <span class="sub" id="logSpan"></span></h2>
       <div class="logfilter">
@@ -329,7 +336,7 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
     </div>
   </section>
 
-  <section id="screenWorld" hidden>
+  <section id="screenWorld" hidden role="tabpanel" aria-labelledby="tabBtnWorld">
     <div class="card">
       <h2>世界の状態</h2>
       <div class="rowline"><span class="k">暦</span><span class="v" id="wYear"></span></div>
@@ -343,7 +350,7 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
     </div>
   </section>
 
-  <section id="screenEncyclopedia" hidden>
+  <section id="screenEncyclopedia" hidden role="tabpanel" aria-labelledby="tabBtnEncyclopedia">
     <div class="card">
       <h2>転生記録図鑑</h2>
       <div class="btnrow">
@@ -7781,6 +7788,17 @@ function logListHtml(entries) {
   }).join('');
 }
 
+// currentTab（JS側の選択状態）と、タブボタンの見た目・aria-selectedを一致
+// させる。タブクリック以外の経路（初期化ボタン等）でcurrentTabを直接
+// 書き換えた場合にも呼び、両者が食い違わないようにする。
+function syncTabButtons() {
+  Array.prototype.forEach.call(document.querySelectorAll('#tabNav button'), function (b) {
+    var isSelected = b.getAttribute('data-tab') === currentTab;
+    b.classList.toggle('active', isSelected);
+    b.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+  });
+}
+
 function renderAll() {
   document.getElementById('genLine').textContent = '第' + (state.lifetimeCount || 1) + '転生 / 暦' + Math.round(state.world.yearEra) + '年';
 
@@ -7808,8 +7826,8 @@ function renderAll() {
 function prepCardHtml(def, kind, selectedId, locked, lockNote) {
   var isActive = selectedId === def.id;
   var classes = 'prepcard' + (isActive ? ' active' : '') + (locked ? ' locked' : '');
-  var html = '<button type="button" class="' + classes + '" data-' + kind + '="' + esc(def.id) + '"' + (locked ? ' disabled' : '') + '>';
-  html += '<div class="pc-title"><span>' + esc(def.label) + '</span></div>';
+  var html = '<button type="button" class="' + classes + '" data-' + kind + '="' + esc(def.id) + '" aria-pressed="' + (isActive ? 'true' : 'false') + '"' + (locked ? ' disabled' : '') + '>';
+  html += '<div class="pc-title"><span>' + esc(def.label) + '</span>' + (isActive ? '<span class="pc-selected">選択中</span>' : '') + '</div>';
   html += '<div class="pc-desc">' + esc(def.description) + '</div>';
   if (def.benefit) html += '<div class="pc-benefit">恩恵: ' + esc(def.benefit) + '</div>';
   if (def.risk && def.risk !== '特になし。') html += '<div class="pc-risk">注意: ' + esc(def.risk) + '</div>';
@@ -7820,8 +7838,8 @@ function prepCardHtml(def, kind, selectedId, locked, lockNote) {
 
 function noneCardHtml(kind, selectedId, label) {
   var isActive = !selectedId;
-  return '<button type="button" class="prepcard' + (isActive ? ' active' : '') + '" data-' + kind + '="none">' +
-    '<div class="pc-title"><span>' + esc(label || 'なし') + '</span></div>' +
+  return '<button type="button" class="prepcard' + (isActive ? ' active' : '') + '" data-' + kind + '="none" aria-pressed="' + (isActive ? 'true' : 'false') + '">' +
+    '<div class="pc-title"><span>' + esc(label || 'なし') + '</span>' + (isActive ? '<span class="pc-selected">選択中</span>' : '') + '</div>' +
     '<div class="pc-desc">何も持ち込まない。</div>' +
     '</button>';
 }
@@ -8209,9 +8227,7 @@ async function init() {
     var btn = e.target.closest('[data-tab]');
     if (!btn) return;
     currentTab = btn.getAttribute('data-tab');
-    Array.prototype.forEach.call(document.querySelectorAll('#tabNav button'), function (b) {
-      b.classList.toggle('active', b === btn);
-    });
+    syncTabButtons();
     renderAll();
   });
 
@@ -8306,6 +8322,7 @@ async function init() {
     try { window.localStorage.removeItem(STORAGE_KEY); } catch (e) {}
     state = freshState();
     currentTab = 'observe';
+    syncTabButtons();
     renderAll();
   });
 
