@@ -193,10 +193,10 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
   <div id="bannerBox" role="status" aria-live="polite"></div>
 
   <nav class="tabs" id="tabNav" hidden role="tablist" aria-label="表示切り替え">
-    <button type="button" id="tabBtnObserve" data-tab="observe" class="active" role="tab" aria-selected="true" aria-controls="screenObserve">観測</button>
-    <button type="button" id="tabBtnLog" data-tab="log" role="tab" aria-selected="false" aria-controls="screenLog">人生記録</button>
-    <button type="button" id="tabBtnWorld" data-tab="world" role="tab" aria-selected="false" aria-controls="screenWorld">世界</button>
-    <button type="button" id="tabBtnEncyclopedia" data-tab="encyclopedia" role="tab" aria-selected="false" aria-controls="screenEncyclopedia">図鑑</button>
+    <button type="button" id="tabBtnObserve" data-tab="observe" class="active" role="tab" aria-selected="true" aria-controls="screenObserve" tabindex="0">観測</button>
+    <button type="button" id="tabBtnLog" data-tab="log" role="tab" aria-selected="false" aria-controls="screenLog" tabindex="-1">人生記録</button>
+    <button type="button" id="tabBtnWorld" data-tab="world" role="tab" aria-selected="false" aria-controls="screenWorld" tabindex="-1">世界</button>
+    <button type="button" id="tabBtnEncyclopedia" data-tab="encyclopedia" role="tab" aria-selected="false" aria-controls="screenEncyclopedia" tabindex="-1">図鑑</button>
   </nav>
 
   <section id="screenStart">
@@ -7788,15 +7788,39 @@ function logListHtml(entries) {
   }).join('');
 }
 
-// currentTab（JS側の選択状態）と、タブボタンの見た目・aria-selectedを一致
-// させる。タブクリック以外の経路（初期化ボタン等）でcurrentTabを直接
-// 書き換えた場合にも呼び、両者が食い違わないようにする。
+// currentTab（JS側の選択状態）と、タブボタンの見た目・aria-selected・
+// tabindexを一致させる。タブクリック以外の経路（初期化ボタン等）で
+// currentTabを直接書き換えた場合にも呼び、両者が食い違わないようにする。
+// ARIAタブパターンではロービングtabindex（選択中のみ0、他は-1）が必須で、
+// これが無いとスクリーンリーダーには「タブ」と通知されるのに矢印キーでの
+// 移動ができない、という意味論と操作の不一致が生じる（issue #25レビュー対応）。
 function syncTabButtons() {
   Array.prototype.forEach.call(document.querySelectorAll('#tabNav button'), function (b) {
     var isSelected = b.getAttribute('data-tab') === currentTab;
     b.classList.toggle('active', isSelected);
     b.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+    b.setAttribute('tabindex', isSelected ? '0' : '-1');
   });
+}
+
+// ARIAタブの自動アクティベーション（フォーカス移動＝選択切替）で
+// ArrowLeft/ArrowRight/Home/Endに対応する。ロービングtabindexにより
+// Tabキーでは選択中の1つにしか止まらず、タブ間の移動は矢印キーで行う。
+function moveTabFocus(key) {
+  var buttons = Array.prototype.slice.call(document.querySelectorAll('#tabNav button'));
+  var currentIndex = -1;
+  buttons.forEach(function (b, i) { if (b.getAttribute('data-tab') === currentTab) currentIndex = i; });
+  if (currentIndex === -1) return;
+  var nextIndex = currentIndex;
+  if (key === 'ArrowRight') nextIndex = (currentIndex + 1) % buttons.length;
+  else if (key === 'ArrowLeft') nextIndex = (currentIndex - 1 + buttons.length) % buttons.length;
+  else if (key === 'Home') nextIndex = 0;
+  else if (key === 'End') nextIndex = buttons.length - 1;
+  else return;
+  currentTab = buttons[nextIndex].getAttribute('data-tab');
+  syncTabButtons();
+  renderAll();
+  buttons[nextIndex].focus();
 }
 
 function renderAll() {
@@ -8229,6 +8253,11 @@ async function init() {
     currentTab = btn.getAttribute('data-tab');
     syncTabButtons();
     renderAll();
+  });
+  document.getElementById('tabNav').addEventListener('keydown', function (e) {
+    if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].indexOf(e.key) === -1) return;
+    e.preventDefault();
+    moveTabFocus(e.key);
   });
 
   document.querySelector('.logfilter').addEventListener('click', function (e) {
