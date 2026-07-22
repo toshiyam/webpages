@@ -106,18 +106,31 @@
       <div class="rowline"><span class="k">出身</span><span class="v" id="ovRegion"></span></div>
     </div>
     <div class="card">
+      <h2>特殊要素・生涯目標</h2>
+      <div class="relchips" id="elementChips"></div>
+      <div class="empty" id="elementEmpty" hidden>特別な要素は宿っていない。</div>
+      <div class="rowline" style="margin-top:8px"><span class="k">生涯目標</span><span class="v" id="goalLine">未形成</span></div>
+    </div>
+    <div class="card">
+      <h2>時間進行</h2>
+      <div class="rowline"><span class="k">状態</span><span class="v" id="timeState">停止中</span></div>
+      <div class="btnrow">
+        <button class="secondary" id="playPauseBtn" type="button">再生</button>
+        <button class="secondary" id="advanceBtn" type="button">1年進める</button>
+      </div>
+      <div class="speedrow" id="speedRow"></div>
+    </div>
+    <div class="card">
+      <h2>最新ログ</h2>
+      <div class="loglist" id="latestLog"></div>
+    </div>
+    <div class="card">
       <h2>基礎能力</h2>
       <div class="barlist" id="abilityBars"></div>
     </div>
     <div class="card">
       <h2>性格傾向 <span class="sub">濃い値ほど強い傾向</span></h2>
       <div class="traitgrid" id="traitGrid"></div>
-    </div>
-    <div class="card">
-      <h2>特殊要素・生涯目標</h2>
-      <div class="relchips" id="elementChips"></div>
-      <div class="empty" id="elementEmpty" hidden>特別な要素は宿っていない。</div>
-      <div class="rowline" style="margin-top:8px"><span class="k">生涯目標</span><span class="v" id="goalLine">未形成</span></div>
     </div>
     <div class="card">
       <h2>転生準備の持込</h2>
@@ -129,19 +142,6 @@
       <h2>人間関係 <span class="sub" id="relCount"></span></h2>
       <div class="relchips" id="relChips"></div>
       <div class="empty" id="relEmpty" hidden>まだ深い関係を築いていない。</div>
-    </div>
-    <div class="card">
-      <h2>最新ログ</h2>
-      <div class="loglist" id="latestLog"></div>
-    </div>
-    <div class="card">
-      <h2>時間進行</h2>
-      <div class="rowline"><span class="k">状態</span><span class="v" id="timeState">停止中</span></div>
-      <div class="btnrow">
-        <button class="secondary" id="playPauseBtn" type="button">再生</button>
-        <button class="secondary" id="advanceBtn" type="button">1年進める</button>
-      </div>
-      <div class="speedrow" id="speedRow"></div>
     </div>
   </section>
 
