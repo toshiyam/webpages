@@ -1,7 +1,7 @@
 <!doctype html>
 <!--
 name: 深層ギルド運営録
-version: 1.0.2
+version: 1.0
 type: single-html-app
 status: stable
 -->
@@ -590,7 +590,7 @@ status: stable
     for (var i = 0; i < quest.chainLen - 1; i++) chain.push(pick(t.pool));
     chain.push(t.climax);
 
-    var cleared = 0, reached = 0, climaxSuccess = false, outcome = null, lootGold = 0, casualties = [];
+    var cleared = 0, outcome = null, lootGold = 0, casualties = [];
     var priest = party.find(function (m) { return m.job === '僧侶'; });
     var hasPriest = !!priest;
     var guard = party.find(function (m) { return TRAITS[m.trait].guard && m.hp > 0; });
@@ -615,8 +615,7 @@ status: stable
     for (var si = 0; si < chain.length; si++) {
       var stKey = chain[si];
       var st = STAGES[stKey];
-      reached = si + 1;
-      var prefix = '【' + reached + '/' + chain.length + ' ' + stKey + '】';
+      var prefix = '【' + (si + 1) + '/' + chain.length + ' ' + stKey + '】';
 
       if (st.rest) {
         party.forEach(function (m) {
@@ -651,7 +650,6 @@ status: stable
 
       if (chance(p)) {
         cleared++;
-        if (si === chain.length - 1) climaxSuccess = true;
         var extra = '';
         var gotLoot = false, gotMat = false;
         if (st.loot) {
@@ -738,15 +736,7 @@ status: stable
         }
       }
     }
-    // 「撤退」は実際に撤退イベントが起きた場合（重傷離脱・自主撤退）だけに使う。
-    // チェーンを完走したら、最終イベントの成否で成功/失敗を決める（進行表示とログの矛盾を防ぐ）。
-    if (!outcome) {
-      if (climaxSuccess) outcome = '成功';
-      else {
-        outcome = '失敗';
-        log.push({ text: '目標を果たせないまま行程を終え、パーティは肩を落として帰還した。', kind: 'bad' });
-      }
-    }
+    if (!outcome) outcome = (cleared >= chain.length) ? '成功' : '撤退';
 
     // 報酬と反映
     var goldGain = 0, fameDelta = 0;
@@ -818,7 +808,7 @@ status: stable
 
     checkRank(log);
     persist();
-    return { outcome: outcome, gold: goldGain, fame: fameDelta, cleared: cleared, reached: reached, total: chain.length, log: log, casualties: casualties, injuries: injuries };
+    return { outcome: outcome, gold: goldGain, fame: fameDelta, cleared: cleared, total: chain.length, log: log, casualties: casualties, injuries: injuries };
   }
 
   function addChronicle(text, kind) {
@@ -875,7 +865,7 @@ status: stable
     else {
       S.food = 0;
       S.adventurers.forEach(function (a) { a.morale = clampN(a.morale - 8, 0, 100); });
-      ml.push('食料が足りない！（必要' + foodNeed + '）士気が下がった。施設タブの酒場で購入できる。');
+      ml.push('食料が足りない！（必要' + foodNeed + '）士気が下がった。酒場で購入できる。');
     }
 
     // 回復
@@ -1019,7 +1009,7 @@ status: stable
     var cls = r.outcome === '成功' ? 'success' : (r.outcome === '撤退' ? 'retreat' : 'failure');
     els.overlayTitle.className = 'overlay-title ' + cls;
     els.overlayTitle.textContent = quest.name + '：' + r.outcome;
-    els.overlaySub.textContent = '進行 ' + r.reached + '/' + r.total + '段階 / 報酬 ' + r.gold + 'G / 名声 ' + (r.fame >= 0 ? '+' : '') + r.fame + (r.injuries && r.injuries.length ? ' / 重傷: ' + r.injuries.join('、') : '') + (r.casualties.length ? ' / 死亡: ' + r.casualties.join('、') : '');
+    els.overlaySub.textContent = '進行 ' + r.cleared + '/' + r.total + '段階 / 報酬 ' + r.gold + 'G / 名声 ' + (r.fame >= 0 ? '+' : '') + r.fame + (r.injuries && r.injuries.length ? ' / 重傷: ' + r.injuries.join('、') : '') + (r.casualties.length ? ' / 死亡: ' + r.casualties.join('、') : '');
     els.overlayLog.innerHTML = '';
     var subCount = 0;
     r.log.forEach(function (line) {
@@ -1331,17 +1321,6 @@ status: stable
         if (S.gold < costG || S[FACS[k].mat] < costM) ub.disabled = true;
         fc.appendChild(ub);
       }
-      // 食料不足ログの案内先と一致するよう、酒場カードからも素材を購入できるようにする
-      if (k === 'tavern') {
-        var buyRow = el('div', 'btn-row');
-        buyRow.style.flexWrap = 'wrap';
-        [['buy-food', '食料を買う（10Gで5）'], ['buy-herb', '薬草を買う（15Gで3）'], ['buy-ore', '鉱石を買う（25Gで2）']].forEach(function (b) {
-          var bb = el('button', 'ghost-btn', b[1]);
-          bb.type = 'button'; bb.dataset.action = b[0];
-          buyRow.appendChild(bb);
-        });
-        fc.appendChild(buyRow);
-      }
       root.appendChild(fc);
     });
   }
@@ -1483,4 +1462,5 @@ status: stable
 })();
 </script>
 </body>
+<!-- 2026-07-03: 自動複製ワークフロー(copy-html.yml)の動作確認用コミット。機能変更なし -->
 </html>
