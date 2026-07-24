@@ -810,7 +810,7 @@
         "effects": {
           "occupation": "unemployed",
           "health": -25,
-          "flagsAdd": [
+          "tagsAdd": [
             "disabled_veteran"
           ]
         },
@@ -1029,6 +1029,7 @@
           "loyalty": 0.2
         },
         "effects": {
+          "occupation": "official",
           "abilities": {
             "social": 1
           },
