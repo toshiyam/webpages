@@ -25,7 +25,11 @@ export function decideDeathCause(character, occupationRisk) {
     accident: occupationRisk[character.occupation] ? 14 : 3,
     battle: (character.occupation === 'soldier' || character.occupation === 'adventurer') && character.flags.indexOf('dangerous_quest_taken') >= 0 ? 16 : 1,
     crime: character.occupation === 'thief' ? 14 : 0.5,
-    starvation: character.zeroMoneyStreak >= 4 ? 20 : 0.2
+    starvation: character.zeroMoneyStreak >= 4 ? 20 : 0.2,
+    // 特定の職業・健康状態・所持金と結びつかない「不慮の出来事」。他の死因に
+    // 分類できない稀な死を表す固定の低い重みとする（issue#108: 定義済みなのに
+    // どの死因にも割り当てられていなかった`deathCauses.special`の未実装を修正）。
+    special: 0.5
   };
   var keys = Object.keys(weights);
   return weightedPick(keys, function (k) { return Math.max(0.1, weights[k]); });
