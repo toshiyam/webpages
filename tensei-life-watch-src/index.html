@@ -289,6 +289,12 @@
   <footer class="foot">性格と状況に基づく重み付き抽選で人生が自動進行する観測ゲームです。LLMは使用していません。ゲームロジックは game-engine/ に、データは game-data/ に分離されています。</footer>
 </div>
 
+<!-- issue#136: docs/save-compat-strategy.md 5.1節「未来schema検出時は起動停止
+     （操作そのものをブロックする）を採用する」への対応。.appは非表示にし、
+     こちらのみを表示する読み取り専用の起動停止画面（main.jsのloadState()
+     参照）。 -->
+<div id="haltScreen" class="banner warn" role="alert" hidden style="margin:16px; padding:16px;"></div>
+
 <script type="module" src="./web-ui/main.js"></script>
 </body>
 </html>
