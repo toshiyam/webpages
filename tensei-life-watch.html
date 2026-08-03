@@ -503,6 +503,12 @@ footer.foot { text-align: center; color: var(--muted); font-size: 0.72rem; margi
   <footer class="foot">性格と状況に基づく重み付き抽選で人生が自動進行する観測ゲームです。LLMは使用していません。ゲームロジックは game-engine/ に、データは game-data/ に分離されています。</footer>
 </div>
 
+<!-- issue#136: docs/save-compat-strategy.md 5.1節「未来schema検出時は起動停止
+     （操作そのものをブロックする）を採用する」への対応。.appは非表示にし、
+     こちらのみを表示する読み取り専用の起動停止画面（main.jsのloadState()
+     参照）。 -->
+<div id="haltScreen" class="banner warn" role="alert" hidden style="margin:16px; padding:16px;"></div>
+
 <script>
 (function () {
   'use strict';
@@ -7745,6 +7751,21 @@ function sanitizeLoaded(raw) {
 // 続行する（issue #23）。
 var lastSaveOk = true;
 
+// issue#136: docs/save-compat-strategy.md 5.1節「未来schema(save_too_new)
+// 検出時は主データ・backup・corruptedのいずれも一切書き換えない読み取り
+// 専用の起動停止が必須」「起動停止（操作そのものをブロックする）を
+// 採用する」。新UI側(web-ui-src/src/save/storage.ts)は既にこの契約を
+// 満たしていたが、本UIのsanitizeLoaded()は未来schemaを「破損」と区別せず
+// freshState()へフォールバックしてゲームを続行させ、その後のsaveState()
+// でfreshState()の内容をSTORAGE_KEYへ上書きしてしまっていた（未来schema
+// のデータを黙って破棄・上書きする不具合）。このフラグが立っている間、
+// init()は通常のゲームUIを表示せず起動停止画面のみを表示し、イベント
+// 購読・renderAll()等を一切行わない（init()参照）。saveState()側にも
+// 同じフラグでの拒否を残し、万一この起動停止を経由しない呼び出し経路が
+// 生じても書き込みを二重に防ぐ（本UIのlocalStorage書き込み箇所は
+// saveState()のこの1箇所のみ、backup/corrupted相当のキーは持たない）。
+var saveBlockedFutureSchema = false;
+
 function loadState() {
   // getItem()自体が例外を投げる場合（プライベートブラウズ等でlocalStorageへの
   // アクセスそのものがブロックされている）と、JSON.parse()だけが例外を投げる
@@ -7771,6 +7792,18 @@ function loadState() {
     }
   }
   if (!raw) return freshState();
+  // issue#136: 未来schema(schemaVersionが現在のSCHEMA_VERSIONより大きい)は
+  // 「破損」とは独立に判定し、sanitizeLoaded()の一般的な破損経路（新しく
+  // 開始する＝この端末の保存内容を次のsaveState()で上書きしてしまう）へは
+  // 進ませない。docs/save-compat-strategy.md 5.1節に従い起動停止するため、
+  // ここではフラグを立てて返すだけに留め、実際の起動停止画面表示は
+  // init()側の責務とする（addBanner()は使わない。起動停止時は.app自体を
+  // 非表示にするため、通常のバナー領域はそもそも画面に出ない）。
+  if (typeof raw.schemaVersion === 'number' && raw.schemaVersion > SCHEMA_VERSION) {
+    saveBlockedFutureSchema = true;
+    lastSaveOk = false;
+    return freshState();
+  }
   var loadedVersion = typeof raw.schemaVersion === 'number' ? raw.schemaVersion : null;
   var sanitized = sanitizeLoaded(raw);
   if (!sanitized) {
@@ -7789,6 +7822,14 @@ function loadState() {
 }
 
 function saveState() {
+  // issue#136: 未来schemaを検出したセッションでは、この関数が唯一の
+  // localStorage書き込み箇所であるため、ここで一括して書き込みを禁止する
+  // （新規プレイの継続自体は妨げないが、その内容はこの端末に一切保存され
+  // ない一時プレイとして扱う。docs/save-compat-strategy.md 5.1節）。
+  if (saveBlockedFutureSchema) {
+    renderSaveStatus();
+    return;
+  }
   // 失敗時にlastSavedAtだけ進んで「保存できていないのに保存時刻が更新される」
   // という虚偽表示にならないよう、成功した場合だけ確定させる。また自動再生中は
   // 毎年advanceOneYearからsaveStateが呼ばれるため、失敗バナーは状態が変化した
@@ -8688,6 +8729,20 @@ function renderDeath() {
 async function init() {
   data = await loadData();
   state = loadState();
+  // issue#136: docs/save-compat-strategy.md 5.1節「検出時は主データ・backup・
+  // corruptedのいずれも一切書き換えない読み取り専用の起動停止」。
+  // saveState()自体もsaveBlockedFutureSchema===trueの間は書き込みを拒否する
+  // （多重防御）が、それに加えてここで操作そのものをブロックする——プレイ
+  // ヤー操作を一切受け付けない起動停止画面を表示し、通常のイベント購読・
+  // renderAll()・catchUpOffline()（いずれもゲーム状態の変更や後続の
+  // saveState()呼び出しにつながりうる）を一切行わずinit()を終了する。
+  if (saveBlockedFutureSchema) {
+    document.querySelector('.app').hidden = true;
+    var halt = document.getElementById('haltScreen');
+    halt.textContent = '保存データが現在のアプリより新しい形式のため、データを保護する目的で起動を停止しています。アプリを更新すると、このメッセージは表示されなくなります。';
+    halt.hidden = false;
+    return;
+  }
   catchUpOffline();
   renderAll();
   renderSaveStatus();
