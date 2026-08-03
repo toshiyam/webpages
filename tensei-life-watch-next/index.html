@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>転生ライフウォッチ（新UI・準備中）</title>
+    <!-- issue#86: PWA manifest・アプリアイコン・ホーム画面起動。
+         iconsはscripts/generate-pwa-icons.mjsで外部素材を使わずコードから
+         生成したもの（生成元の記録、docs/pwa-manifest.md参照）。 -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./icons/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon-180.png" />
+    <meta name="theme-color" content="#121016" />
+    <!-- iOS SafariはWeb App Manifestのdisplay:standaloneだけでは
+         ホーム画面起動時にstandalone表示にならないため、Apple独自の
+         meta tagで明示する（Androidはmanifestのdisplayのみで足りる）。 -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="転生ライフウォッチ" />
     <script type="module" crossorigin src="./assets/index-VSsJqIcJ.js"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-C4GF9e5i.css">
   </head>
