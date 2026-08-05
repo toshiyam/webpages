@@ -26,11 +26,18 @@ const SHELL_CACHE = 'tensei-life-watch-shell-v1';
 const OWN_CACHES = [ASSET_CACHE, SHELL_CACHE];
 const MAX_ASSET_ENTRIES = 20;
 
-// index.htmlへの相対パス。self.locationはこのsw.js自身のURL
-// （例: https://.../tensei-life-watch-next/sw.js）なので、'./index.html'は
-// デプロイ先のサブパスに関わらず常にアプリのルートを指す
-// （issue#92のvite.config.tsのbase: './'と同じ考え方）。
-const SHELL_URL = new URL('./index.html', self.location.href).href;
+// アプリシェル本体への相対パス。
+// 追記（issue#151、codex-toshiyamの指摘対応）: 当初は'./index.html'を
+// 指しており、issue#92の限定プレビュー配布（`tensei-life-watch-next/`の
+// ような専用サブディレクトリ配下に一式を配置する構成）ではそれで
+// 正しく自身のindex.htmlを指せていた。issue#149の正式切替により、
+// このアプリは専用ディレクトリではなく`webpages`リポジトリのルート
+// （他の「1HTMLs」公開作品と同居する場所）へ、ファイル名`tensei-life-watch.html`
+// として配置されるようになったため、'./index.html'は同じ階層に存在する
+// 別の作品（`webpages/index.html`、公開作品インデックス）を指してしまい、
+// オフライン時のnavigateフォールバックが誤ったページを返す不具合の原因に
+// なっていた。正式配置に合わせ、自身のファイル名を明示する。
+const SHELL_URL = new URL('./tensei-life-watch.html', self.location.href).href;
 
 // installでself.skipWaiting()を呼ばないことが重要（レビュー指摘の再現
 // 防止）。呼んでしまうと新しいSWが即座に有効化・clients.claim()まで
