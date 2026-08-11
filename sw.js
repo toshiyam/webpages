@@ -24,7 +24,29 @@
 const ASSET_CACHE = 'tensei-life-watch-assets-v1';
 const SHELL_CACHE = 'tensei-life-watch-shell-v1';
 const OWN_CACHES = [ASSET_CACHE, SHELL_CACHE];
-const MAX_ASSET_ENTRIES = 20;
+
+// issue#176: 以前はここが「件数」の上限（MAX_ASSET_ENTRIES = 20）だった。
+// これは2つの理由で誤った軸だった。
+//
+// 1. /assets/配下はcontent-hash付きのファイル名であり、同じ名前なら中身は
+//    絶対に変わらない。古くなるという概念が無いため、件数で切る必然性が無い
+// 2. **1つのビルドのアセット数が上限を超えると壊れる。** trimCache()は
+//    keys()の先頭（＝古い方）から削除するが、1ビルドが上限を超える場合、
+//    削除されるのは「今まさに読み込んだ現ビルドのファイル」になる。
+//    cache-firstの前提が崩れ、オフライン起動が成立しなくなる。
+//    現状はJS・CSS・MVP画像6点の計8件で顕在化していないが、
+//    docs/image-asset-inventory.md 3節の後回しアセット37点が揃うと
+//    43点となり上限20を確実に超える（issue#169からの申し送り、
+//    docs/image-pipeline.md 2.4節）。
+//
+// 上限を「合計バイト数」にする。抑えたいのは本来「古いビルドの
+// ハッシュ付きファイルが無限に溜まること」であり、それはバイト数で
+// 測るのが正しい。値は1ビルド分が絶対に収まる大きさにする
+// （現状の1ビルド約455KB、後回しアセット37点が揃っても
+// docs/performance-budget.mdの画像予算1MB＋JS/CSSで約1.5MB）。
+// 「1ビルド分が上限に収まる」ことはscripts/qa-new-ui-image-delivery.mjsが
+// 実測して守る。
+const MAX_ASSET_BYTES = 4 * 1024 * 1024;
 
 // アプリシェル本体への相対パス。
 // 追記（issue#151、codex-toshiyamの指摘対応）: 当初は'./index.html'を
@@ -67,15 +89,57 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// assetsキャッシュの件数を上限内に保つ（古いビルドのハッシュ付きファイルが
-// 蓄積し続けないようにする、best-effort）。Cache Storageに保存順の概念は
-// 無いためkeys()の返却順（多くの実装で挿入順）を目安にする。
-async function trimCache(cacheName, maxEntries) {
-  const cache = await caches.open(cacheName);
+// assetsキャッシュの合計バイト数を上限内に保つ（古いビルドのハッシュ付き
+// ファイルが蓄積し続けないようにする、best-effort）。Cache Storageに保存順の
+// 概念は無いためkeys()の返却順（多くの実装で挿入順）を古い順の目安にする。
+//
+// レビュー指摘対応（issue#176）: 保存したばかりのファイルを削除対象から
+// 外す仕組みは、単一のkeepUrlでは足りない。1回のナビゲーションでJS・CSS・
+// 画像が**並行して**取得されるため、Aの保存で起動したトリムが、その最中に
+// 保存されたBを消しうる。取得中〜トリム完了までのURLを集合で持ち、
+// その全部を保護する。
+const recentlyStored = new Set();
+
+async function trimAssetCache(cache) {
   const keys = await cache.keys();
-  const excess = keys.length - maxEntries;
-  if (excess <= 0) return;
-  await Promise.all(keys.slice(0, excess).map((k) => cache.delete(k)));
+  const entries = [];
+  let total = 0;
+  for (const key of keys) {
+    const res = await cache.match(key);
+    if (!res) continue;
+    // Content-Lengthがあればそれを使い、無ければ本体を読んで測る
+    // （開発用サーバー等でヘッダーが付かない場合の保険）。
+    let size = Number(res.headers.get('content-length'));
+    if (!Number.isFinite(size) || size <= 0) {
+      try {
+        size = (await res.clone().blob()).size;
+      } catch {
+        size = 0;
+      }
+    }
+    entries.push({ key, size });
+    total += size;
+  }
+  if (total <= MAX_ASSET_BYTES) return;
+  for (const entry of entries) {
+    if (total <= MAX_ASSET_BYTES) break;
+    if (recentlyStored.has(entry.key.url)) continue;
+    await cache.delete(entry.key);
+    total -= entry.size;
+  }
+}
+
+// レビュー指摘対応（issue#176）: トリムを直列化する。並行して走らせると、
+// 同じキーを二重に削除しようとしたり、削除途中の合計で判断したりしうる。
+// 常に1本の鎖に繋いで、前のトリムが終わってから次を始める。
+let trimChain = Promise.resolve();
+function scheduleTrim(cache, storedUrl) {
+  recentlyStored.add(storedUrl);
+  trimChain = trimChain
+    .then(() => trimAssetCache(cache))
+    .catch(() => {}) // トリムの失敗で後続のトリムまで止めない（best-effort）
+    .finally(() => recentlyStored.delete(storedUrl));
+  return trimChain;
 }
 
 function isAssetRequest(url) {
@@ -98,7 +162,12 @@ self.addEventListener('fetch', (event) => {
           const res = await fetch(req);
           if (res.ok) {
             await cache.put(req, res.clone());
-            trimCache(ASSET_CACHE, MAX_ASSET_ENTRIES);
+            // レビュー指摘対応（issue#176）: 呼びっぱなしにしない。
+            // respondWith()がレスポンスを返した後、この非同期処理は
+            // どのイベントの寿命にも紐付いていないため、ブラウザが
+            // workerを止めればトリムが途中で打ち切られうる。
+            // event.waitUntil()でfetchイベントの寿命へ明示的に繋ぐ。
+            event.waitUntil(scheduleTrim(cache, req.url));
           }
           return res;
         } catch {
