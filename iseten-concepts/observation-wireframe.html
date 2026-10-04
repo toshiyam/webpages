@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>iseten — 人生観測ワイヤーフレーム</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#e6e6e3;color:#242b30;font:14px/1.5 system-ui,sans-serif}button{font:inherit;color:inherit;cursor:pointer;min-height:44px;border:1px solid #777f84;background:#fafaf8;border-radius:5px}button:focus-visible{outline:3px solid #1668a0;outline-offset:2px}button[aria-pressed=true]{background:#324c5d;color:white}button:disabled{opacity:.5;cursor:default}.app{max-width:440px;margin:auto;background:#f7f7f4;min-height:100dvh;border-inline:1px solid #a8adaf}.note{font-size:11px;text-align:center;background:#dbe0e2;padding:4px}header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #a8adaf}h1{font-size:17px;margin:0}header button{width:44px}.person{display:flex;gap:10px;padding:10px 12px;align-items:center}.portrait{width:44px;height:44px;border:1px dashed #7d8488;display:grid;place-items:center;font-size:11px}.person strong{font-size:17px}.season{margin-left:auto}.map{position:relative;height:350px;background:#e7eae1;overflow:hidden;border-block:1px solid #89928b;background-image:linear-gradient(#7d897710 1px,transparent 1px),linear-gradient(90deg,#7d897710 1px,transparent 1px);background-size:24px 24px}.map svg{position:absolute;width:100%;height:100%}.region{position:absolute;top:8px;left:10px;font-size:12px;background:#fafaf8;padding:3px 7px;border:1px solid #aaa}.place{position:absolute;transform:translate(-50%,-50%);padding:4px 8px;font-size:12px;box-shadow:0 2px 0 #0001}.place small{display:block;font-size:10px}.village{left:24%;top:37%}.capital{left:78%;top:24%}.forest{left:35%;top:76%}.ruin{left:80%;top:69%}.marker{position:absolute;left:39%;top:48%;font-weight:bold;font-size:12px;background:#fff;border:2px solid #324c5d;padding:2px 6px;border-radius:20px}.map-bottom{position:absolute;bottom:7px;left:9px;right:9px;display:flex;justify-content:space-between;font-size:10px}.map-bottom span{background:#f7f7f4dd;padding:2px 4px}.location{display:flex;gap:8px;padding:9px 12px;border-bottom:1px solid #aaa;align-items:center}.location p{margin:0;font-size:12px}.location button{margin-left:auto;white-space:nowrap;padding:0 9px}.section{padding:10px 12px}.event{display:flex;align-items:center;gap:10px;border:1px solid #939a9d;padding:9px;background:#eeeFEB;width:100%;text-align:left}.thumb{width:52px;height:52px;flex-shrink:0;border:1px dashed #92999d;display:grid;place-items:center;font-size:11px}.event small{display:block;font-size:11px}.event strong{font-size:14px}.chevron{margin-left:auto}.stats{display:flex;justify-content:space-between;gap:6px;padding:9px 0}.stats span{flex:1;text-align:center;border-right:1px solid #ccc;font-size:12px}.stats span:last-child{border:0}.stats b{display:block;font-size:14px}.era{font-size:12px}.track{height:6px;background:#d8dcdd;margin:7px 0}.track i{display:block;width:40%;height:100%;background:#637b88}.milestones{display:flex;justify-content:space-between;font-size:10px;color:#5b6266}.actions{display:flex;gap:8px;margin:13px 0 9px}.actions button{padding:9px;flex:1}.actions .oracle{flex:2;background:#324c5d;color:#fff}.playback{display:flex;gap:6px}.playback button{flex:1}.playback button:last-child{flex:2}nav{display:flex;border-top:1px solid #979fa3;background:#eeeFEB;padding:5px;gap:5px}nav button{flex:1;border-color:transparent;font-size:12px}nav button span{display:block;font-size:18px}dialog{width:min(90vw,380px);border:1px solid #777;border-radius:8px;padding:20px;background:#fafaf8}dialog::backdrop{background:#0006}dialog h2{font-size:18px;margin-top:0}dialog button{width:100%;margin-top:8px}.notice{min-height:21px;font-size:12px;color:#36596e;margin:6px 0 0} @media(max-width:350px){.map{height:315px}.section{padding:8px}.place{padding:3px 6px}.person{padding:8px}.event strong{font-size:13px}}
+</style>
+</head>
+<body>
+<main class="app">
+<div class="note">配置検討用ワイヤーフレーム · 数値と出来事はサンプル</div>
+<header><span aria-hidden="true">✦ 女神</span><h1>第3の人生</h1><button data-modal="settings" aria-label="設定">⚙</button></header>
+<section class="person" aria-label="転生者"><div class="portrait">顔画像</div><div><strong>リオ</strong><br><span>24歳 · 森の薬師</span></div><span class="season" id="season">春 · 1年目</span></section>
+<section class="map" aria-label="風芽地方のマップ。拠点を選ぶと情報を表示します">
+<svg viewBox="0 0 440 350" preserveAspectRatio="none" aria-hidden="true">
+<defs><pattern id="trees" width="23" height="23" patternUnits="userSpaceOnUse"><path d="M11 3 3 17H19Z" fill="#bac4b3"/><path d="M11 17v4" stroke="#939f8c"/></pattern></defs>
+<path d="M0 0H440V65L370 45 310 75 250 30 170 80 90 50 0 90Z" fill="#ccd0cb"/>
+<path d="M15 85h110v85H15zM35 225h170v110H35zM300 150h140v145H300z" fill="url(#trees)"/>
+<path d="M260-10 245 65 272 127 254 191 282 253 250 360" stroke="#b7cad2" stroke-width="27" fill="none"/>
+<path d="M105 130H175V195H154V269M175 130V85H342M175 195H353V244" stroke="#d0c7b2" stroke-width="13" fill="none" stroke-linejoin="round"/>
+<path d="M244 195h29M239 85h34" stroke="#899093" stroke-width="17"/>
+<path d="M175 185V220H154V260" stroke="#587381" stroke-width="3" stroke-dasharray="4 5" fill="none"/>
+<text x="22" y="46" font-size="12" fill="#70766f">山岳地帯</text><text x="300" y="320" font-size="12" fill="#70766f">街道</text>
+</svg>
+<span class="region">風芽地方</span>
+<button class="place village" data-place="village" aria-pressed="false">⌂ 風芽の村<small>暮らしの拠点</small></button>
+<button class="place capital" data-place="capital" aria-pressed="false">♜ 王都<small>交易・仕事</small></button>
+<button class="place forest" data-place="forest" aria-pressed="true">♧ 薬草の森<small>採集先</small></button>
+<button class="place ruin" data-place="ruin" aria-pressed="false">▥ 古い遺跡<small>未探索</small></button>
+<span class="marker">▼ リオ</span>
+<div class="map-bottom"><span>● 現在地　┄ 移動予定</span><span>拠点をタップして観測</span></div>
+</section>
+<section class="location"><div><strong id="place-title">薬草の森</strong><p id="place-text">リオは薬草を採集に向かっています</p></div><button data-modal="world">世界を見る</button></section>
+<div class="section">
+<button class="event" data-modal="event"><span class="thumb">出来事<br>画像</span><span><small>運命の出会い</small><strong>旅の騎士が村を訪れた</strong><small>人生の節目をここに表示</small></span><span class="chevron">›</span></button>
+<div class="stats"><span>健康<b>良好</b></span><span>暮らし<b>安定</b></span><span>幸福<b>72</b></span></div>
+<div class="era">村の未来 <span style="float:right">時代目標</span><div class="track" role="progressbar" aria-label="村の未来" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100"><i></i></div><div class="milestones"><span>● 発展</span><span>○ 賑わい</span><span>○ 豊かな森へ</span></div></div>
+<div class="actions"><button class="oracle" data-modal="oracle">✦ 神託を届ける · 30</button><button data-modal="history">記録</button></div>
+<div class="playback" aria-label="時間操作"><button id="pause" aria-label="再生" aria-pressed="false">▶</button><button class="speed" aria-pressed="true">1×</button><button class="speed" aria-pressed="false">3×</button><button id="next">次の季節 ›</button></div>
+<p class="notice" id="notice" aria-live="polite">観測中の人物は自律行動します。</p>
+</div>
+<nav aria-label="メインメニュー"><button aria-current="page"><span>◉</span>観測</button><button data-modal="world"><span>▦</span>世界</button><button data-modal="rebirth"><span>✦</span>転生</button><button data-modal="history"><span>▤</span>歴史</button></nav>
+</main>
+<dialog id="details" aria-labelledby="dialog-title"><h2 id="dialog-title"></h2><p id="dialog-text"></p><form method="dialog"><button>閉じる</button></form></dialog>
+<script>
+const $=s=>document.querySelector(s);
+const places={village:['風芽の村','人口 128人 · リオが暮らす村'],capital:['王都','交易が盛んな都市 · 村から街道でつながる'],forest:['薬草の森','リオは薬草を採集に向かっています'],ruin:['古い遺跡','未探索 · どんな歴史が眠っているのでしょう']};
+document.querySelectorAll('[data-place]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-place]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));const [title,text]=places[b.dataset.place];$('#place-title').textContent=title;$('#place-text').textContent=text;});
+const panels={settings:['設定','ここに音量・文字サイズ・モーション低減などを配置する想定です。'],world:['世界','地方どうしのつながり、各地の状況、残された歴史を見る画面へ進む想定です。'],event:['旅の騎士が村を訪れた','リオは薬を求めて訪れた騎士と出会いました。ここでは出来事の詳細と、人物や世界への影響を表示します。'],oracle:['神託を届ける','伝える願いを選ぶ画面を開く想定です。行動を直接指定するのではなく、リオ自身の判断に影響します。'],history:['歴史・記録','人生の出来事や過去の転生者が残した足跡を、必要なときに読む場所です。'],rebirth:['転生','転生候補と過去の人生を確認する画面へ進む想定です。']};
+document.querySelectorAll('[data-modal]').forEach(b=>b.onclick=()=>{const [title,text]=panels[b.dataset.modal];$('#dialog-title').textContent=title;$('#dialog-text').textContent=text;$('#details').showModal();});
+document.querySelectorAll('.speed').forEach(b=>b.onclick=()=>{document.querySelectorAll('.speed').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));$('#notice').textContent=b.textContent+' を選択（時間経過はデモ未実装）';});
+$('#pause').onclick=()=>{const active=$('#pause').getAttribute('aria-pressed')!=='true';$('#pause').setAttribute('aria-pressed',String(active));$('#pause').setAttribute('aria-label',active?'一時停止':'再生');$('#pause').textContent=active?'Ⅱ':'▶';$('#notice').textContent=active?'再生を選択（時間経過はデモ未実装）':'一時停止中';};
+let season=0;$('#next').onclick=()=>{season++;$('#season').textContent=['春','夏','秋','冬'][season%4]+' · '+(1+Math.floor(season/4))+'年目';$('#notice').textContent='季節表示の切替デモです。ゲーム状態は変わりません。';};
+</script>
+</body></html>
