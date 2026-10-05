@@ -1,0 +1,183 @@
+<!doctype html>
+<!--
+  このファイルは scripts/build-rollback-rescue.mjs が生成します。直接編集しないでください。
+  再生成: npm run build:rollback-rescue
+  鮮度検査: npm run build:rollback-rescue:check
+-->
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>転生者観測日誌 セーブ形式の復旧</title>
+<style>
+  :root { color-scheme: light dark; --bg: #faf8f5; --fg: #241f1a; --muted: #6b625a; --line: #ddd4c9; --accent: #7a5c3e; --ok: #2f6b3a; --ng: #8c3324; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1a1714; --fg: #eee6dc; --muted: #a69b90; --line: #3a332c; --accent: #d7b78e; --ok: #7fc08c; --ng: #e59182; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--fg);
+         font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+         line-height: 1.75; }
+  main { max-width: 42rem; margin: 0 auto; }
+  h1 { font-size: 1.35rem; margin: 0 0 0.75rem; }
+  h2 { font-size: 1.05rem; margin: 2rem 0 0.5rem; }
+  p, li { font-size: 0.95rem; }
+  .lead { color: var(--muted); }
+  button { font: inherit; font-weight: 600; padding: 12px 20px; min-height: 44px;
+           border: 1px solid var(--accent); border-radius: 8px; background: var(--accent);
+           color: var(--bg); cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .result { margin-top: 1.25rem; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; }
+  .result[data-state="ok"] { border-color: var(--ok); }
+  .result[data-state="ng"] { border-color: var(--ng); }
+  .result h3 { margin: 0 0 0.35rem; font-size: 1rem; }
+  .result[data-state="ok"] h3 { color: var(--ok); }
+  .result[data-state="ng"] h3 { color: var(--ng); }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0.5rem 0 0; font-size: 0.85rem; }
+  dt { color: var(--muted); }
+  dd { margin: 0; font-variant-numeric: tabular-nums; }
+  a { color: var(--accent); }
+  footer { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>セーブ形式の復旧</h1>
+  <p class="lead">「転生者観測日誌」を開いたときに<strong>「読み込みに失敗しました」</strong>と表示される場合、このページでセーブデータを以前の形式へ戻せます。<strong>記録は消えません。</strong></p>
+
+  <h2>なぜ起きるのか</h2>
+  <p>新しい版が保存したデータには、以前の版が知らない情報が含まれています。以前の版は、知らない形式のデータを<strong>壊さないために読み込みを止めます</strong>。公開中の版が以前のものへ戻された直後に、この状態になります。</p>
+  <p>このページは、保存データの形式の記録を以前の版が読める値へ戻します。<strong>データそのものは1つも書き換えません。</strong>新しい版へ戻ったときには、そのまま元どおり読み込まれます。</p>
+
+  <h2>実行</h2>
+  <p><button id="run" type="button">セーブ形式を復旧する</button></p>
+  <div id="result" class="result" hidden></div>
+
+  <h2>うまくいかないときは</h2>
+  <ul>
+    <li>ゲームと<strong>同じブラウザ・同じ端末</strong>で開いてください。保存データは端末のブラウザの中にあります（別の端末へは引き継がれません）。</li>
+    <li>プライベートブラウズでは保存データが見えません。通常のウィンドウで開いてください。</li>
+    <li>「対象のデータがありません」と出る場合、このブラウザでプレイした記録がありません。</li>
+  </ul>
+
+  <p><a href="./tensei-life-watch.html">転生者観測日誌へ戻る</a></p>
+
+  <footer>
+    保存形式 8 → 7 用。<br>
+    このページは配信物（<code>tensei-life-watch.html</code>・<code>assets/</code>）に依存しない独立したファイルです。
+  </footer>
+</main>
+<script>
+(function () {
+  'use strict';
+  // 現在の保存形式と、戻す先。web-ui-src/src/save/schema.ts と
+  // web-ui-src/src/save/downgrade.ts の定義から生成時に埋め込んでいる。
+  var FROM = 8;
+  var TO = 7;
+  var KEYS = ['tenseiLifeWatch:v1', 'tenseiLifeWatch:v1:backup'];
+
+  // downgrade.ts の downgradeToSchemaVersion7() と同じ規則。
+  // **値は1つも捨てない。** schemaVersion だけを下げる。
+  function downgrade(raw) {
+    if (!raw || typeof raw !== 'object') return { ok: false, reason: '対象がオブジェクトではありません' };
+    if (typeof raw.schemaVersion !== 'number') return { ok: false, reason: '保存形式の記録がありません' };
+    if (raw.schemaVersion === TO) return { ok: false, reason: 'already', already: true };
+    if (raw.schemaVersion !== FROM) {
+      return { ok: false, reason: '保存形式が ' + raw.schemaVersion + ' で、このページの対象（' + FROM + '）ではありません' };
+    }
+    raw.schemaVersion = TO;
+    return { ok: true, state: raw };
+  }
+
+  function show(state, title, bodyHtml) {
+    var el = document.getElementById('result');
+    el.hidden = false;
+    el.setAttribute('data-state', state);
+    el.innerHTML = '<h3>' + title + '</h3>' + bodyHtml;
+  }
+
+  function escapeHtml(text) {
+    return String(text).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  document.getElementById('run').addEventListener('click', function () {
+    var store;
+    try {
+      store = window.localStorage;
+      if (!store) throw new Error('no localStorage');
+    } catch (e) {
+      show('ng', '保存データを読み取れません',
+        '<p>このブラウザでは保存データへアクセスできません。プライベートブラウズを解除して、通常のウィンドウで開き直してください。</p>');
+      return;
+    }
+
+    var converted = [];
+    var skipped = [];
+    var failed = [];
+    var missing = [];
+
+    for (var i = 0; i < KEYS.length; i++) {
+      var key = KEYS[i];
+      var text = null;
+      try { text = store.getItem(key); } catch (e) { text = null; }
+      if (text === null) { missing.push(key); continue; }
+      var parsed = null;
+      try { parsed = JSON.parse(text); } catch (e) {
+        failed.push({ key: key, reason: 'データが壊れていて読み取れません' });
+        continue;
+      }
+      var result = downgrade(parsed);
+      if (result.ok) {
+        try {
+          store.setItem(key, JSON.stringify(result.state));
+          converted.push(key);
+        } catch (e) {
+          failed.push({ key: key, reason: '書き込めませんでした（保存領域の空きが足りない可能性があります）' });
+        }
+      } else if (result.already) {
+        skipped.push(key);
+      } else {
+        failed.push({ key: key, reason: result.reason });
+      }
+    }
+
+    var detail = '<dl>'
+      + '<dt>復旧した</dt><dd>' + converted.length + '件</dd>'
+      + '<dt>すでに以前の形式</dt><dd>' + skipped.length + '件</dd>'
+      + '<dt>対象外・失敗</dt><dd>' + failed.length + '件</dd>'
+      + '<dt>存在しない</dt><dd>' + missing.length + '件</dd>'
+      + '</dl>';
+    if (failed.length > 0) {
+      detail += '<ul>';
+      for (var j = 0; j < failed.length; j++) {
+        detail += '<li>' + escapeHtml(failed[j].key) + ': ' + escapeHtml(failed[j].reason) + '</li>';
+      }
+      detail += '</ul>';
+    }
+
+    if (converted.length > 0) {
+      show('ok', '復旧しました',
+        '<p>保存形式を ' + FROM + ' から ' + TO + ' へ戻しました。記録は消えていません。'
+        + '<a href="./tensei-life-watch.html">転生者観測日誌へ戻って</a>、観測を再開してください。</p>' + detail);
+    } else if (skipped.length > 0 && failed.length === 0) {
+      show('ok', '復旧は不要でした',
+        '<p>保存データはすでに以前の形式です。'
+        + '<a href="./tensei-life-watch.html">転生者観測日誌へ戻って</a>ください。'
+        + 'それでも読み込めない場合は、別の原因です。</p>' + detail);
+    } else if (missing.length === KEYS.length) {
+      show('ng', '対象のデータがありません',
+        '<p>このブラウザには「転生者観測日誌」の保存データがありません。'
+        + 'ゲームと同じブラウザ・同じ端末で開いているか確認してください。</p>' + detail);
+    } else {
+      show('ng', '復旧できませんでした', detail);
+    }
+
+    // 二重実行で混乱しないよう、結果を出したら押せなくする。
+    document.getElementById('run').disabled = true;
+  });
+}());
+</script>
+</body>
+</html>
