@@ -1,9 +1,9 @@
 <!doctype html>
 <!--
 name: シフトライン司令室
-version: 0.9
+version: 0.1
 type: single-html-app
-status: review
+status: draft
 -->
 <html lang="ja">
 <head>
@@ -17,7 +17,6 @@ status: review
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       margin: 0; padding: 16px; background: #f6f7f9; color: #20242a;
       padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
-      overflow-wrap: anywhere;
     }
     main { max-width: 1200px; margin: 0 auto; }
     .card {
@@ -108,58 +107,27 @@ status: review
     .result-modal {
       position: fixed; top: 0; left: 0; right: 0; bottom: 0;
       background: rgba(0,0,0,0.5); display: none; align-items: center;
-      justify-content: center; z-index: 1000; padding: 12px;
+      justify-content: center; z-index: 1000;
     }
     .result-modal.active { display: flex; }
     .result-content {
       background: #fff; padding: 32px; border-radius: 16px;
-      width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto;
+      max-width: 500px; max-height: 90vh; overflow-y: auto;
     }
     .result-score { font-size: 2em; font-weight: bold; margin: 16px 0; }
     .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
-    .result-item { padding: 12px; background: #f9fafb; border-radius: 8px; min-width: 0; overflow-wrap: anywhere; }
+    .result-item { padding: 12px; background: #f9fafb; border-radius: 8px; }
     .result-item-label { font-size: 0.85em; color: #6b7280; }
     .result-item-value { font-size: 1.2em; font-weight: bold; margin-top: 4px; }
-    .result-item-wide { grid-column: 1 / -1; }
-    .result-item-value.small { font-size: 0.95em; line-height: 1.5; }
     input[type="number"] { padding: 8px; border: 1px solid #dde2ea; border-radius: 6px; }
     .hidden { display: none; }
     .event-bad { border-left-color: #dc2626; }
     .event-good { border-left-color: #16a34a; }
-    .notice {
-      background: #fef3c7; border: 1px solid #f59e0b; color: #78350f;
-      border-radius: 10px; padding: 12px; margin-bottom: 16px;
-    }
-    .notice button { margin: 8px 0 0; }
-    .end-banner {
-      background: #fff7ed; border: 2px solid #f97316; border-radius: 14px;
-      padding: 16px; margin-bottom: 16px;
-    }
-    .end-banner strong { display: block; font-size: 1.1em; margin-bottom: 8px; }
-    .decision-grid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-      gap: 12px; margin: 12px 0;
-    }
-    .decision-card {
-      border: 2px solid #dde2ea; border-radius: 12px; padding: 14px;
-      background: #fff; min-width: 0;
-    }
-    .decision-card.selected { border-color: #2563eb; background: #eff6ff; }
-    .decision-card h3 { margin-top: 0; }
-    .decision-card p { margin: 6px 0; font-size: 0.92em; line-height: 1.5; }
-    .decision-preview {
-      background: #f9fafb; border-radius: 8px; padding: 8px 10px;
-      font-size: 0.88em; line-height: 1.6; margin: 8px 0;
-    }
-    .decision-card button { width: 100%; margin-right: 0; min-height: 44px; }
-    .decision-record { font-size: 0.9em; line-height: 1.6; color: #374151; }
     @media (max-width: 600px) {
       body { padding: 12px; padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px)); }
       .status-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .lines-grid { grid-template-columns: minmax(0, 1fr); }
-      .decision-grid { grid-template-columns: minmax(0, 1fr); }
       .result-grid { grid-template-columns: minmax(0, 1fr); }
-      .result-content { padding: 20px; }
       button { padding: 12px 16px; font-size: 1em; min-height: 44px; }
       .line-stat { grid-template-columns: minmax(0, auto) minmax(0, 1fr); }
     }
@@ -167,11 +135,6 @@ status: review
 </head>
 <body>
   <main>
-    <div id="notice" class="notice hidden" role="alert">
-      <div id="noticeText"></div>
-      <button id="btnCloseNotice">閉じる</button>
-    </div>
-
     <section class="card">
       <h1>シフトライン司令室</h1>
       <p>複数ラインの人員と進捗を管理し、シフト目標達成を目指します。</p>
@@ -196,14 +159,6 @@ status: review
     </section>
 
     <section id="shiftPanel" class="hidden">
-      <div id="endBanner" class="end-banner hidden">
-        <strong>16ターンが終了しました。終了判断へ進んでください。</strong>
-        <div>次のターンへは進めません。下の判断から1つ選んで確定すると結果が出ます。</div>
-        <button id="btnGoDecision" class="primary">終了判断へ進む</button>
-      </div>
-
-      <section id="decisionPanel" class="card hidden"></section>
-
       <section class="card">
         <h2>シフト情報</h2>
         <div class="status-bar">
@@ -269,83 +224,29 @@ status: review
     const TURNS_PER_SHIFT = 16; // 30分ごと
     const TURN_DURATION_MIN = 30;
 
-    // 終了判断のルール。表示（プレビュー）と実処理の両方がここを参照する。
-    //   target: 'none' = 対象なし / 'unfinished' = 未達ライン / 'all' = 全ライン
-    //   gain: 対象ラインの完了数の増加上限（目標数が上限）
-    //   fatigue: 対象ラインの疲労増減（0〜100に収める）
-    //   scoreCost: 最終スコアから引く点数（スコアは0〜100に収める）
-    const DECISIONS = {
-      ontime: {
-        label: '定時終了', target: 'none', gain: 0, fatigue: 0, scoreCost: 0,
-        effect: '現在の状態のまま評価を確定します。',
-        cost: '代償はありません。未達ラインはそのまま評価されます。'
-      },
-      overtime: {
-        label: '残業・延長対応', target: 'unfinished', gain: 12, fatigue: 15, scoreCost: 0,
-        effect: '未達ラインの完了数を最大 +12 します（目標数まで）。',
-        cost: '対象ラインの疲労が +15 されます。'
-      },
-      support: {
-        label: '応援要請', target: 'unfinished', gain: 8, fatigue: 0, scoreCost: 6,
-        effect: '未達ラインの完了数を最大 +8 します（目標数まで）。',
-        cost: '応援コストとしてスコアが -6 点されます。'
-      },
-      safety: {
-        label: '安全優先で終了', target: 'all', gain: 0, fatigue: -25, scoreCost: 0,
-        effect: '全ラインの疲労を -25 します（0%まで）。完了数は増えません。',
-        cost: '未達ラインの完了数は増えません。'
-      }
+    let state = {
+      shiftActive: false,
+      turn: 0,
+      startTime: 8 * 60,
+      lines: {},
+      staff: {},
+      history: [],
+      shiftResults: [],
+      allocated: 0
     };
-    const DECISION_ORDER = ['ontime', 'overtime', 'support', 'safety'];
-
-    function makeLines() {
-      const lines = {};
-      const staff = {};
-      LINES.forEach(line => {
-        lines[line.id] = { completed: 0, wip: 0, fatigue: 0, shortage: false };
-        staff[line.id] = 0;
-      });
-      return { lines, staff };
-    }
-
-    function freshState() {
-      const base = makeLines();
-      return {
-        shiftActive: false,
-        turn: 0,
-        startTime: 8 * 60,
-        lines: base.lines,
-        staff: base.staff,
-        history: [],
-        shiftResults: [],
-        allocated: 0
-      };
-    }
-
-    let state = freshState();
-
-    // 画面だけの一時状態（保存しない）
-    const ui = { decisionOpen: false, selected: null };
-
-    function clamp(v, lo, hi) {
-      return Math.max(lo, Math.min(hi, v));
-    }
-
-    function sgn(n) {
-      return n > 0 ? `+${n}` : n < 0 ? `${n}` : '±0';
-    }
-
-    function showNotice(text) {
-      const box = document.getElementById('notice');
-      if (!box) return;
-      document.getElementById('noticeText').textContent = text;
-      box.classList.remove('hidden');
-    }
 
     function initLines() {
-      const base = makeLines();
-      state.lines = base.lines;
-      state.staff = base.staff;
+      state.lines = {};
+      state.staff = {};
+      LINES.forEach(line => {
+        state.lines[line.id] = {
+          completed: 0,
+          wip: 0,
+          fatigue: 0,
+          shortage: false
+        };
+        state.staff[line.id] = 0;
+      });
     }
 
     function saveState() {
@@ -353,39 +254,22 @@ status: review
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       } catch(e) {
         console.error('Save failed:', e);
-        showNotice('保存に失敗しました。このまま続けられますが、リロードすると進行状況が失われる場合があります。');
       }
     }
 
     function loadState() {
-      let saved = null;
       try {
-        saved = localStorage.getItem(STORAGE_KEY);
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const loaded = JSON.parse(saved);
+          if (validateState(loaded)) {
+            state = loaded;
+            return true;
+          }
+        }
       } catch(e) {
         console.error('Load failed:', e);
-        showNotice('保存データを読み込めませんでした。初期状態で開始します。');
-        return false;
       }
-      if (saved === null) return false;
-
-      let loaded = null;
-      try {
-        loaded = JSON.parse(saved);
-      } catch(e) {
-        console.error('Parse failed:', e);
-      }
-      if (loaded && validateState(loaded)) {
-        state = loaded;
-        return true;
-      }
-
-      state = freshState();
-      try {
-        localStorage.removeItem(STORAGE_KEY);
-      } catch(e) {
-        console.error('Cleanup failed:', e);
-      }
-      showNotice('保存データが壊れていたため、初期状態に戻しました。');
       return false;
     }
 
@@ -393,28 +277,16 @@ status: review
       return typeof v === 'number' && Number.isFinite(v);
     }
 
-    function validateDecisionRecord(d) {
-      if (!d || typeof d !== 'object') return false;
-      if (typeof d.id !== 'string' || !Object.prototype.hasOwnProperty.call(DECISIONS, d.id)) return false;
-      if (!isFiniteNumber(d.completedGain) || d.completedGain < 0 || d.completedGain > 1000) return false;
-      if (!isFiniteNumber(d.fatigueBefore) || d.fatigueBefore < 0 || d.fatigueBefore > 100) return false;
-      if (!isFiniteNumber(d.fatigueAfter) || d.fatigueAfter < 0 || d.fatigueAfter > 100) return false;
-      if (!isFiniteNumber(d.scoreBefore) || d.scoreBefore < 0 || d.scoreBefore > 100) return false;
-      if (!isFiniteNumber(d.scoreCost) || d.scoreCost < 0 || d.scoreCost > 100) return false;
-      return true;
-    }
-
     function validateState(obj) {
       if (!obj || typeof obj !== 'object') return false;
       if (typeof obj.shiftActive !== 'boolean') return false;
-      if (!isFiniteNumber(obj.turn) || obj.turn < 0 || obj.turn > TURNS_PER_SHIFT) return false;
+      if (!isFiniteNumber(obj.turn) || obj.turn < 0) return false;
       if (!isFiniteNumber(obj.startTime) || obj.startTime < 0) return false;
-      if (!isFiniteNumber(obj.allocated) || obj.allocated < 0 || obj.allocated > TOTAL_STAFF) return false;
+      if (!isFiniteNumber(obj.allocated) || obj.allocated < 0) return false;
 
       if (!obj.lines || typeof obj.lines !== 'object') return false;
       if (!obj.staff || typeof obj.staff !== 'object') return false;
 
-      let staffSum = 0;
       for (const line of LINES) {
         const ls = obj.lines[line.id];
         if (!ls || typeof ls !== 'object') return false;
@@ -425,9 +297,7 @@ status: review
 
         const st = obj.staff[line.id];
         if (!isFiniteNumber(st) || st < 0 || st > TOTAL_STAFF) return false;
-        staffSum += st;
       }
-      if (staffSum > TOTAL_STAFF) return false;
 
       if (!Array.isArray(obj.history)) return false;
       for (const h of obj.history) {
@@ -439,15 +309,9 @@ status: review
       for (const r of obj.shiftResults) {
         if (!r || typeof r !== 'object') return false;
         if (!isFiniteNumber(r.achievement) || !isFiniteNumber(r.avgFatigue) || !isFiniteNumber(r.score)) return false;
-        // 旧履歴には decision がない。ある場合のみ検証する。
-        if (r.decision !== undefined && !validateDecisionRecord(r.decision)) return false;
       }
 
       return true;
-    }
-
-    function isDecisionPhase() {
-      return state.shiftActive && (state.turn >= TURNS_PER_SHIFT || ui.decisionOpen);
     }
 
     function startShift() {
@@ -457,8 +321,6 @@ status: review
       state.startTime = 8 * 60;
       state.history = [];
       state.allocated = 0;
-      ui.decisionOpen = false;
-      ui.selected = null;
 
       addLog('シフト開始！ 頑張りましょう。');
       saveState();
@@ -468,7 +330,6 @@ status: review
     function nextTurn() {
       if (!state.shiftActive) return;
       if (state.turn >= TURNS_PER_SHIFT) return;
-      if (isDecisionPhase()) return;
 
       state.turn++;
 
@@ -518,38 +379,22 @@ status: review
         lineState.fatigue = Math.max(0, Math.min(100, lineState.fatigue));
       });
 
-      if (state.turn >= TURNS_PER_SHIFT) {
-        addLog('16ターンが終了しました。終了判断を選んでください。');
-      }
-
       saveState();
       render();
     }
 
-    // 「シフト終了」操作は常に終了判断画面へ接続する。
     function endShift() {
       if (!state.shiftActive) return;
-      ui.decisionOpen = true;
-      render();
-      scrollToDecision();
+      state.shiftActive = false;
+
+      const results = calculateResults();
+      state.shiftResults.push(results);
+
+      saveState();
+      showResults(results);
     }
 
-    function scrollToDecision() {
-      const panel = document.getElementById('decisionPanel');
-      if (panel && typeof panel.scrollIntoView === 'function') {
-        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
-
-    function cancelDecision() {
-      if (state.turn >= TURNS_PER_SHIFT) return;
-      ui.decisionOpen = false;
-      ui.selected = null;
-      render();
-    }
-
-    // lines: { [lineId]: { completed, fatigue } }。副作用なし。
-    function calculateResults(lines, scoreCost) {
+    function calculateResults() {
       const results = {
         achievement: 0,
         totalTarget: 0,
@@ -557,18 +402,16 @@ status: review
         avgFatigue: 0,
         riskLabel: '低',
         shortageCount: 0,
-        rawScore: 0,
         score: 0,
-        turns: state.turn,
         timestamp: new Date().toISOString()
       };
 
       let totalFatigue = 0;
       LINES.forEach(line => {
         results.totalTarget += line.target;
-        const completed = Math.min(lines[line.id].completed, line.target);
+        const completed = Math.min(state.lines[line.id].completed, line.target);
         results.totalCompleted += completed;
-        totalFatigue += lines[line.id].fatigue;
+        totalFatigue += state.lines[line.id].fatigue;
       });
 
       results.achievement = Math.round((results.totalCompleted / results.totalTarget) * 100);
@@ -578,152 +421,9 @@ status: review
 
       const safetyMargin = Math.max(0, 100 - results.avgFatigue);
       const shortagePenalty = Math.max(0, 100 - results.shortageCount * 10);
-      results.rawScore = Math.round((results.achievement * 0.5) + (safetyMargin * 0.3) + (shortagePenalty * 0.2));
-      results.score = clamp(results.rawScore - (scoreCost || 0), 0, 100);
+      results.score = Math.round((results.achievement * 0.5) + (safetyMargin * 0.3) + (shortagePenalty * 0.2));
 
       return results;
-    }
-
-    // 判断の効果を現在の状態から計算する。状態は変更しない。
-    // プレビュー表示と確定処理の両方がこの結果を使う。
-    function computeDecision(id) {
-      const rule = DECISIONS[id];
-      const current = calculateResults(state.lines, 0);
-      const afterLines = {};
-      const perLine = [];
-      let totalGain = 0;
-
-      LINES.forEach(line => {
-        const ls = state.lines[line.id];
-        const unfinished = ls.completed < line.target;
-        const targeted = rule.target === 'all' || (rule.target === 'unfinished' && unfinished);
-        let gain = 0;
-        let newFatigue = ls.fatigue;
-        if (targeted) {
-          gain = Math.max(0, Math.min(rule.gain, line.target - ls.completed));
-          newFatigue = clamp(ls.fatigue + rule.fatigue, 0, 100);
-        }
-        afterLines[line.id] = { completed: ls.completed + gain, fatigue: newFatigue };
-        totalGain += gain;
-        perLine.push({
-          id: line.id,
-          name: line.name,
-          gain: gain,
-          fatigueBefore: ls.fatigue,
-          fatigueAfter: newFatigue,
-          fatigueDelta: newFatigue - ls.fatigue
-        });
-      });
-
-      const results = calculateResults(afterLines, rule.scoreCost);
-      const scoreCost = results.rawScore - results.score;
-      return {
-        id: id,
-        label: rule.label,
-        perLine: perLine,
-        afterLines: afterLines,
-        totalGain: totalGain,
-        current: current,
-        results: results,
-        scoreCost: scoreCost
-      };
-    }
-
-    function previewHtml(out) {
-      const changes = out.perLine.filter(p => p.gain !== 0 || p.fatigueDelta !== 0);
-      const lineText = changes.length === 0
-        ? '変化するラインはありません。'
-        : changes.map(p => `${p.name}: 完了 ${sgn(p.gain)} / 疲労 ${sgn(p.fatigueDelta)}`).join('<br>');
-      const costText = out.scoreCost > 0 ? `（コスト -${out.scoreCost}）` : '';
-      return `
-        <div class="decision-preview">
-          <div>現在の状態での見込み</div>
-          <div>${lineText}</div>
-          <div>完了数 ${out.current.totalCompleted}→${out.results.totalCompleted} / 達成率 ${out.current.achievement}%→${out.results.achievement}%</div>
-          <div>平均疲労 ${out.current.avgFatigue}%→${out.results.avgFatigue}%</div>
-          <div>スコア ${out.current.score}→${out.results.score}点${costText}</div>
-        </div>
-      `;
-    }
-
-    function renderDecisionPanel() {
-      const panel = document.getElementById('decisionPanel');
-      if (!isDecisionPhase()) {
-        panel.classList.add('hidden');
-        panel.innerHTML = '';
-        return;
-      }
-      panel.classList.remove('hidden');
-      const forced = state.turn >= TURNS_PER_SHIFT;
-
-      const cards = DECISION_ORDER.map(id => {
-        const rule = DECISIONS[id];
-        const out = computeDecision(id);
-        const selected = ui.selected === id;
-        return `
-          <div class="decision-card ${selected ? 'selected' : ''}">
-            <h3>${rule.label}</h3>
-            <p><strong>効果:</strong> ${rule.effect}</p>
-            <p><strong>代償:</strong> ${rule.cost}</p>
-            ${previewHtml(out)}
-            <button class="${selected ? 'primary' : ''}" data-action="select" data-decision="${id}">${selected ? '選択中' : 'この判断を選ぶ'}</button>
-          </div>
-        `;
-      }).join('');
-
-      panel.innerHTML = `
-        <h2>終了判断</h2>
-        <p>${forced ? '16ターンが終了しました。' : 'シフトを終了します。'}判断を1つ選んで確定してください。確定すると結果が記録されます。</p>
-        <div class="decision-grid">${cards}</div>
-        <div class="btn-group">
-          <button class="success" data-action="confirm" ${DECISIONS[ui.selected] ? '' : 'disabled'}>この判断で確定</button>
-          ${forced ? '' : '<button data-action="cancel">戻る</button>'}
-        </div>
-      `;
-    }
-
-    function confirmDecision() {
-      // 二重適用防止: 判断待ちでなければ何もしない
-      if (!isDecisionPhase()) return;
-      const id = ui.selected;
-      if (typeof id !== 'string' || !Object.prototype.hasOwnProperty.call(DECISIONS, id)) return;
-
-      const out = computeDecision(id);
-      // 最初にシフトを閉じて、連打・再描画での再実行を防ぐ
-      state.shiftActive = false;
-      ui.decisionOpen = false;
-      ui.selected = null;
-
-      LINES.forEach(line => {
-        state.lines[line.id].completed = out.afterLines[line.id].completed;
-        state.lines[line.id].fatigue = out.afterLines[line.id].fatigue;
-      });
-
-      const record = out.results;
-      delete record.rawScore;
-      record.decision = {
-        id: id,
-        completedGain: out.totalGain,
-        fatigueBefore: out.current.avgFatigue,
-        fatigueAfter: out.results.avgFatigue,
-        scoreBefore: out.current.score,
-        scoreCost: out.scoreCost
-      };
-
-      addLog(`終了判断「${out.label}」を確定。完了数 ${sgn(out.totalGain)} / 平均疲労 ${out.current.avgFatigue}%→${out.results.avgFatigue}% / スコア ${out.current.score}→${out.results.score}点（コスト -${out.scoreCost}）`);
-      state.shiftResults.push(record);
-
-      saveState();
-      render();
-      showResults(record);
-    }
-
-    function decisionSummaryHtml(r) {
-      if (!r.decision) return '判断記録なし';
-      const d = r.decision;
-      const rule = DECISIONS[d.id];
-      const costText = d.scoreCost > 0 ? ` / スコアコスト -${d.scoreCost}` : '';
-      return `判断: ${rule.label}<br>完了数 ${sgn(d.completedGain)} / 平均疲労 ${d.fatigueBefore}%→${d.fatigueAfter}% / スコア ${d.scoreBefore}→${r.score}点${costText}`;
     }
 
     function showResults(results) {
@@ -733,10 +433,6 @@ status: review
 
       scoreDiv.textContent = `スコア: ${results.score} 点`;
       detailsDiv.innerHTML = `
-        <div class="result-item result-item-wide">
-          <div class="result-item-label">終了判断</div>
-          <div class="result-item-value small">${decisionSummaryHtml(results)}</div>
-        </div>
         <div class="result-item">
           <div class="result-item-label">達成率</div>
           <div class="result-item-value">${results.achievement}%</div>
@@ -767,7 +463,6 @@ status: review
     }
 
     function generateEvent() {
-      if (!state.shiftActive || isDecisionPhase()) return;
       const events = [
         () => {
           const line = LINES[Math.floor(Math.random() * LINES.length)];
@@ -855,7 +550,6 @@ status: review
     }
 
     function resetFatigue() {
-      if (!state.shiftActive || isDecisionPhase()) return;
       LINES.forEach(line => {
         state.lines[line.id].fatigue = 0;
       });
@@ -877,9 +571,16 @@ status: review
 
     function resetAll() {
       if (confirm('すべてのデータをリセットしますか？')) {
-        state = freshState();
-        ui.decisionOpen = false;
-        ui.selected = null;
+        state = {
+          shiftActive: false,
+          turn: 0,
+          startTime: 8 * 60,
+          lines: {},
+          staff: {},
+          history: [],
+          shiftResults: [],
+          allocated: 0
+        };
         saveState();
         render();
       }
@@ -898,14 +599,10 @@ status: review
       const btnEndShift = document.getElementById('btnEndShift');
 
       if (state.shiftActive) {
-        const deciding = isDecisionPhase();
         shiftPanel.classList.remove('hidden');
         btnStart.disabled = true;
-        btnNextTurn.disabled = deciding || state.turn >= TURNS_PER_SHIFT;
+        btnNextTurn.disabled = state.turn >= TURNS_PER_SHIFT;
         btnEndShift.disabled = false;
-        document.getElementById('btnEvent').disabled = deciding;
-        document.getElementById('btnRest').disabled = deciding;
-        document.getElementById('endBanner').classList.toggle('hidden', state.turn < TURNS_PER_SHIFT);
 
         document.getElementById('currentTime').textContent = formatTime(state.startTime + (state.turn * TURN_DURATION_MIN));
         document.getElementById('totalStaff').textContent = `${TOTAL_STAFF} 人`;
@@ -920,7 +617,6 @@ status: review
         const progressPct = Math.round((totalProgress / totalTarget) * 100);
         document.getElementById('overallProgress').textContent = `${progressPct}%`;
 
-        renderDecisionPanel();
         renderLines();
         renderEventLog();
       } else {
@@ -1043,13 +739,10 @@ status: review
       list.innerHTML = results.map((r, idx) => {
         const date = new Date(r.timestamp);
         const dateLabel = isNaN(date.getTime()) ? '' : date.toLocaleString('ja-JP');
-        const risk = typeof r.riskLabel === 'string' ? r.riskLabel : '-';
-        const shortage = isFiniteNumber(r.shortageCount) ? r.shortageCount : 0;
         return `
           <div class="event-item">
             <div class="event-turn">${dateLabel} - スコア ${r.score}点</div>
-            <div class="event-text">達成率 ${r.achievement}% / 疲労 ${r.avgFatigue}% / リスク ${risk} / 欠品 ${shortage}回</div>
-            <div class="decision-record">${decisionSummaryHtml(r)}</div>
+            <div class="event-text">達成率 ${r.achievement}% / 疲労 ${r.avgFatigue}% / リスク ${r.riskLabel} / 欠品 ${r.shortageCount}回</div>
             <button class="danger" onclick="deleteHistoryEntry(${idx})">この記録を削除</button>
           </div>
         `;
@@ -1082,29 +775,6 @@ status: review
     document.getElementById('btnHistory').addEventListener('click', toggleHistory);
     document.getElementById('btnCloseHistory').addEventListener('click', toggleHistory);
     document.getElementById('btnClearHistory').addEventListener('click', clearHistory);
-    document.getElementById('btnGoDecision').addEventListener('click', () => {
-      if (!isDecisionPhase()) return;
-      scrollToDecision();
-    });
-    document.getElementById('btnCloseNotice').addEventListener('click', () => {
-      document.getElementById('notice').classList.add('hidden');
-    });
-    document.getElementById('decisionPanel').addEventListener('click', (ev) => {
-      const btn = ev.target.closest('button[data-action]');
-      if (!btn || btn.disabled) return;
-      const action = btn.getAttribute('data-action');
-      if (action === 'select') {
-        const id = btn.getAttribute('data-decision');
-        if (Object.prototype.hasOwnProperty.call(DECISIONS, id)) {
-          ui.selected = id;
-          renderDecisionPanel();
-        }
-      } else if (action === 'confirm') {
-        confirmDecision();
-      } else if (action === 'cancel') {
-        cancelDecision();
-      }
-    });
 
     // Initialize
     loadState();
